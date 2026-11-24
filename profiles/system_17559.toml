@@ -1,0 +1,7 @@
+id = "system_17559"
+firmware = "2.0.17559.0"
+scope = "whole-system"
+state = "planned"
+boot_mode = "firmware"
+entry = "boot"
+components = ["abi","hardware","boot","hypervisor","kernel","drivers","xam","system_apps","dashboard","formats","host","execution","composition"]

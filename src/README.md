@@ -1,3 +1,3 @@
-# Faithful reconstruction
+# Faithful OS source
 
-Authored implementations of original functions only. No invented placeholder routines. First target: dash_17559, followed by XAM and supporting modules.
+One canonical owner per original function: src/os/{boot,hypervisor,kernel,drivers,xam,system_apps,dashboard}, src/abi, src/formats. Guest-visible behavior must be backed by evidence. See architecture.toml.

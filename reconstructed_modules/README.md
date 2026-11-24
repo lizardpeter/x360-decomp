@@ -1,3 +1,3 @@
-# System-module reconstruction
+# Legacy namespace
 
-XAM and other system modules receive evidence-backed native implementations here. Original binary payloads stay in originals/. Kernel-facing contracts are distinct from a full kernel decompilation.
+Original OS module implementations now belong in src/os/<component>/. This placeholder is a redirect; do not add code here.

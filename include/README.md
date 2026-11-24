@@ -1,3 +1,3 @@
-# Original ABI
+# Interfaces
 
-Headers and structures require evidence of original sizes, offsets, endianness and calling conventions. Do not assume host pointer width or native byte order.
+Mirror canonical component ownership in architecture.toml. Keep guest addresses, explicit endian serialization and host pointers distinct.

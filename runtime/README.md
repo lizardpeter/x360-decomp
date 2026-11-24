@@ -1,3 +1,3 @@
-# Native runtime
+# Runtime
 
-Host adapters for graphics, audio, input, storage and offline profiles belong here. No native dashboard executable exists yet. Prefer explicit unsupported-service results over fake success.
+machine/ owns virtual hardware contracts; host/ adapts platform APIs; execution/ provides interchangeable guest execution and generated-code dispatch; launcher/ composes a profile. No dashboard-specific policy belongs in host adapters.

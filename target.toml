@@ -1,5 +1,6 @@
 project = "x360"
-title = "Xbox 360 Metro V2 retail dashboard 2.0.17559.0"
+title = "Xbox 360 operating system reconstruction"
+initial_profile = "metro_17559"
 r2_public = "https://r2.houseofkublai.com/"
 # The console target is big-endian PowerPC (Xenon); native host targets are independent.
 [[build]]

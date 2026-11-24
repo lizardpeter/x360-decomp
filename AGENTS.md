@@ -1,6 +1,6 @@
 # Working in x360-decomp
 
-Target: retail Metro V2 2.0.17559.0 (Xenon PowerPC, big endian). Preserve the original behavior in the faithful build; do not confuse PC x64 with the original architecture.
+Target: the Xbox 360 OS (Xenon PowerPC, big endian); Metro V2 17559 is the first hosted profile. Follow architecture.toml and docs/architecture.md. Preserve the original behavior in the faithful build; do not confuse PC x64 with the original architecture.
 
 | Path | Responsibility |
 |---|---|
@@ -8,8 +8,9 @@ Target: retail Metro V2 2.0.17559.0 (Xenon PowerPC, big endian). Preserve the or
 | analysis/<build>/ | Generated metadata, function inventory, future Ghidra exports |
 | src/, include/ | Authored faithful reconstruction, original bugs retained |
 | enhanced/ | Optional intentional overrides only |
-| runtime/ | Native host boundary, service adapters and eventual executable |
-| reconstructed_modules/ | Evidence-based XAM, kernel-facing and system-module reconstructions |
+| runtime/ | Virtual machine, host adapters, interchangeable execution and profile composition |
+| profiles/ | Firmware and boot configuration |
+| src/os/ | Canonical boot, hypervisor, kernel, drivers, XAM and system applications |
 | records/ | Function status, names, bugs, patches with evidence |
 | tests/ | Format validation and future differential tests |
 | tools/ | Reproducible fetching, analysis, status and Ghidra tooling |

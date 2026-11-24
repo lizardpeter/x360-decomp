@@ -7,4 +7,6 @@
 5. Native host service boundary: rendering, input, audio, local profiles and storage. Track every unsupported service explicitly. Establish boot → Home → Guide → navigation before broader compatibility.
 6. Enhanced build: optional resolution, frame pacing, input and renderer improvements only after faithful behavior has evidence. Keep independent tests and change ledger.
 
-No working dashboard build or full decompilation is claimed at phase 1.
+7. Expand to whole-system boot, hypervisor, kernel, device drivers and additional firmware profiles using the existing OS-wide component boundaries. See architecture.md.
+
+Static recompilation is a parallel route to hosted execution, not a replacement for evidence-backed authored source. No working dashboard build or whole-system boot is claimed yet.

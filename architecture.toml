@@ -1,0 +1,80 @@
+schema = 1
+# Allowed source dependency direction, not original runtime call graph.
+
+[[component]]
+id = "abi"
+source = "src/abi"
+headers = "include/abi"
+allow = []
+
+[[component]]
+id = "hardware"
+source = "runtime/machine"
+headers = "include/machine"
+allow = ["abi"]
+
+[[component]]
+id = "boot"
+source = "src/os/boot"
+headers = "include/os/boot"
+allow = ["abi","hardware"]
+
+[[component]]
+id = "hypervisor"
+source = "src/os/hypervisor"
+headers = "include/os/hypervisor"
+allow = ["abi","hardware"]
+
+[[component]]
+id = "kernel"
+source = "src/os/kernel"
+headers = "include/os/kernel"
+allow = ["abi","hardware","hypervisor"]
+
+[[component]]
+id = "drivers"
+source = "src/os/drivers"
+headers = "include/os/drivers"
+allow = ["abi","hardware","kernel"]
+
+[[component]]
+id = "xam"
+source = "src/os/xam"
+headers = "include/os/xam"
+allow = ["abi","kernel","drivers"]
+
+[[component]]
+id = "system_apps"
+source = "src/os/system_apps"
+headers = "include/os/system_apps"
+allow = ["abi","kernel","xam"]
+
+[[component]]
+id = "dashboard"
+source = "src/os/dashboard"
+headers = "include/os/dashboard"
+allow = ["abi","kernel","xam"]
+
+[[component]]
+id = "formats"
+source = "src/formats"
+headers = "include/formats"
+allow = ["abi"]
+
+[[component]]
+id = "host"
+source = "runtime/host"
+headers = "include/host"
+allow = ["abi","hardware"]
+
+[[component]]
+id = "execution"
+source = "runtime/execution"
+headers = "include/execution"
+allow = ["abi","hardware"]
+
+[[component]]
+id = "composition"
+source = "runtime/launcher"
+headers = "include/launcher"
+allow = ["abi","hardware","boot","hypervisor","kernel","drivers","xam","system_apps","dashboard","formats","host","execution"]

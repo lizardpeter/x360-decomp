@@ -1,0 +1,7 @@
+# Static PowerPC recompilation plan
+
+Use verified loaded images and function/control-flow inventories as input. Evaluate ReXGlue SDK (pinned reference in target.toml) or XenonRecomp for Xenon instruction support before selecting a translator. Ghidra pseudocode is analysis evidence, not compilable recompilation input.
+
+Translate original PPC machine instructions ahead of time to C++ or IR, compile for the host, and retain guest CPU and memory semantics. Generated code calls the runtime for dynamic branch dispatch, module import resolution and device-facing services. The hosted Metro profile can initially execute generated dashboard/XAM logic while native providers satisfy the required kernel contracts. A future full-system profile can select reconstructed kernel, hypervisor and driver providers. The same dispatch map can select hand-authored functions by module/guest address once differential tests establish parity.
+
+Acceptance gates: instruction semantics (including VMX128), import/ordinal and relocation coverage, indirect control flow, thread and exception behavior, original startup trace, Home/Guide navigation, reproducible build without executing original PPC binaries. Running translated code is not equivalent to source decompilation or a complete OS. Generated code and original assets are distinct; neither is automatically permitted for public redistribution. No translator selected or native build produced yet.
