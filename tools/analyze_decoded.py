@@ -31,8 +31,13 @@ def pe_info(image, base):
         q=opt+optional_bytes+i*40
         name=span(image,q,8).rstrip(b'\0').decode('ascii')
         vs,va,rs,ra=struct.unpack('<IIII',span(image,q+8,16))
-        span(image,va,vs)
-        sections.append(dict(name=name,rva=va,virtual_bytes=vs,raw_bytes=rs,raw_offset=ra,flags=le(image,q+36)))
+        flags=le(image,q+36)
+        loaded=max(0,min(vs,len(image)-va))
+        # Some resource/relocation PE sections are absent from the verified XEX image.
+        # Never read absent bytes or invent executable ranges.
+        if flags&0x20000000 and loaded!=vs:
+            raise ValueError(f'truncated executable section: {name}')
+        sections.append(dict(name=name,rva=va,virtual_bytes=vs,loaded_bytes=loaded,raw_bytes=rs,raw_offset=ra,flags=flags))
     pdata_rva,pdata_bytes=struct.unpack('<II',span(image,opt+96+3*8,8))
     if pdata_bytes%8: raise ValueError('misaligned exception directory')
     functions=[]
@@ -59,6 +64,20 @@ def imports(image,base,metadata):
             item=rows.setdefault(key,{'library':key[0],'ordinal':ordinal,'value_slots':set(),'thunk_slots':set()})
             item['value_slots' if kind==0 else 'thunk_slots'].add(a)
     return [dict(library=i['library'],ordinal=f"{i['ordinal']:04X}",value_slots=sorted(i['value_slots']),thunk_slots=sorted(i['thunk_slots'])) for _,i in sorted(rows.items())]
+
+def ordinal_exports(image,base,xex):
+    sec=be(xex,16);address=be(xex,sec+0x160)
+    if not address: return None
+    p=address-base
+    table_base,count,first=struct.unpack('>III',span(image,p+32,12))
+    offsets=span(image,p+44,count*4)
+    rows=[]
+    for i,(offset,) in enumerate(struct.iter_unpack('>I',offsets)):
+        if not offset: continue
+        target=(table_base<<16)+offset
+        if not base<=target<base+len(image):raise ValueError('export outside loaded image')
+        rows.append((first+i,target))
+    return rows
 
 def direct_calls(image,base,functions,import_rows):
     starts={a for a,s,p in functions}
@@ -102,7 +121,7 @@ def main():
             else: inputs[ident]=member['payload']
     expected_xam=next(b['sha256'] for b in c['build'] if b['id']=='xam_17559')
     if hashlib.sha256(inputs['xam_17559']).hexdigest()!=expected_xam:raise ValueError('retail XAM mismatch')
-    summary={}
+    summary={}; xam_exports={}; dash_imports=[]
     for ident,data in sorted(inputs.items()):
         meta=parse_xex(data)
         if meta.get('encryption'):
@@ -123,6 +142,14 @@ def main():
             payload=span(image,int(r['address'],16)-base,r['bytes'])
             resources.append(dict(id=r['id'],address=r['address'],bytes=r['bytes'],sha256=hashlib.sha256(payload).hexdigest(),magic=payload[:4].hex()))
         info['resource_count']=len(resources)
+        if ident=='xam_17559':
+            exports=ordinal_exports(image,base,data)
+            if exports is None: raise ValueError('XAM ordinal export table absent')
+            xam_exports=dict(exports)
+            info['populated_exports']=len(exports)
+            info['distinct_export_targets']=len(set(xam_exports.values()))
+            tsv(out/'exports.tsv',['ordinal','address'],((f'{o:04X}',f'{v:08X}') for o,v in exports))
+        if ident=='dash_17559':dash_imports=rows
         json_write(out/'resource_hashes.json',resources)
         tsv(out/'imports.tsv',['library','ordinal','value_slots','thunk_slots'],
             ((r['library'],r['ordinal'],','.join(f'{x:08X}' for x in r['value_slots']),','.join(f'{x:08X}' for x in r['thunk_slots'])) for r in rows))
@@ -144,6 +171,15 @@ def main():
         print(ident,info['image_bytes'],info['pdata_functions'],info['distinct_imports'])
     if summary['dash_17559']['sha256']!=summary['dash_17559_basic']['sha256']:
         raise ValueError('independent dashboard encodings disagree')
+    bindings=[]
+    for row in dash_imports:
+        if row['library']!='xam.xex': continue
+        target=xam_exports.get(int(row['ordinal'],16))
+        bindings.append((row['ordinal'],','.join(f'{a:08X}' for a in row['thunk_slots']),f'{target:08X}' if target is not None else '', 'resolved' if target is not None else 'missing'))
+    tsv(a.output/'dash_17559'/'xam_bindings.tsv',['ordinal','dash_thunks','xam_target','state'],bindings)
+    summary['dash_17559']['xam_bindings_resolved']=sum(b[-1]=='resolved' for b in bindings)
+    summary['dash_17559']['xam_bindings_missing']=sum(b[-1]=='missing' for b in bindings)
+    json_write(a.output/'dash_17559'/'decoded.json',summary['dash_17559'])
     json_write(a.output/'decoded_summary.json',summary)
 
 if __name__=='__main__':
