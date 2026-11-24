@@ -1,0 +1,16 @@
+[
+  {
+    "address": "90F90000",
+    "bytes": 75851,
+    "id": "skin",
+    "magic": "5855495a",
+    "sha256": "e5caf46cddd5838b412a745467b09393f8312ffb5c859db7da425474c750ac4b"
+  },
+  {
+    "address": "90FA2880",
+    "bytes": 156069,
+    "id": "xam",
+    "magic": "5855495a",
+    "sha256": "df9740c60b4f72f50419a8dee2fab6a428d34eb8c9697648b10c4fc61de14cad"
+  }
+]

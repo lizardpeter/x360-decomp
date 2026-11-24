@@ -1,0 +1,98 @@
+{
+  "compressed_blocks": 1,
+  "compression": 2,
+  "direct_call_sites": 970,
+  "direct_import_call_sites": 341,
+  "distinct_imports": 96,
+  "function_imports": 96,
+  "image_base": 2440888320,
+  "image_bytes": 114688,
+  "page_size": 4096,
+  "pdata_functions": 177,
+  "pe": {
+    "entry_point": 2440952744,
+    "machine": "01F2",
+    "preferred_base": 2550136832,
+    "sections": [
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 10720,
+        "name": ".rdata",
+        "raw_bytes": 10752,
+        "raw_offset": 1024,
+        "rva": 1024,
+        "virtual_bytes": 10720
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 1416,
+        "name": ".pdata",
+        "raw_bytes": 1536,
+        "raw_offset": 11776,
+        "rva": 11776,
+        "virtual_bytes": 1416
+      },
+      {
+        "flags": 1610612768,
+        "loaded_bytes": 51924,
+        "name": ".text",
+        "raw_bytes": 52224,
+        "raw_offset": 13312,
+        "rva": 16384,
+        "virtual_bytes": 51924
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 792,
+        "name": ".data",
+        "raw_bytes": 512,
+        "raw_offset": 65536,
+        "rva": 69632,
+        "virtual_bytes": 792
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 147,
+        "name": ".edata",
+        "raw_bytes": 512,
+        "raw_offset": 66048,
+        "rva": 73728,
+        "virtual_bytes": 147
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 504,
+        "name": ".idata",
+        "raw_bytes": 512,
+        "raw_offset": 66560,
+        "rva": 77824,
+        "virtual_bytes": 504
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 80,
+        "name": ".XBLD",
+        "raw_bytes": 512,
+        "raw_offset": 67072,
+        "rva": 81920,
+        "virtual_bytes": 80
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 3876,
+        "name": ".reloc",
+        "raw_bytes": 4096,
+        "raw_offset": 67584,
+        "rva": 82432,
+        "virtual_bytes": 3876
+      }
+    ]
+  },
+  "resource_count": 1,
+  "sha256": "73f7d79e3929c212bf9c9f3122d4962f480dc78063dbafdfe4904aec467864d5",
+  "source_sha256": "876ddbb333d83f408ab7c69267703e623daef6da5b1eb3302bd94d246155724e",
+  "state": "verified",
+  "unclassified_direct_call_sites": 178,
+  "value_only_imports": 0,
+  "verified_page_runs": 5
+}

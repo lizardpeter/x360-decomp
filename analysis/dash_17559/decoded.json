@@ -1,0 +1,118 @@
+{
+  "compressed_blocks": 99,
+  "compression": 2,
+  "direct_call_sites": 126984,
+  "direct_import_call_sites": 8170,
+  "distinct_imports": 822,
+  "function_imports": 806,
+  "image_base": 2449473536,
+  "image_bytes": 16941056,
+  "page_size": 4096,
+  "pdata_functions": 28350,
+  "pe": {
+    "entry_point": 2451138064,
+    "machine": "01F2",
+    "preferred_base": 2449473536,
+    "sections": [
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 1333872,
+        "name": ".rdata",
+        "raw_bytes": 1334272,
+        "raw_offset": 1024,
+        "rva": 1024,
+        "virtual_bytes": 1333872
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 226800,
+        "name": ".pdata",
+        "raw_bytes": 226816,
+        "raw_offset": 1335296,
+        "rva": 1335296,
+        "virtual_bytes": 226800
+      },
+      {
+        "flags": 1610612768,
+        "loaded_bytes": 8129676,
+        "name": ".text",
+        "raw_bytes": 8130048,
+        "raw_offset": 1562112,
+        "rva": 1564672,
+        "virtual_bytes": 8129676
+      },
+      {
+        "flags": 3221225600,
+        "loaded_bytes": 1024,
+        "name": "NEONTEST",
+        "raw_bytes": 0,
+        "raw_offset": 0,
+        "rva": 9695232,
+        "virtual_bytes": 1024
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 1299912,
+        "name": ".data",
+        "raw_bytes": 173056,
+        "raw_offset": 9692160,
+        "rva": 9696256,
+        "virtual_bytes": 1299912
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 12,
+        "name": ".XBMOVIE",
+        "raw_bytes": 512,
+        "raw_offset": 9865216,
+        "rva": 10996224,
+        "virtual_bytes": 12
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 7014,
+        "name": ".edata",
+        "raw_bytes": 7168,
+        "raw_offset": 9865728,
+        "rva": 10997760,
+        "virtual_bytes": 7014
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 3408,
+        "name": ".idata",
+        "raw_bytes": 3584,
+        "raw_offset": 9872896,
+        "rva": 11005952,
+        "virtual_bytes": 3408
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 416,
+        "name": ".XBLD",
+        "raw_bytes": 512,
+        "raw_offset": 9876480,
+        "rva": 11010048,
+        "virtual_bytes": 416
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 399644,
+        "name": ".reloc",
+        "raw_bytes": 399872,
+        "raw_offset": 9876992,
+        "rva": 11010560,
+        "virtual_bytes": 399644
+      }
+    ]
+  },
+  "resource_count": 36,
+  "sha256": "06a8446849184331dc1b513a894c08ad3f160dcec8473f70cdcae9f54b7c86f9",
+  "source_sha256": "3ad8f38d070eaf63cadac0697e3e8802c565cbfd0825a485347c5d718014f927",
+  "state": "verified",
+  "unclassified_direct_call_sites": 48691,
+  "value_only_imports": 16,
+  "verified_page_runs": 262,
+  "xam_bindings_missing": 0,
+  "xam_bindings_resolved": 522
+}

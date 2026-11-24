@@ -1,0 +1,107 @@
+{
+  "compressed_blocks": 2,
+  "compression": 2,
+  "direct_call_sites": 1822,
+  "direct_import_call_sites": 159,
+  "distinct_imports": 55,
+  "function_imports": 55,
+  "image_base": 2439512064,
+  "image_bytes": 184320,
+  "page_size": 4096,
+  "pdata_functions": 386,
+  "pe": {
+    "entry_point": 2439554144,
+    "machine": "01F2",
+    "preferred_base": 2550136832,
+    "sections": [
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 31056,
+        "name": ".rdata",
+        "raw_bytes": 31232,
+        "raw_offset": 1024,
+        "rva": 1024,
+        "virtual_bytes": 31056
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 3088,
+        "name": ".pdata",
+        "raw_bytes": 3584,
+        "raw_offset": 32256,
+        "rva": 32256,
+        "virtual_bytes": 3088
+      },
+      {
+        "flags": 1610612768,
+        "loaded_bytes": 139524,
+        "name": ".text",
+        "raw_bytes": 139776,
+        "raw_offset": 35840,
+        "rva": 36864,
+        "virtual_bytes": 139524
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 1752,
+        "name": ".data",
+        "raw_bytes": 1024,
+        "raw_offset": 175616,
+        "rva": 180224,
+        "virtual_bytes": 1752
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 1184,
+        "name": ".MSIMESH",
+        "raw_bytes": 1536,
+        "raw_offset": 176640,
+        "rva": 182272,
+        "virtual_bytes": 1184
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 0,
+        "name": ".edata",
+        "raw_bytes": 512,
+        "raw_offset": 178176,
+        "rva": 184320,
+        "virtual_bytes": 53
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 0,
+        "name": ".idata",
+        "raw_bytes": 512,
+        "raw_offset": 178688,
+        "rva": 188416,
+        "virtual_bytes": 340
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 0,
+        "name": ".XBLD",
+        "raw_bytes": 512,
+        "raw_offset": 179200,
+        "rva": 192512,
+        "virtual_bytes": 96
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 0,
+        "name": ".reloc",
+        "raw_bytes": 3584,
+        "raw_offset": 179712,
+        "rva": 193024,
+        "virtual_bytes": 3540
+      }
+    ]
+  },
+  "resource_count": 0,
+  "sha256": "49f9e186c1c5a38294f7dfb3d7b6195207c29e408b7889c1e62e2059c48f466a",
+  "source_sha256": "64d83c340bb382d14362e0df05838128f1bd31d6aac309853911db9120fd6488",
+  "state": "verified",
+  "unclassified_direct_call_sites": 784,
+  "value_only_imports": 0,
+  "verified_page_runs": 5
+}

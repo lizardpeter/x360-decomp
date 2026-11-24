@@ -1,0 +1,89 @@
+{
+  "compressed_blocks": 5,
+  "compression": 2,
+  "direct_call_sites": 7569,
+  "direct_import_call_sites": 428,
+  "distinct_imports": 159,
+  "function_imports": 145,
+  "image_base": 2449473536,
+  "image_bytes": 643072,
+  "page_size": 4096,
+  "pdata_functions": 1778,
+  "pe": {
+    "entry_point": 2449547520,
+    "machine": "01F2",
+    "preferred_base": 4194304,
+    "sections": [
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 43608,
+        "name": ".rdata",
+        "raw_bytes": 44032,
+        "raw_offset": 1024,
+        "rva": 1024,
+        "virtual_bytes": 43608
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 14224,
+        "name": ".pdata",
+        "raw_bytes": 14336,
+        "raw_offset": 45056,
+        "rva": 45056,
+        "virtual_bytes": 14224
+      },
+      {
+        "flags": 1610612768,
+        "loaded_bytes": 519020,
+        "name": ".text",
+        "raw_bytes": 519168,
+        "raw_offset": 59392,
+        "rva": 61440,
+        "virtual_bytes": 519020
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 29700,
+        "name": ".data",
+        "raw_bytes": 21504,
+        "raw_offset": 578560,
+        "rva": 581632,
+        "virtual_bytes": 29700
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 804,
+        "name": ".idata",
+        "raw_bytes": 1024,
+        "raw_offset": 600064,
+        "rva": 614400,
+        "virtual_bytes": 804
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 224,
+        "name": ".XBLD",
+        "raw_bytes": 512,
+        "raw_offset": 601088,
+        "rva": 618496,
+        "virtual_bytes": 224
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 23260,
+        "name": ".reloc",
+        "raw_bytes": 23552,
+        "raw_offset": 601600,
+        "rva": 619008,
+        "virtual_bytes": 23260
+      }
+    ]
+  },
+  "resource_count": 1,
+  "sha256": "54e8c718a89b033b6e57169e97878fa81f3927575766709eb424d3ae5500d084",
+  "source_sha256": "da3b4f4cca0818582143728e36db7fec4643a33cc6eb26c4a8266b41adc84991",
+  "state": "verified",
+  "unclassified_direct_call_sites": 2977,
+  "value_only_imports": 14,
+  "verified_page_runs": 13
+}

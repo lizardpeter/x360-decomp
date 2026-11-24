@@ -1,0 +1,9 @@
+[
+  {
+    "address": "9010A000",
+    "bytes": 29802,
+    "id": "updater",
+    "magic": "5855495a",
+    "sha256": "662723de5f6145233a2ee9a5f6aab732764acf5a090545653c674576a55caedb"
+  }
+]

@@ -1,0 +1,100 @@
+{
+  "compressed_blocks": 41,
+  "compression": 2,
+  "direct_call_sites": 70202,
+  "direct_import_call_sites": 8567,
+  "distinct_export_targets": 1548,
+  "distinct_imports": 463,
+  "function_imports": 443,
+  "image_base": 2170486784,
+  "image_bytes": 6356992,
+  "page_size": 65536,
+  "pdata_functions": 13799,
+  "pe": {
+    "entry_point": 2171169520,
+    "machine": "01F2",
+    "preferred_base": 2170486784,
+    "sections": [
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 407500,
+        "name": ".rdata",
+        "raw_bytes": 407552,
+        "raw_offset": 1024,
+        "rva": 1024,
+        "virtual_bytes": 407500
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 110392,
+        "name": ".pdata",
+        "raw_bytes": 110592,
+        "raw_offset": 408576,
+        "rva": 408576,
+        "virtual_bytes": 110392
+      },
+      {
+        "flags": 1610612768,
+        "loaded_bytes": 4221576,
+        "name": ".text",
+        "raw_bytes": 4221952,
+        "raw_offset": 519168,
+        "rva": 524288,
+        "virtual_bytes": 4221576
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 958976,
+        "name": ".data",
+        "raw_bytes": 110592,
+        "raw_offset": 4741120,
+        "rva": 4784128,
+        "virtual_bytes": 958976
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 12,
+        "name": ".XBMOVIE",
+        "raw_bytes": 512,
+        "raw_offset": 4851712,
+        "rva": 5743104,
+        "virtual_bytes": 12
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 11627,
+        "name": ".edata",
+        "raw_bytes": 11776,
+        "raw_offset": 4852224,
+        "rva": 5767168,
+        "virtual_bytes": 11627
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 1924,
+        "name": ".idata",
+        "raw_bytes": 2048,
+        "raw_offset": 4864000,
+        "rva": 5832704,
+        "virtual_bytes": 1924
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 320,
+        "name": ".XBLD",
+        "raw_bytes": 512,
+        "raw_offset": 4866048,
+        "rva": 5898240,
+        "virtual_bytes": 320
+      }
+    ]
+  },
+  "populated_exports": 1606,
+  "resource_count": 11,
+  "sha256": "f9e44cd6f4b04875ddc5a3b8fd519785ba2b0488b1c4622f818b740ba4064313",
+  "source_sha256": "78b3dbd8ae866f4258f5444205486ea9f8451afaa30f469c875dcf345f828467",
+  "state": "verified",
+  "unclassified_direct_call_sites": 28553,
+  "value_only_imports": 20,
+  "verified_page_runs": 97
+}

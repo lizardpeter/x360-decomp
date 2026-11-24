@@ -1,0 +1,9 @@
+[
+  {
+    "address": "98400000",
+    "bytes": 262144,
+    "id": "FIRMWARE",
+    "magic": "18b21f3a",
+    "sha256": "ff3651542799a34b5198a881abcc2cb6a6f2d549ceeae34aba8baa9c02f2efb3"
+  }
+]

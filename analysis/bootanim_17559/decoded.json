@@ -1,0 +1,107 @@
+{
+  "compressed_blocks": 7,
+  "compression": 2,
+  "direct_call_sites": 3563,
+  "direct_import_call_sites": 635,
+  "distinct_imports": 114,
+  "function_imports": 104,
+  "image_base": 2550136832,
+  "image_bytes": 638976,
+  "page_size": 4096,
+  "pdata_functions": 661,
+  "pe": {
+    "entry_point": 2550136832,
+    "machine": "01F2",
+    "preferred_base": 2550136832,
+    "sections": [
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 46620,
+        "name": ".rdata",
+        "raw_bytes": 47104,
+        "raw_offset": 1024,
+        "rva": 1024,
+        "virtual_bytes": 46620
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 5288,
+        "name": ".pdata",
+        "raw_bytes": 5632,
+        "raw_offset": 48128,
+        "rva": 48128,
+        "virtual_bytes": 5288
+      },
+      {
+        "flags": 1610612768,
+        "loaded_bytes": 303932,
+        "name": ".text",
+        "raw_bytes": 304128,
+        "raw_offset": 53760,
+        "rva": 57344,
+        "virtual_bytes": 303932
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 131356,
+        "name": ".data",
+        "raw_bytes": 124928,
+        "raw_offset": 357888,
+        "rva": 364544,
+        "virtual_bytes": 131356
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 12,
+        "name": ".XBMOVIE",
+        "raw_bytes": 512,
+        "raw_offset": 482816,
+        "rva": 496128,
+        "virtual_bytes": 12
+      },
+      {
+        "flags": 1073741888,
+        "loaded_bytes": 130,
+        "name": ".edata",
+        "raw_bytes": 512,
+        "raw_offset": 483328,
+        "rva": 499712,
+        "virtual_bytes": 130
+      },
+      {
+        "flags": 3221225536,
+        "loaded_bytes": 528,
+        "name": ".idata",
+        "raw_bytes": 1024,
+        "raw_offset": 483840,
+        "rva": 503808,
+        "virtual_bytes": 528
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 128,
+        "name": ".XBLD",
+        "raw_bytes": 512,
+        "raw_offset": 484864,
+        "rva": 507904,
+        "virtual_bytes": 128
+      },
+      {
+        "flags": 1107296320,
+        "loaded_bytes": 15916,
+        "name": ".reloc",
+        "raw_bytes": 16384,
+        "raw_offset": 485376,
+        "rva": 508416,
+        "virtual_bytes": 15916
+      }
+    ]
+  },
+  "resource_count": 1,
+  "sha256": "b2bc842157ea7fbc6fde9adede7d55a5b6b9a4bdb88f73fbdb01f03371b1835b",
+  "source_sha256": "45eb980c0f841b4807d43c07c766fae5e70b8e2fa4d13fb247a491897cfc6de7",
+  "state": "verified",
+  "unclassified_direct_call_sites": 1179,
+  "value_only_imports": 10,
+  "verified_page_runs": 13
+}

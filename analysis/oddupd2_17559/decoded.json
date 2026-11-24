@@ -1,0 +1,17 @@
+{
+  "compressed_blocks": 2,
+  "compression": 2,
+  "distinct_imports": 0,
+  "function_imports": 0,
+  "image_base": 2554331136,
+  "image_bytes": 262144,
+  "page_size": 4096,
+  "pdata_functions": 0,
+  "pe": null,
+  "resource_count": 1,
+  "sha256": "58908e69089855b7b7b32c4d3ce535de81e2a6aee8ab275e6add7297bea2a0dc",
+  "source_sha256": "40f3ec80df6a04a97e7f4f69bb3a657f7f7e55badfdf4eea38c12732b5cad1d9",
+  "state": "verified",
+  "value_only_imports": 0,
+  "verified_page_runs": 4
+}
