@@ -1,0 +1,51 @@
+name: Decoded PowerPC analysis
+on:
+  push:
+    branches: [main]
+    paths: ['tools/decode_image.py', 'tools/analyze_decoded.py', 'tools/lzx_adapter.c', 'tests/test_decoded.py', '.github/workflows/decoded-analysis.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  analyze:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -v
+      - name: Obtain separately licensed reference LZX decoder
+        run: |
+          mkdir -p build/reference
+          curl --fail --location --retry 3 --output build/reference/release.tar.gz https://github.com/fabegalo/x360-native/releases/download/v1.34.6/x360-native-1.34.6-linux-x64.tar.gz
+          echo "df30bd537923a3f2c78637699c2d9f97fd50c78a6cc28a435e922c54512f2fb3  build/reference/release.tar.gz" | sha256sum -c
+          tar -xzf build/reference/release.tar.gz -C build/reference
+          APP="$PWD/build/reference/x360-native-1.34.6-linux-x64/app"
+          cc -shared -fPIC -O2 -I"$APP/workspace/licenses/sources/libmspack" tools/lzx_adapter.c -L"$APP" -lx360n-mspack -Wl,-rpath,"$APP" -o build/lzx_adapter.so
+      - name: Audit verified images and PowerPC metadata
+        run: |
+          python tools/fetch_originals.py
+          python tools/analyze.py
+          python tools/analyze_decoded.py --lzx build/lzx_adapter.so
+          python tools/status.py
+      - name: Publish metadata, not original images
+        uses: actions/upload-artifact@v4
+        with:
+          name: decoded-metadata
+          path: |
+            analysis/
+            STATUS.md
+          retention-days: 14
+      - name: Commit only generated metadata
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- analysis/ STATUS.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Generate verified PowerPC function and import inventories"
+          git push origin HEAD:main
