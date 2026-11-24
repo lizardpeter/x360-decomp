@@ -64,7 +64,7 @@ public class ExportX360 extends HeadlessScript {
                         if(r.decompileCompleted() && r.getDecompiledFunction()!=null) {
                             pw.write(r.getDecompiledFunction().getC());pw.write("\n");success++;
                         } else {
-                            state="failed"; failed++;String reason=clean(r.getErrorMessage());
+                            state="failed"; failed++;String reason=clean(String.valueOf(r.getErrorMessage()));
                             errors.write(addr+"\t"+reason+"\n");pw.write("/* DECOMPILATION FAILED */\n");
                         }
                     } catch(Exception e) {

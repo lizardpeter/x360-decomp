@@ -20,13 +20,16 @@ public class SeedX360 extends GhidraScript {
     }
     @Override public void run() throws Exception {
         String[] args=getScriptArgs();
-        if(args.length!=1) throw new IllegalArgumentException("seed manifest required");
+        if(args.length!=2) throw new IllegalArgumentException("seed manifest and completion receipt required");
         List<String> rows=Files.readAllLines(Path.of(args[0]));
         Memory mem=currentProgram.getMemory();
         String[] header=rows.get(0).split("\t");
         Address base=address(header[1]);
-        if(!currentProgram.getImageBase().equals(base))
-            throw new IllegalStateException("incorrect imported base: "+currentProgram.getImageBase());
+        // The raw loader maps bytes at loader-baseAddr, but the program property can remain zero.
+        long imageSize=Long.parseLong(header[2]);
+        if(!mem.getMinAddress().equals(base) || !mem.getMaxAddress().equals(base.add(imageSize-1)))
+            throw new IllegalStateException("incorrect mapped image extent: "+mem.getMinAddress()+".."+mem.getMaxAddress());
+        println("X360_MAPPED_BASE "+base+" program_property="+currentProgram.getImageBase());
         for(MemoryBlock b:mem.getBlocks()){b.setRead(true);b.setWrite(false);b.setExecute(false);}
         for(String row:rows) {
             String[] r=row.split("\t");
@@ -78,6 +81,12 @@ public class SeedX360 extends GhidraScript {
                 }
             }
         }
-        println("X360_SEED_RESULT attempted="+seeds+" failed="+failed+" labels="+labels);
+        int retained=0;
+        for(String row:rows) {
+            String[] r=row.split("\t");
+            if(r[0].equals("FUNCTION") && fm.getFunctionAt(address(r[1]))!=null) retained++;
+        }
+        Files.writeString(Path.of(args[1]),"{\"attempted\":"+seeds+",\"failed\":"+failed+",\"retained\":"+retained+",\"labels\":"+labels+"}\n");
+        println("X360_SEED_RESULT attempted="+seeds+" failed="+failed+" retained="+retained+" labels="+labels);
     }
 }
