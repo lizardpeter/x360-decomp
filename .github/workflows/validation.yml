@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       original_audit:
-        description: Verify pinned originals and publish metadata only
+        description: Verify pinned originals and regenerate metadata
         type: boolean
         default: false
 permissions:
@@ -21,14 +21,23 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
       - run: python tools/status.py
-      - name: Verify original sources and regenerate metadata
-        if: inputs.original_audit == true
+  original-audit:
+    if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.original_audit) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[original-audit]')))
+    needs: formats
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify originals and regenerate metadata
         run: |
           python tools/fetch_originals.py
           python tools/analyze.py
           python tools/status.py
       - name: Upload generated analysis only
-        if: inputs.original_audit == true
         uses: actions/upload-artifact@v4
         with:
           name: metro-17559-analysis
@@ -36,3 +45,11 @@ jobs:
             analysis/
             STATUS.md
           retention-days: 14
+      - name: Commit generated metadata only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- analysis/ STATUS.md
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Regenerate verified Metro 17559 header analysis"
+          git push origin HEAD:main
