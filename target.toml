@@ -1,0 +1,86 @@
+project = "x360"
+title = "Xbox 360 Metro V2 retail dashboard 2.0.17559.0"
+r2_public = "https://r2.houseofkublai.com/"
+# The console target is big-endian PowerPC (Xenon); native host targets are independent.
+[[build]]
+id = "dash_17559"
+kind = "retail"
+architecture = "powerpc-be"
+image_base = 0x92000000
+source = "dash"
+analyze = false # Ghidra requires a validated decoded executable image
+
+[[build]]
+id = "xam_17559"
+kind = "retail"
+architecture = "powerpc-be"
+source = "pirs"
+member = "$flash_xam.xex"
+analyze = false
+sha256 = "78b3dbd8ae866f4258f5444205486ea9f8451afaa30f469c875dcf345f828467"
+
+[[build]]
+id = "dash_17559_basic"
+kind = "related"
+architecture = "powerpc-be"
+source = "dash_basic"
+analyze = false
+
+[[source]]
+id = "jrunner"
+key = "x360/Xbox360-Metro-V2-17559/J-Runner-with-Extras.zip"
+bytes = 233430403
+sha256 = "e8b01b60827f3012f4c3d7a5e6dc7f09dce3bd028eae67ac34ca8e1efe81941b"
+
+[[source]]
+id = "system_update"
+key = "x360/Xbox360-Metro-V2-17559/SystemUpdate_17559_USB.zip"
+bytes = 115992188
+sha256 = "38885a3ab6b9854fb4fa31d5ddf21a4fddfd4cfb25e219060cfb0c2fb31f208f"
+
+[[source]]
+id = "xebuild"
+key = "x360/Xbox360-Metro-V2-17559/xeBuild_1.21.zip"
+bytes = 1296437
+sha256 = "51b588fd44219a59f8b305fa8d824770febab5a0a30bae8d1aced38379471e9e"
+
+[[source]]
+id = "dash"
+key = "x360/Xbox360-Metro-V2-17559/dashboard-archive/dash.xex"
+bytes = 5971968
+sha256 = "3ad8f38d070eaf63cadac0697e3e8802c565cbfd0825a485347c5d718014f927"
+
+[[source]]
+id = "dash_basic"
+key = "x360/Xbox360-Metro-V2-17559/dashboard-archive/dashbigger.xex"
+bytes = 15880192
+sha256 = "fc4ad90638a8fff7759734dee364a48964e164d567699ca7e7aca2dc06ebc8c2"
+
+[[source]]
+id = "shared_resources"
+key = "x360/Xbox360-Metro-V2-17559/dashboard-archive/shrdres.xzp"
+bytes = 223911
+sha256 = "179c5be167402297c6e137c08fefe3146f6f497964dc2bda94812596fc9aefe0"
+
+[[source]]
+id = "pirs"
+key = "x360/Xbox360-Metro-V2-17559/SystemUpdate_17559_USB/$SystemUpdate/su20076000_00000000"
+bytes = 11862016
+sha256 = "8119312192ad3ac41345336c6302a97bc471af2ab6689f04ffe92e9e07bc7c45"
+
+# User-provided exact font complements are intentionally not redistributed.
+[[local_resource]]
+name = "XenonCLatin.xtt"
+bytes = 1159168
+sha256 = "977bbe13d5545d300e57dacf9dff492476452f50880ef3868d3aa308d041187d"
+
+[[local_resource]]
+name = "XenonJKLatin.xtt"
+bytes = 1736704
+sha256 = "9f20409bbe22ca92d483c24aa0930ac8ec761712c16d00c477f145071e707425"
+
+[reference.x360_native]
+repository = "https://github.com/fabegalo/x360-native"
+tag = "v1.34.6"
+license = "BSD-3-Clause"
+rexglue_commit = "f5337cdc947ff6d4c4196737e2c807a48f2a1fc2"
