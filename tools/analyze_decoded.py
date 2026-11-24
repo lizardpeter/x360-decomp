@@ -23,7 +23,9 @@ def pe_info(image, base):
     opt=p+24; optional_bytes=le(image,p+20,2)
     if machine!=0x1f2 or le(image,opt,2)!=0x10b or optional_bytes<128:
         raise ValueError('expected Xbox PowerPC PE32')
-    if le(image,opt+28)!=base: raise ValueError('PE base mismatch')
+    # Several retail system modules have a stale PE preferred base. XEX security
+    # load address is authoritative; verify actual function and import ranges against it.
+    preferred_base=le(image,opt+28)
     sections=[]
     for i in range(n):
         q=opt+optional_bytes+i*40
@@ -44,7 +46,7 @@ def pe_info(image, base):
     functions.sort()
     for a,b in zip(functions,functions[1:]):
         if a[0]+a[1]>b[0]: raise ValueError('overlapping pdata ranges')
-    return dict(machine=f'{machine:04X}',entry_point=base+le(image,opt+16),sections=sections,functions=functions)
+    return dict(machine=f'{machine:04X}',preferred_base=preferred_base,entry_point=base+le(image,opt+16),sections=sections,functions=functions)
 
 def imports(image,base,metadata):
     rows={}
