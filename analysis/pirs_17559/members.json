@@ -1,0 +1,157 @@
+{
+  "$flash_SegoeXbox-Light.xtt": {
+    "bytes": 24576,
+    "sha256": "7b03c1731c6cb874adee50b17aa150f6ba3e0671fc8f612a2a970bf5ef4a542e",
+    "start_block": 1869
+  },
+  "$flash_aac.xexp": {
+    "bytes": 81920,
+    "sha256": "f49c9fb73764592b2963dc087450821a435ff4252789937553226f3ff68742f8",
+    "start_block": 1
+  },
+  "$flash_bootanim.xex": {
+    "bytes": 397312,
+    "sha256": "45eb980c0f841b4807d43c07c766fae5e70b8e2fa4d13fb247a491897cfc6de7",
+    "start_block": 21
+  },
+  "$flash_createprofile.xex": {
+    "bytes": 49152,
+    "sha256": "c5dae66e2e7b408ef6d84d659a2232ad89f01d78fa38c365d8732f2e0a221bbd",
+    "start_block": 118
+  },
+  "$flash_dash.xex": {
+    "bytes": 5971968,
+    "sha256": "3ad8f38d070eaf63cadac0697e3e8802c565cbfd0825a485347c5d718014f927",
+    "start_block": 130
+  },
+  "$flash_deviceselector.xex": {
+    "bytes": 40960,
+    "sha256": "2334c6772fd54201e60792c70a54e4714aaf74d45f657013ebe5da3737e06c0c",
+    "start_block": 1588
+  },
+  "$flash_gamerprofile.xex": {
+    "bytes": 110592,
+    "sha256": "a99fb2ae20c4b3ffab9fa5f6a73e5766b49fbed5716e8b4d3752d1b97b83aad4",
+    "start_block": 1598
+  },
+  "$flash_hud.xex": {
+    "bytes": 118784,
+    "sha256": "37e10612afde211e1d349838704f7cc2648ad5a4d1f8ca459f18ecd2c1f31ac7",
+    "start_block": 1625
+  },
+  "$flash_huduiskin.xex": {
+    "bytes": 81920,
+    "sha256": "fdbe68d20fa6b013282ce8f21cebddc34fe4e3a92a71c28983d63f288d2252cc",
+    "start_block": 1654
+  },
+  "$flash_mfgbootlauncher.xex": {
+    "bytes": 32768,
+    "sha256": "15b05e38f4a51c25d244fa9255d680d3070f66a7357498e4b5937184ea94b67b",
+    "start_block": 1674
+  },
+  "$flash_minimediaplayer.xex": {
+    "bytes": 49152,
+    "sha256": "98e3937157e58e880e87ae65aee5fa761a366f5429befde421a7ccd530fb805d",
+    "start_block": 1682
+  },
+  "$flash_nomni.xexp": {
+    "bytes": 61440,
+    "sha256": "0f8fb47a9bbb79ab86b2831b629d4bb13216514ff27e7477012197f96cbd2fbb",
+    "start_block": 1694
+  },
+  "$flash_nomnifwk.xexp": {
+    "bytes": 8192,
+    "sha256": "7baf2fa11f5babf4c4bf0b266b3f4052c03b14044ac61afa26e3e865f7348b8d",
+    "start_block": 1709
+  },
+  "$flash_nomnifwm.xexp": {
+    "bytes": 20480,
+    "sha256": "85f18117d3129e96c1a3990e5e9f760bce0c86e71fd3fad564f17bd12a09461c",
+    "start_block": 1711
+  },
+  "$flash_oddupd1.xex": {
+    "bytes": 258048,
+    "sha256": "b875a02a37d5821494828d12300e2195110ce5de75876d886c36e9e0588dac0f",
+    "start_block": 1716
+  },
+  "$flash_oddupd2.xex": {
+    "bytes": 110592,
+    "sha256": "40f3ec80df6a04a97e7f4f69bb3a657f7f7e55badfdf4eea38c12732b5cad1d9",
+    "start_block": 1779
+  },
+  "$flash_oddupd3.xex": {
+    "bytes": 258048,
+    "sha256": "b3e64722e07545e15ae0a451c008a1f70aeb1bad1b47a750b367e5148cc5fd8f",
+    "start_block": 1806
+  },
+  "$flash_signin.xex": {
+    "bytes": 106496,
+    "sha256": "86695c6c36250cc4b4addb7ccc07d15d54492b352c979cf5c0934804109a6130",
+    "start_block": 1875
+  },
+  "$flash_systemupdate.xex": {
+    "bytes": 274432,
+    "sha256": "da3b4f4cca0818582143728e36db7fec4643a33cc6eb26c4a8266b41adc84991",
+    "start_block": 1901
+  },
+  "$flash_systemupdate2pre.xex": {
+    "bytes": 278528,
+    "sha256": "b68cca5817ccdb00422f5184108d237b604defd2b8effbab4fe05250de7f66e3",
+    "start_block": 1968
+  },
+  "$flash_updater.xex": {
+    "bytes": 28672,
+    "sha256": "3db2c77c961d02dabb88e5fea609984640b7e86cfcac936f6d6802b7340385fb",
+    "start_block": 2036
+  },
+  "$flash_vk.xex": {
+    "bytes": 45056,
+    "sha256": "876ddbb333d83f408ab7c69267703e623daef6da5b1eb3302bd94d246155724e",
+    "start_block": 2043
+  },
+  "$flash_xam.xex": {
+    "bytes": 2424832,
+    "sha256": "78b3dbd8ae866f4258f5444205486ea9f8451afaa30f469c875dcf345f828467",
+    "start_block": 2054
+  },
+  "$flash_xenonclatin.xttp": {
+    "bytes": 98304,
+    "sha256": "1c9b7b77837838db37a5b07510ae247406738b4c16cb75e8729f6073449a28fa",
+    "start_block": 2646
+  },
+  "$flash_xenonjklatin.xttp": {
+    "bytes": 28672,
+    "sha256": "7e9c994d3535af394d5338264690ed0df38ff0b4b7bdaa1dbce86e17e491fd6b",
+    "start_block": 2670
+  },
+  "$flash_ximecore.xex": {
+    "bytes": 94208,
+    "sha256": "64d83c340bb382d14362e0df05838128f1bd31d6aac309853911db9120fd6488",
+    "start_block": 2677
+  },
+  "$flash_ximedic.xexp": {
+    "bytes": 10240,
+    "sha256": "91ee329f54c4c8ae44df0534a4535c1fb97d5190b0abf07b418793eb7b0a9f4b",
+    "start_block": 2700
+  },
+  "$install_extender.xex": {
+    "bytes": 126976,
+    "sha256": "96c871931dbbd5f6bb9e3d42429fca80f271e37d5110a0955b0195578ac1c215",
+    "start_block": 2703
+  },
+  "crl.bin": {
+    "bytes": 2560,
+    "sha256": "d0920a5d90d87dd50e864928ba5429b8a73d23e850db567935252cd495e535cd",
+    "start_block": 2734
+  },
+  "dae.bin": {
+    "bytes": 28816,
+    "sha256": "be7d861613e0afc6877637c3b9222218ac452c61023ee2e5cba6a22a81587fcb",
+    "start_block": 2735
+  },
+  "xboxupd.bin": {
+    "bytes": 507872,
+    "sha256": "2f85e912775b12f0740dd86ab518d303c7ba6fe837a05cad7d951c433376d537",
+    "start_block": 2743
+  }
+}

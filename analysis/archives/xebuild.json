@@ -1,0 +1,3192 @@
+[
+  {
+    "bytes": 813,
+    "crc32": "2A97531A",
+    "path": "devkit_sample/readme.txt"
+  },
+  {
+    "bytes": 1650,
+    "crc32": "014A63C9",
+    "path": "devkit_sample/_devkit.ini"
+  },
+  {
+    "bytes": 757,
+    "crc32": "1E34007C",
+    "path": "devkit_sample/_glitch.ini"
+  },
+  {
+    "bytes": 1130,
+    "crc32": "295D5E61",
+    "path": "devkit_sample/_jtag.ini"
+  },
+  {
+    "bytes": 1220,
+    "crc32": "68904462",
+    "path": "devkit_sample/_jtag_bigflash.ini"
+  },
+  {
+    "bytes": 7395,
+    "crc32": "4B3A0CAC",
+    "path": "mydata/options.ini"
+  },
+  {
+    "bytes": 1044,
+    "crc32": "377E6BD8",
+    "path": "mydata/readme.txt"
+  },
+  {
+    "bytes": 844,
+    "crc32": "DBEE9A44",
+    "path": "xell_info/CHANGELOG"
+  },
+  {
+    "bytes": 2711,
+    "crc32": "CC5228EB",
+    "path": "xell_info/kboot.conf"
+  },
+  {
+    "bytes": 5438,
+    "crc32": "9B092521",
+    "path": "xell_info/README"
+  },
+  {
+    "bytes": 314,
+    "crc32": "7D20A202",
+    "path": "1blkey.txt"
+  },
+  {
+    "bytes": 1789,
+    "crc32": "5211DC94",
+    "path": "about_patches.S"
+  },
+  {
+    "bytes": 30720,
+    "crc32": "0A5D5C2E",
+    "path": "ini_creator.exe"
+  },
+  {
+    "bytes": 4730,
+    "crc32": "A5550A0A",
+    "path": "license.txt"
+  },
+  {
+    "bytes": 28849,
+    "crc32": "BA6C1245",
+    "path": "readme.txt"
+  },
+  {
+    "bytes": 893,
+    "crc32": "6C8E79C8",
+    "path": "wiredx_readme.txt"
+  },
+  {
+    "bytes": 451584,
+    "crc32": "31D068DC",
+    "path": "xeBuild.exe"
+  },
+  {
+    "bytes": 262144,
+    "crc32": "2A680A34",
+    "path": "xell-2f.bin"
+  },
+  {
+    "bytes": 262144,
+    "crc32": "BCCA51DE",
+    "path": "xell-gggggg.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "7371/readme.txt"
+  },
+  {
+    "bytes": 1438,
+    "crc32": "1B8329F3",
+    "path": "7371/_retail.ini"
+  },
+  {
+    "bytes": 32,
+    "crc32": "CC9CF669",
+    "path": "9199/bin/addon.idx"
+  },
+  {
+    "bytes": 12,
+    "crc32": "89E6AA16",
+    "path": "9199/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2188,
+    "crc32": "73DF97CC",
+    "path": "9199/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2188,
+    "crc32": "62976A52",
+    "path": "9199/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2188,
+    "crc32": "C7905F93",
+    "path": "9199/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2188,
+    "crc32": "A66B88D6",
+    "path": "9199/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "9199/readme.txt"
+  },
+  {
+    "bytes": 1803,
+    "crc32": "5179CAF1",
+    "path": "9199/_jtag.ini"
+  },
+  {
+    "bytes": 2325,
+    "crc32": "D340302D",
+    "path": "9199/_retail.ini"
+  },
+  {
+    "bytes": 32,
+    "crc32": "4D32D27B",
+    "path": "12611/bin/addon.idx"
+  },
+  {
+    "bytes": 12,
+    "crc32": "C33AAF9B",
+    "path": "12611/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "2ADF2387",
+    "path": "12611/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "8B67E72D",
+    "path": "12611/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "F0432685",
+    "path": "12611/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "91845530",
+    "path": "12611/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "12611/readme.txt"
+  },
+  {
+    "bytes": 1539,
+    "crc32": "71DF5239",
+    "path": "12611/_jtag.ini"
+  },
+  {
+    "bytes": 2073,
+    "crc32": "6016B16F",
+    "path": "12611/_retail.ini"
+  },
+  {
+    "bytes": 32,
+    "crc32": "9C2196FC",
+    "path": "12625/bin/addon.idx"
+  },
+  {
+    "bytes": 12,
+    "crc32": "A6700E84",
+    "path": "12625/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "A09AB8E1",
+    "path": "12625/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "01227C4B",
+    "path": "12625/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "7A06BDE3",
+    "path": "12625/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2292,
+    "crc32": "1BC1CE56",
+    "path": "12625/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "12625/readme.txt"
+  },
+  {
+    "bytes": 1538,
+    "crc32": "E28851FD",
+    "path": "12625/_jtag.ini"
+  },
+  {
+    "bytes": 2072,
+    "crc32": "A8B4B97D",
+    "path": "12625/_retail.ini"
+  },
+  {
+    "bytes": 32,
+    "crc32": "DAFEE29A",
+    "path": "13146/bin/addon.idx"
+  },
+  {
+    "bytes": 12,
+    "crc32": "396D6D64",
+    "path": "13146/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2328,
+    "crc32": "C56E49FE",
+    "path": "13146/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2328,
+    "crc32": "05A10FBC",
+    "path": "13146/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2328,
+    "crc32": "BC0F183E",
+    "path": "13146/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2328,
+    "crc32": "215A531F",
+    "path": "13146/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "13146/readme.txt"
+  },
+  {
+    "bytes": 1562,
+    "crc32": "DC001D9B",
+    "path": "13146/_jtag.ini"
+  },
+  {
+    "bytes": 2096,
+    "crc32": "449432F7",
+    "path": "13146/_retail.ini"
+  },
+  {
+    "bytes": 68,
+    "crc32": "0866DBA9",
+    "path": "13599/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E216D276",
+    "path": "13599/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "D2144787",
+    "path": "13599/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "7EA543D1",
+    "path": "13599/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2060,
+    "crc32": "50729676",
+    "path": "13599/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "03B95B8D",
+    "path": "13599/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2084,
+    "crc32": "6369ED7E",
+    "path": "13599/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "2DF911E7",
+    "path": "13599/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "ED474C8B",
+    "path": "13599/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 144,
+    "crc32": "12F47C26",
+    "path": "13599/bin/readme.txt"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "13599/readme.txt"
+  },
+  {
+    "bytes": 1298,
+    "crc32": "F10DC1C2",
+    "path": "13599/_glitch.ini"
+  },
+  {
+    "bytes": 1568,
+    "crc32": "93F5A290",
+    "path": "13599/_jtag.ini"
+  },
+  {
+    "bytes": 2417,
+    "crc32": "2DCEE625",
+    "path": "13599/_retail.ini"
+  },
+  {
+    "bytes": 68,
+    "crc32": "0866DBA9",
+    "path": "13604/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E216D276",
+    "path": "13604/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "D2144787",
+    "path": "13604/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "7EA543D1",
+    "path": "13604/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2060,
+    "crc32": "50729676",
+    "path": "13604/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "03B95B8D",
+    "path": "13604/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2084,
+    "crc32": "6369ED7E",
+    "path": "13604/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "2DF911E7",
+    "path": "13604/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2356,
+    "crc32": "ED474C8B",
+    "path": "13604/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 144,
+    "crc32": "12F47C26",
+    "path": "13604/bin/readme.txt"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "13604/readme.txt"
+  },
+  {
+    "bytes": 1298,
+    "crc32": "F367EE24",
+    "path": "13604/_glitch.ini"
+  },
+  {
+    "bytes": 1568,
+    "crc32": "25755BE9",
+    "path": "13604/_jtag.ini"
+  },
+  {
+    "bytes": 2417,
+    "crc32": "A5519EC3",
+    "path": "13604/_retail.ini"
+  },
+  {
+    "bytes": 68,
+    "crc32": "C96759E1",
+    "path": "14699/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "0F89B021",
+    "path": "14699/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "B75EE698",
+    "path": "14699/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2344,
+    "crc32": "E9389A68",
+    "path": "14699/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2048,
+    "crc32": "83384E6E",
+    "path": "14699/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2344,
+    "crc32": "215EFE27",
+    "path": "14699/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2072,
+    "crc32": "EFD2D55A",
+    "path": "14699/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2344,
+    "crc32": "806AA68F",
+    "path": "14699/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2344,
+    "crc32": "DDDBD7A3",
+    "path": "14699/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "14699/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "398E1657",
+    "path": "14699/_glitch.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "75B4C9FB",
+    "path": "14699/_jtag.ini"
+  },
+  {
+    "bytes": 2447,
+    "crc32": "F3B3CD0B",
+    "path": "14699/_retail.ini"
+  },
+  {
+    "bytes": 188,
+    "crc32": "3554FD65",
+    "path": "14717/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "12927E5D",
+    "path": "14717/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "106EB501",
+    "path": "14717/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "28E8D4D9",
+    "path": "14717/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 24,
+    "crc32": "AEC36440",
+    "path": "14717/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "C56F189D",
+    "path": "14717/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2052,
+    "crc32": "751454D9",
+    "path": "14717/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "EC7EBB94",
+    "path": "14717/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "B72D409A",
+    "path": "14717/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "62D47D49",
+    "path": "14717/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "F6359407",
+    "path": "14717/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "D007B45D",
+    "path": "14717/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "62D47D49",
+    "path": "14717/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "0B1EDF9C",
+    "path": "14717/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "618CF8A7",
+    "path": "14717/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "14717/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "82F14ED8",
+    "path": "14717/_glitch.ini"
+  },
+  {
+    "bytes": 1356,
+    "crc32": "3BF79800",
+    "path": "14717/_glitch2.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "73F9CB16",
+    "path": "14717/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "0557DD2B",
+    "path": "14717/_retail.ini"
+  },
+  {
+    "bytes": 188,
+    "crc32": "3554FD65",
+    "path": "14719/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "12927E5D",
+    "path": "14719/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "106EB501",
+    "path": "14719/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "28E8D4D9",
+    "path": "14719/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 24,
+    "crc32": "AEC36440",
+    "path": "14719/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "4DA47B6A",
+    "path": "14719/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2052,
+    "crc32": "FDDF372E",
+    "path": "14719/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2092,
+    "crc32": "F6F7528B",
+    "path": "14719/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "64B5D863",
+    "path": "14719/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "3FE6236D",
+    "path": "14719/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "EA1F1EBE",
+    "path": "14719/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "7EFEF7F0",
+    "path": "14719/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "58CCD7AA",
+    "path": "14719/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "EA1F1EBE",
+    "path": "14719/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "83D5BC6B",
+    "path": "14719/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2384,
+    "crc32": "E9479B50",
+    "path": "14719/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "14719/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "2DC8EBD5",
+    "path": "14719/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "EAFB5727",
+    "path": "14719/_glitch2.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "740E34A0",
+    "path": "14719/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "6A36A636",
+    "path": "14719/_retail.ini"
+  },
+  {
+    "bytes": 188,
+    "crc32": "77AF4AD9",
+    "path": "15574/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "12927E5D",
+    "path": "15574/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "110AB8F0",
+    "path": "15574/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "7C0B04EE",
+    "path": "15574/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 24,
+    "crc32": "E8B8975F",
+    "path": "15574/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2408,
+    "crc32": "504FD0F4",
+    "path": "15574/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "6F1D955A",
+    "path": "15574/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2116,
+    "crc32": "0CF0425D",
+    "path": "15574/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2100,
+    "crc32": "D478499C",
+    "path": "15574/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2100,
+    "crc32": "76F5ECA3",
+    "path": "15574/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2100,
+    "crc32": "A8D10A0D",
+    "path": "15574/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2100,
+    "crc32": "0AF60F93",
+    "path": "15574/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2408,
+    "crc32": "0FEB01AB",
+    "path": "15574/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2100,
+    "crc32": "A8D10A0D",
+    "path": "15574/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2408,
+    "crc32": "401E454A",
+    "path": "15574/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2408,
+    "crc32": "55B96781",
+    "path": "15574/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "15574/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "AC8E7EA4",
+    "path": "15574/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "09B07939",
+    "path": "15574/_glitch2.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "85EE5327",
+    "path": "15574/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "D222B2FC",
+    "path": "15574/_retail.ini"
+  },
+  {
+    "bytes": 252,
+    "crc32": "BA2A856E",
+    "path": "16197/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "031802E4",
+    "path": "16197/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "0132D529",
+    "path": "16197/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "DFB1BDF0",
+    "path": "16197/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "6CF19231",
+    "path": "16197/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "F8EFF603",
+    "path": "16197/bin/nolan.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "683FF95F",
+    "path": "16197/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "0E6A8479",
+    "path": "16197/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2208,
+    "crc32": "26F4EA36",
+    "path": "16197/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "246E5BF3",
+    "path": "16197/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "96DC20E8",
+    "path": "16197/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "659EEE13",
+    "path": "16197/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "BF870229",
+    "path": "16197/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "3163C0B5",
+    "path": "16197/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "659EEE13",
+    "path": "16197/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "E07238AA",
+    "path": "16197/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "2A76D27F",
+    "path": "16197/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16197/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "5C06CFA9",
+    "path": "16197/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "E581BFBE",
+    "path": "16197/_glitch2.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "F79C8432",
+    "path": "16197/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "67DB250E",
+    "path": "16197/_retail.ini"
+  },
+  {
+    "bytes": 224,
+    "crc32": "EA47F501",
+    "path": "16202/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "031802E4",
+    "path": "16202/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "0132D529",
+    "path": "16202/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "DFB1BDF0",
+    "path": "16202/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "6CF19231",
+    "path": "16202/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "F8EFF603",
+    "path": "16202/bin/nolan.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "683FF95F",
+    "path": "16202/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "0E6A8479",
+    "path": "16202/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2208,
+    "crc32": "26F4EA36",
+    "path": "16202/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "246E5BF3",
+    "path": "16202/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "96DC20E8",
+    "path": "16202/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "659EEE13",
+    "path": "16202/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "BF870229",
+    "path": "16202/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "3163C0B5",
+    "path": "16202/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "659EEE13",
+    "path": "16202/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "E07238AA",
+    "path": "16202/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "2A76D27F",
+    "path": "16202/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16202/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "6D36DECC",
+    "path": "16202/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "56D56003",
+    "path": "16202/_glitch2.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "0FDFF843",
+    "path": "16202/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "6A4614DF",
+    "path": "16202/_retail.ini"
+  },
+  {
+    "bytes": 224,
+    "crc32": "EA47F501",
+    "path": "16203/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "031802E4",
+    "path": "16203/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "0132D529",
+    "path": "16203/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "DFB1BDF0",
+    "path": "16203/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "6CF19231",
+    "path": "16203/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "F8EFF603",
+    "path": "16203/bin/nolan.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "BAA12C6F",
+    "path": "16203/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "119AE53A",
+    "path": "16203/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2208,
+    "crc32": "4AC94A2B",
+    "path": "16203/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "4853FBEE",
+    "path": "16203/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "FAE180F5",
+    "path": "16203/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2616,
+    "crc32": "8176D1BD",
+    "path": "16203/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "6580E262",
+    "path": "16203/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "09A34E0E",
+    "path": "16203/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "D3BAA234",
+    "path": "16203/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "00475CFE",
+    "path": "16203/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "09A34E0E",
+    "path": "16203/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "A8E0A65B",
+    "path": "16203/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "1C447380",
+    "path": "16203/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16203/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "4A3CF1EC",
+    "path": "16203/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "849AFFEB",
+    "path": "16203/_glitch2.ini"
+  },
+  {
+    "bytes": 1068,
+    "crc32": "08FCEF78",
+    "path": "16203/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "A62144BD",
+    "path": "16203/_jtag.ini"
+  },
+  {
+    "bytes": 1608,
+    "crc32": "DF6EB6B1",
+    "path": "16203/_retail.ini"
+  },
+  {
+    "bytes": 168,
+    "crc32": "830DAB9C",
+    "path": "16537/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "16537/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "C2EB640D",
+    "path": "16537/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "72677A44",
+    "path": "16537/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "3F734D33",
+    "path": "16537/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "FE976F96",
+    "path": "16537/bin/nolan.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "8CAA7EE9",
+    "path": "16537/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "FB384474",
+    "path": "16537/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2208,
+    "crc32": "B6267908",
+    "path": "16537/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "B4BCC8CD",
+    "path": "16537/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "060EB3D6",
+    "path": "16537/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2616,
+    "crc32": "FC3BDD70",
+    "path": "16537/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "18CDEEAF",
+    "path": "16537/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "F54C7D2D",
+    "path": "16537/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "2F559117",
+    "path": "16537/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "364C0E78",
+    "path": "16537/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2192,
+    "crc32": "F54C7D2D",
+    "path": "16537/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "9EEBF4DD",
+    "path": "16537/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2528,
+    "crc32": "2A4F2106",
+    "path": "16537/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16537/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "0345B91D",
+    "path": "16537/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "585064E9",
+    "path": "16537/_glitch2.ini"
+  },
+  {
+    "bytes": 1068,
+    "crc32": "140B6ECA",
+    "path": "16537/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "5A7B6713",
+    "path": "16537/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "54FE3D98",
+    "path": "16537/_retail.ini"
+  },
+  {
+    "bytes": 168,
+    "crc32": "830DAB9C",
+    "path": "16547/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "16547/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "C2EB640D",
+    "path": "16547/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "72677A44",
+    "path": "16547/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "3F734D33",
+    "path": "16547/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "FE976F96",
+    "path": "16547/bin/nolan.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "3DE658C1",
+    "path": "16547/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2224,
+    "crc32": "AF8D978B",
+    "path": "16547/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2264,
+    "crc32": "ECE1EE55",
+    "path": "16547/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2248,
+    "crc32": "51D19222",
+    "path": "16547/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2248,
+    "crc32": "8F98743E",
+    "path": "16547/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2672,
+    "crc32": "DC58F742",
+    "path": "16547/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2680,
+    "crc32": "15C713DA",
+    "path": "16547/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2248,
+    "crc32": "B711E330",
+    "path": "16547/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2248,
+    "crc32": "CD38002B",
+    "path": "16547/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "BDC54B00",
+    "path": "16547/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2248,
+    "crc32": "B711E330",
+    "path": "16547/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "D75ACF54",
+    "path": "16547/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "4E5042EB",
+    "path": "16547/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16547/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "2EA72AFA",
+    "path": "16547/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "1D2CBD76",
+    "path": "16547/_glitch2.ini"
+  },
+  {
+    "bytes": 1068,
+    "crc32": "F17BF03A",
+    "path": "16547/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "F26E8325",
+    "path": "16547/_jtag.ini"
+  },
+  {
+    "bytes": 2535,
+    "crc32": "F65E3883",
+    "path": "16547/_retail.ini"
+  },
+  {
+    "bytes": 168,
+    "crc32": "830DAB9C",
+    "path": "16747/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "16747/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "C2EB640D",
+    "path": "16747/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "72677A44",
+    "path": "16747/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "3F734D33",
+    "path": "16747/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "FE976F96",
+    "path": "16747/bin/nolan.bin"
+  },
+  {
+    "bytes": 2596,
+    "crc32": "98C737AA",
+    "path": "16747/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2236,
+    "crc32": "BDA625B2",
+    "path": "16747/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2276,
+    "crc32": "A180740A",
+    "path": "16747/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2260,
+    "crc32": "D4B279B7",
+    "path": "16747/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2260,
+    "crc32": "AC4A06EF",
+    "path": "16747/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2684,
+    "crc32": "5069EA16",
+    "path": "16747/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2692,
+    "crc32": "8992A8A6",
+    "path": "16747/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2260,
+    "crc32": "3AAE7127",
+    "path": "16747/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2260,
+    "crc32": "2F369C22",
+    "path": "16747/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2596,
+    "crc32": "A6EDB983",
+    "path": "16747/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2260,
+    "crc32": "3AAE7127",
+    "path": "16747/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2596,
+    "crc32": "A74546B3",
+    "path": "16747/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2596,
+    "crc32": "6C5E9C12",
+    "path": "16747/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16747/readme.txt"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "BE90EC5F",
+    "path": "16747/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "A7B9A955",
+    "path": "16747/_glitch2.ini"
+  },
+  {
+    "bytes": 1068,
+    "crc32": "C4D846A6",
+    "path": "16747/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "F9798F64",
+    "path": "16747/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "FC41B627",
+    "path": "16747/_retail.ini"
+  },
+  {
+    "bytes": 204,
+    "crc32": "98B70B96",
+    "path": "16756/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "16756/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "C2EB640D",
+    "path": "16756/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "72677A44",
+    "path": "16756/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "3F734D33",
+    "path": "16756/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "FE976F96",
+    "path": "16756/bin/nolan.bin"
+  },
+  {
+    "bytes": 2636,
+    "crc32": "9807E89C",
+    "path": "16756/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2276,
+    "crc32": "1428F00D",
+    "path": "16756/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2316,
+    "crc32": "2A172A8B",
+    "path": "16756/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2300,
+    "crc32": "4BA3343D",
+    "path": "16756/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2300,
+    "crc32": "9C600105",
+    "path": "16756/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2760,
+    "crc32": "71A363C5",
+    "path": "16756/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "6EFA1E68",
+    "path": "16756/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2300,
+    "crc32": "6D9C6517",
+    "path": "16756/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2300,
+    "crc32": "68A1C084",
+    "path": "16756/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2636,
+    "crc32": "55E23DA5",
+    "path": "16756/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2300,
+    "crc32": "6D9C6517",
+    "path": "16756/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2636,
+    "crc32": "4E2FEA5D",
+    "path": "16756/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2636,
+    "crc32": "1B355468",
+    "path": "16756/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16756/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "B3233BA9",
+    "path": "16756/_glitch.ini"
+  },
+  {
+    "bytes": 1509,
+    "crc32": "6D0C562D",
+    "path": "16756/_glitch2.ini"
+  },
+  {
+    "bytes": 1068,
+    "crc32": "5B185E22",
+    "path": "16756/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "199F7CC3",
+    "path": "16756/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "6DE66ACE",
+    "path": "16756/_retail.ini"
+  },
+  {
+    "bytes": 248,
+    "crc32": "EE6E2055",
+    "path": "16767/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "16767/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "C2EB640D",
+    "path": "16767/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "72677A44",
+    "path": "16767/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "3F734D33",
+    "path": "16767/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "FE976F96",
+    "path": "16767/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "68448163",
+    "path": "16767/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "C237044C",
+    "path": "16767/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "2562C63F",
+    "path": "16767/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "60B5827E",
+    "path": "16767/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "4FE1EAFE",
+    "path": "16767/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "FB8D6E20",
+    "path": "16767/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "C9A93740",
+    "path": "16767/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "534292C9",
+    "path": "16767/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "63D2B582",
+    "path": "16767/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "B3425A84",
+    "path": "16767/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "E4C16FEA",
+    "path": "16767/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "C20BE63A",
+    "path": "16767/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "9CAAB13D",
+    "path": "16767/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "DE2B0889",
+    "path": "16767/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "39233993",
+    "path": "16767/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "9CAAB13D",
+    "path": "16767/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "E4586448",
+    "path": "16767/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "1105F05C",
+    "path": "16767/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "16767/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "1963FD96",
+    "path": "16767/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "859F0726",
+    "path": "16767/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "22CEEF59",
+    "path": "16767/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "A9045B44",
+    "path": "16767/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "33AD7017",
+    "path": "16767/_retail.ini"
+  },
+  {
+    "bytes": 248,
+    "crc32": "06028DA7",
+    "path": "17148/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "17148/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "654DCFAE",
+    "path": "17148/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "BC07E847",
+    "path": "17148/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "E35F7A07",
+    "path": "17148/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "454FCD8E",
+    "path": "17148/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "1DA89D4C",
+    "path": "17148/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "84DC003E",
+    "path": "17148/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "6389C24D",
+    "path": "17148/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "265E860C",
+    "path": "17148/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "090AEE8C",
+    "path": "17148/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "BD666A52",
+    "path": "17148/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "8F423332",
+    "path": "17148/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "15A996BB",
+    "path": "17148/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "2539B1F0",
+    "path": "17148/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "F5A95EF6",
+    "path": "17148/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "A22A6B98",
+    "path": "17148/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "84E0E248",
+    "path": "17148/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "DA41B54F",
+    "path": "17148/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "98C00CFB",
+    "path": "17148/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "7FC83DE1",
+    "path": "17148/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "DA41B54F",
+    "path": "17148/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "A2B3603A",
+    "path": "17148/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "57EEF42E",
+    "path": "17148/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17148/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "C9436977",
+    "path": "17148/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "677BC7FB",
+    "path": "17148/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "94A81DED",
+    "path": "17148/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "DC6A4ECD",
+    "path": "17148/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "4CC2C18C",
+    "path": "17148/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "8EC1BA2D",
+    "path": "17150/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "17150/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "654DCFAE",
+    "path": "17150/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "BC07E847",
+    "path": "17150/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "E35F7A07",
+    "path": "17150/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "454FCD8E",
+    "path": "17150/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "1DA89D4C",
+    "path": "17150/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "F7DF053A",
+    "path": "17150/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "84DC003E",
+    "path": "17150/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "6389C24D",
+    "path": "17150/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "265E860C",
+    "path": "17150/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "090AEE8C",
+    "path": "17150/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "BD666A52",
+    "path": "17150/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "8F423332",
+    "path": "17150/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "15A996BB",
+    "path": "17150/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "2539B1F0",
+    "path": "17150/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "F5A95EF6",
+    "path": "17150/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "A22A6B98",
+    "path": "17150/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "84E0E248",
+    "path": "17150/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "DA41B54F",
+    "path": "17150/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "98C00CFB",
+    "path": "17150/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "7FC83DE1",
+    "path": "17150/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "DA41B54F",
+    "path": "17150/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "A2B3603A",
+    "path": "17150/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "57EEF42E",
+    "path": "17150/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17150/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "31FFAC9B",
+    "path": "17150/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "92F20C89",
+    "path": "17150/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "3D077F96",
+    "path": "17150/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "F119719A",
+    "path": "17150/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "80FACFF9",
+    "path": "17150/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "B4CF5396",
+    "path": "17349/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E43FDC39",
+    "path": "17349/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "4AD49724",
+    "path": "17349/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "939EB0CD",
+    "path": "17349/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "74EA8DB5",
+    "path": "17349/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "E5031740",
+    "path": "17349/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "3B04D82C",
+    "path": "17349/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "F6620741",
+    "path": "17349/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "78EADBFD",
+    "path": "17349/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "9FBF198E",
+    "path": "17349/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "DA685DCF",
+    "path": "17349/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "F53C354F",
+    "path": "17349/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "4150B191",
+    "path": "17349/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "7374E8F1",
+    "path": "17349/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "E99F4D78",
+    "path": "17349/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "D90F6A33",
+    "path": "17349/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "099F8535",
+    "path": "17349/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "5E1CB05B",
+    "path": "17349/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "78D6398B",
+    "path": "17349/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "26776E8C",
+    "path": "17349/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "64F6D738",
+    "path": "17349/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "83FEE622",
+    "path": "17349/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "26776E8C",
+    "path": "17349/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "5E85BBF9",
+    "path": "17349/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "ABD82FED",
+    "path": "17349/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17349/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "8A0A8F33",
+    "path": "17349/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "B88E9262",
+    "path": "17349/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "9E4EEB0F",
+    "path": "17349/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "1088A0FF",
+    "path": "17349/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "792CB829",
+    "path": "17349/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "BA63065C",
+    "path": "17489/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "3D39AB29",
+    "path": "17489/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "255FBBA9",
+    "path": "17489/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "A0761DE4",
+    "path": "17489/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "73C09FFB",
+    "path": "17489/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "7B8C9C58",
+    "path": "17489/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "2D1F6D7D",
+    "path": "17489/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "306999F8",
+    "path": "17489/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "D348E6B4",
+    "path": "17489/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "341D24C7",
+    "path": "17489/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "71CA6086",
+    "path": "17489/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "5E9E0806",
+    "path": "17489/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "EAF28CD8",
+    "path": "17489/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "D8D6D5B8",
+    "path": "17489/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "423D7031",
+    "path": "17489/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "72AD577A",
+    "path": "17489/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "A23DB87C",
+    "path": "17489/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "F5BE8D12",
+    "path": "17489/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "D37404C2",
+    "path": "17489/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "8DD553C5",
+    "path": "17489/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "CF54EA71",
+    "path": "17489/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "285CDB6B",
+    "path": "17489/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "8DD553C5",
+    "path": "17489/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "F52786B0",
+    "path": "17489/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "007A12A4",
+    "path": "17489/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17489/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "54BB44C5",
+    "path": "17489/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "98022120",
+    "path": "17489/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "92D2819F",
+    "path": "17489/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "12D137FA",
+    "path": "17489/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "A3BFB892",
+    "path": "17489/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "BA63065C",
+    "path": "17502/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "3D39AB29",
+    "path": "17502/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "255FBBA9",
+    "path": "17502/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "A0761DE4",
+    "path": "17502/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "73C09FFB",
+    "path": "17502/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "7B8C9C58",
+    "path": "17502/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "2D1F6D7D",
+    "path": "17502/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "306999F8",
+    "path": "17502/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "D348E6B4",
+    "path": "17502/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "341D24C7",
+    "path": "17502/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "71CA6086",
+    "path": "17502/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "5E9E0806",
+    "path": "17502/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "EAF28CD8",
+    "path": "17502/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "D8D6D5B8",
+    "path": "17502/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "423D7031",
+    "path": "17502/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "72AD577A",
+    "path": "17502/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "A23DB87C",
+    "path": "17502/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "F5BE8D12",
+    "path": "17502/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "D37404C2",
+    "path": "17502/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "8DD553C5",
+    "path": "17502/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "CF54EA71",
+    "path": "17502/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "285CDB6B",
+    "path": "17502/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "8DD553C5",
+    "path": "17502/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "F52786B0",
+    "path": "17502/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "007A12A4",
+    "path": "17502/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17502/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "93B92D17",
+    "path": "17502/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "39082427",
+    "path": "17502/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "97A506F5",
+    "path": "17502/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "9DE15D8D",
+    "path": "17502/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "7BEE3F1B",
+    "path": "17502/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "3B2C9A47",
+    "path": "17511/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "3D39AB29",
+    "path": "17511/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "A7AE390A",
+    "path": "17511/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "FC159C40",
+    "path": "17511/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "73C09FFB",
+    "path": "17511/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "7B8C9C58",
+    "path": "17511/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "6662A378",
+    "path": "17511/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "D3860368",
+    "path": "17511/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "3887FE59",
+    "path": "17511/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "DFD23C2A",
+    "path": "17511/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "9A05786B",
+    "path": "17511/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "B55110EB",
+    "path": "17511/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "013D9435",
+    "path": "17511/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "3319CD55",
+    "path": "17511/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "A9F268DC",
+    "path": "17511/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "99624F97",
+    "path": "17511/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "49F2A091",
+    "path": "17511/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "1E7195FF",
+    "path": "17511/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "38BB1C2F",
+    "path": "17511/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "661A4B28",
+    "path": "17511/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "249BF29C",
+    "path": "17511/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "C393C386",
+    "path": "17511/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "661A4B28",
+    "path": "17511/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "1EE89E5D",
+    "path": "17511/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "EBB50A49",
+    "path": "17511/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17511/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "6AFB5889",
+    "path": "17511/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "99145A5F",
+    "path": "17511/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "5A94D276",
+    "path": "17511/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "9BF7F426",
+    "path": "17511/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "2E1E7FC4",
+    "path": "17511/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "EBC2BE40",
+    "path": "17526/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "3D39AB29",
+    "path": "17526/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "A5BE5362",
+    "path": "17526/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "00926852",
+    "path": "17526/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "A7E96B6B",
+    "path": "17526/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "BF852CB1",
+    "path": "17526/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "83D9E651",
+    "path": "17526/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "99BFB076",
+    "path": "17526/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "71B81F0B",
+    "path": "17526/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "96EDDD78",
+    "path": "17526/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "D33A9939",
+    "path": "17526/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "FC6EF1B9",
+    "path": "17526/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "48027567",
+    "path": "17526/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "7A262C07",
+    "path": "17526/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "E0CD898E",
+    "path": "17526/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "D05DAEC5",
+    "path": "17526/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "00CD41C3",
+    "path": "17526/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "574E74AD",
+    "path": "17526/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "7184FD7D",
+    "path": "17526/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "2F25AA7A",
+    "path": "17526/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "6DA413CE",
+    "path": "17526/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "8AAC22D4",
+    "path": "17526/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "2F25AA7A",
+    "path": "17526/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "57D77F0F",
+    "path": "17526/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "A28AEB1B",
+    "path": "17526/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17526/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "7C7396FE",
+    "path": "17526/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "693B5196",
+    "path": "17526/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "F935D6CD",
+    "path": "17526/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "5A1F1A2E",
+    "path": "17526/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "F013DE0F",
+    "path": "17526/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "EBC2BE40",
+    "path": "17544/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "3D39AB29",
+    "path": "17544/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "A5BE5362",
+    "path": "17544/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "00926852",
+    "path": "17544/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "A7E96B6B",
+    "path": "17544/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "BF852CB1",
+    "path": "17544/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "83D9E651",
+    "path": "17544/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "99BFB076",
+    "path": "17544/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "71B81F0B",
+    "path": "17544/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "96EDDD78",
+    "path": "17544/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "D33A9939",
+    "path": "17544/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "FC6EF1B9",
+    "path": "17544/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "48027567",
+    "path": "17544/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "7A262C07",
+    "path": "17544/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "E0CD898E",
+    "path": "17544/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "D05DAEC5",
+    "path": "17544/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "00CD41C3",
+    "path": "17544/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "574E74AD",
+    "path": "17544/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "7184FD7D",
+    "path": "17544/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "2F25AA7A",
+    "path": "17544/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "6DA413CE",
+    "path": "17544/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "8AAC22D4",
+    "path": "17544/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "2F25AA7A",
+    "path": "17544/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "57D77F0F",
+    "path": "17544/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "A28AEB1B",
+    "path": "17544/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17544/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "04A6A47E",
+    "path": "17544/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "8EE425AE",
+    "path": "17544/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "3760804A",
+    "path": "17544/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "AA792728",
+    "path": "17544/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "49F46B1E",
+    "path": "17544/_retail.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "D6525FA4",
+    "path": "17559/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E70FA0E4",
+    "path": "17559/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "60825813",
+    "path": "17559/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "4A4191C7",
+    "path": "17559/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "8C9B6CFB",
+    "path": "17559/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "E8BA3467",
+    "path": "17559/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "52AAD373",
+    "path": "17559/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "CCBF1D76",
+    "path": "17559/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "96278D8B",
+    "path": "17559/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "0C06B82F",
+    "path": "17559/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2348,
+    "crc32": "FEED017C",
+    "path": "17559/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2468,
+    "crc32": "D1B969FC",
+    "path": "17559/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6700,
+    "crc32": "65D5ED22",
+    "path": "17559/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "57F1B442",
+    "path": "17559/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "CD1A11CB",
+    "path": "17559/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2792,
+    "crc32": "D73BC491",
+    "path": "17559/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2844,
+    "crc32": "07AB2B97",
+    "path": "17559/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7076,
+    "crc32": "50281EF9",
+    "path": "17559/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2824,
+    "crc32": "76E29729",
+    "path": "17559/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "02F2323F",
+    "path": "17559/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "40738B8B",
+    "path": "17559/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "6D33B054",
+    "path": "17559/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2332,
+    "crc32": "02F2323F",
+    "path": "17559/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "B048ED8F",
+    "path": "17559/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "4515799B",
+    "path": "17559/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 929,
+    "crc32": "D6062F1E",
+    "path": "17559/readme.txt"
+  },
+  {
+    "bytes": 1328,
+    "crc32": "34E09BE3",
+    "path": "17559/_glitch.ini"
+  },
+  {
+    "bytes": 1823,
+    "crc32": "C48B8F53",
+    "path": "17559/_glitch2.ini"
+  },
+  {
+    "bytes": 1388,
+    "crc32": "8E7C7C7D",
+    "path": "17559/_glitch2m.ini"
+  },
+  {
+    "bytes": 1598,
+    "crc32": "26A6EBBE",
+    "path": "17559/_jtag.ini"
+  },
+  {
+    "bytes": 2694,
+    "crc32": "55B2651D",
+    "path": "17559/_retail.ini"
+  },
+  {
+    "bytes": 124,
+    "crc32": "2C5AC7B8",
+    "path": "common/readme.txt"
+  }
+]

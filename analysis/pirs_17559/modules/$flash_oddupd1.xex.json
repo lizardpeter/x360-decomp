@@ -1,0 +1,25 @@
+{
+  "compression": 2,
+  "encryption": 0,
+  "entry_point": null,
+  "file_bytes": 258048,
+  "header_bytes": 4096,
+  "image_base": null,
+  "image_bytes": 262144,
+  "imports": [],
+  "optional_headers": {
+    "000002FF": 676,
+    "000003FF": 696,
+    "000080FF": 732,
+    "00040006": 764,
+    "00040404": 788
+  },
+  "resources": [
+    {
+      "address": "98400000",
+      "bytes": 262144,
+      "id": "FIRMWARE"
+    }
+  ],
+  "sha256": "b875a02a37d5821494828d12300e2195110ce5de75876d886c36e9e0588dac0f"
+}

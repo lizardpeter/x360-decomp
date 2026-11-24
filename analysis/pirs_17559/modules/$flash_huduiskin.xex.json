@@ -1,0 +1,29 @@
+{
+  "compression": 2,
+  "encryption": 0,
+  "entry_point": null,
+  "file_bytes": 81920,
+  "header_bytes": 4096,
+  "image_base": null,
+  "image_bytes": 233472,
+  "imports": [],
+  "optional_headers": {
+    "000002FF": 668,
+    "000003FF": 704,
+    "000080FF": 740,
+    "00040006": 772
+  },
+  "resources": [
+    {
+      "address": "90F90000",
+      "bytes": 75851,
+      "id": "skin"
+    },
+    {
+      "address": "90FA2880",
+      "bytes": 156069,
+      "id": "xam"
+    }
+  ],
+  "sha256": "fdbe68d20fa6b013282ce8f21cebddc34fe4e3a92a71c28983d63f288d2252cc"
+}

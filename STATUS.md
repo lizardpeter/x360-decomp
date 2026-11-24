@@ -6,8 +6,8 @@ Header analysis is not function decompilation. Import slots are not unique impor
 
 | Build | XEX import slots | Resources | Authored function records | Matches+ |
 |---|---:|---:|---:|---:|
-| dash_17559 | pending | pending | 0 | 0 |
-| xam_17559 | pending | pending | 0 | 0 |
-| dash_17559_basic | pending | pending | 0 | 0 |
+| dash_17559 | 1628 | 36 | 0 | 0 |
+| xam_17559 | 906 | 11 | 0 | 0 |
+| dash_17559_basic | 1628 | 36 | 0 | 0 |
 
 Native executable, decoded-image analysis, and differential parity are not established.

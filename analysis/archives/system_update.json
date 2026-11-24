@@ -1,0 +1,762 @@
+[
+  {
+    "bytes": 18378752,
+    "crc32": "9A754F33",
+    "path": "$SystemUpdate/AvatarEditor.xex"
+  },
+  {
+    "bytes": 5808128,
+    "crc32": "A7C09EDF",
+    "path": "$SystemUpdate/BiometricSetup.xex"
+  },
+  {
+    "bytes": 1744896,
+    "crc32": "20688111",
+    "path": "$SystemUpdate/dash.ClosedCaptionDll.xex"
+  },
+  {
+    "bytes": 3448832,
+    "crc32": "39C83716",
+    "path": "$SystemUpdate/dash.ExtraAVCodecs.xex"
+  },
+  {
+    "bytes": 495616,
+    "crc32": "122B27CC",
+    "path": "$SystemUpdate/dash.ExtraAVCodecs2.xex"
+  },
+  {
+    "bytes": 630784,
+    "crc32": "DC61BA61",
+    "path": "$SystemUpdate/Dash.FieldCalibration.lex"
+  },
+  {
+    "bytes": 303104,
+    "crc32": "5AAF7C04",
+    "path": "$SystemUpdate/Dash.Kiosk.lex"
+  },
+  {
+    "bytes": 593920,
+    "crc32": "EC0DED75",
+    "path": "$SystemUpdate/dash.natalpregame.xex"
+  },
+  {
+    "bytes": 200704,
+    "crc32": "ECCF1F81",
+    "path": "$SystemUpdate/Dash.NetworkStorage.lex"
+  },
+  {
+    "bytes": 2465792,
+    "crc32": "CB8C7C4D",
+    "path": "$SystemUpdate/Dash.NuiTroubleshooter.lex"
+  },
+  {
+    "bytes": 761856,
+    "crc32": "34277249",
+    "path": "$SystemUpdate/Dash.Search.xex"
+  },
+  {
+    "bytes": 15880192,
+    "crc32": "F56AF20E",
+    "path": "$SystemUpdate/dash.xex"
+  },
+  {
+    "bytes": 3219456,
+    "crc32": "F2A0EB2A",
+    "path": "$SystemUpdate/dashnui.xex"
+  },
+  {
+    "bytes": 1150976,
+    "crc32": "E6088828",
+    "path": "$SystemUpdate/FFFE07DF00000001"
+  },
+  {
+    "bytes": 16064512,
+    "crc32": "81A2A7D3",
+    "path": "$SystemUpdate/FFFE07DF00000002"
+  },
+  {
+    "bytes": 7962624,
+    "crc32": "7B3C1FDC",
+    "path": "$SystemUpdate/FFFE07DF00000006"
+  },
+  {
+    "bytes": 33013760,
+    "crc32": "811642BA",
+    "path": "$SystemUpdate/FFFE07DF00000008"
+  },
+  {
+    "bytes": 958464,
+    "crc32": "F7702E6C",
+    "path": "$SystemUpdate/Guide.AccountRecovery.xex"
+  },
+  {
+    "bytes": 495616,
+    "crc32": "CA5AD880",
+    "path": "$SystemUpdate/Guide.AvatarMiniCreator.xex"
+  },
+  {
+    "bytes": 102400,
+    "crc32": "127CA263",
+    "path": "$SystemUpdate/Guide.CSVTrans.xex"
+  },
+  {
+    "bytes": 200704,
+    "crc32": "98D715A3",
+    "path": "$SystemUpdate/Guide.Fitness.xex"
+  },
+  {
+    "bytes": 729088,
+    "crc32": "1590F18A",
+    "path": "$SystemUpdate/Guide.NuiTroubleshooter.xex"
+  },
+  {
+    "bytes": 729088,
+    "crc32": "EED07F79",
+    "path": "$SystemUpdate/Guide.TFA.xex"
+  },
+  {
+    "bytes": 53406,
+    "crc32": "C174D92C",
+    "path": "$SystemUpdate/L.AvatarEditor.xex.common.xzp"
+  },
+  {
+    "bytes": 7531,
+    "crc32": "D2E426FF",
+    "path": "$SystemUpdate/L.AvatarEditor.xex.controlp.xzp"
+  },
+  {
+    "bytes": 39148,
+    "crc32": "0906DCE1",
+    "path": "$SystemUpdate/L.AvatarEditor.xex.MEDIA.xzp"
+  },
+  {
+    "bytes": 32797,
+    "crc32": "67E96B16",
+    "path": "$SystemUpdate/L.BiometricSetup.xex.biometri.xzp"
+  },
+  {
+    "bytes": 7531,
+    "crc32": "D2E426FF",
+    "path": "$SystemUpdate/L.BiometricSetup.xex.controlp.xzp"
+  },
+  {
+    "bytes": 18950,
+    "crc32": "1C6D1538",
+    "path": "$SystemUpdate/L.CreateProfile.xex.cp.xzp"
+  },
+  {
+    "bytes": 2707,
+    "crc32": "8913C166",
+    "path": "$SystemUpdate/L.Dash.FamilyCenter.xex.familyce.xzp"
+  },
+  {
+    "bytes": 3799,
+    "crc32": "AAB9E4A8",
+    "path": "$SystemUpdate/L.Dash.FamilyCenter.xex.familyco.xzp"
+  },
+  {
+    "bytes": 3799,
+    "crc32": "AAB9E4A8",
+    "path": "$SystemUpdate/L.Dash.FamilyWizard.lex.familyco.xzp"
+  },
+  {
+    "bytes": 41660,
+    "crc32": "13B71C45",
+    "path": "$SystemUpdate/L.Dash.FamilyWizard.lex.xzp.xzp"
+  },
+  {
+    "bytes": 8765,
+    "crc32": "35C21E9F",
+    "path": "$SystemUpdate/L.Dash.FieldCalibration.lex.fieldxzp.xzp"
+  },
+  {
+    "bytes": 11728,
+    "crc32": "FB3E70AF",
+    "path": "$SystemUpdate/L.Dash.LF.GamerTagChange.lex.DashUI.xzp"
+  },
+  {
+    "bytes": 17781,
+    "crc32": "BCE8C510",
+    "path": "$SystemUpdate/L.Dash.MP.AccountMgmt.lex.DashUI.xzp"
+  },
+  {
+    "bytes": 52679,
+    "crc32": "90BE704B",
+    "path": "$SystemUpdate/L.Dash.MP.ContentExplorer.lex.DashUI.xzp"
+  },
+  {
+    "bytes": 83757,
+    "crc32": "398ED020",
+    "path": "$SystemUpdate/L.Dash.MP.Core.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 36860,
+    "crc32": "D60415B0",
+    "path": "$SystemUpdate/L.Dash.MP.LiveSignup.lex.DashUI.xzp"
+  },
+  {
+    "bytes": 30212,
+    "crc32": "92E564F1",
+    "path": "$SystemUpdate/L.Dash.MP.LiveSignup.lex.media.xzp"
+  },
+  {
+    "bytes": 22952,
+    "crc32": "F3D6188B",
+    "path": "$SystemUpdate/L.Dash.MP.MicrosoftStore.lex.CntryUI.xzp"
+  },
+  {
+    "bytes": 10912,
+    "crc32": "43657F64",
+    "path": "$SystemUpdate/L.Dash.MP.MicrosoftStore.lex.DashUI.xzp"
+  },
+  {
+    "bytes": 30212,
+    "crc32": "92E564F1",
+    "path": "$SystemUpdate/L.Dash.MP.MicrosoftStore.lex.media.xzp"
+  },
+  {
+    "bytes": 2128,
+    "crc32": "FE4FABCC",
+    "path": "$SystemUpdate/L.Dash.MP.Purchase.lex.DashUI.xzp"
+  },
+  {
+    "bytes": 5078,
+    "crc32": "3306DEB3",
+    "path": "$SystemUpdate/L.dash.natalpregame.xex.natalpre.xzp"
+  },
+  {
+    "bytes": 10510,
+    "crc32": "8EDC9304",
+    "path": "$SystemUpdate/L.Dash.NetworkStorage.lex.xzp.xzp"
+  },
+  {
+    "bytes": 43186,
+    "crc32": "A23146CD",
+    "path": "$SystemUpdate/L.Dash.NuiTroubleshooter.lex.nuitsxzp.xzp"
+  },
+  {
+    "bytes": 561,
+    "crc32": "549F4B2A",
+    "path": "$SystemUpdate/L.Dash.OnlineCommon.lex.ekmedia.xzp"
+  },
+  {
+    "bytes": 11859,
+    "crc32": "8C9D3B62",
+    "path": "$SystemUpdate/L.Dash.OnlineCommon.lex.vkmedia.xzp"
+  },
+  {
+    "bytes": 3799,
+    "crc32": "AAB9E4A8",
+    "path": "$SystemUpdate/L.Dash.PrivacyUI.xex.familyco.xzp"
+  },
+  {
+    "bytes": 92634,
+    "crc32": "BB395F9A",
+    "path": "$SystemUpdate/L.Dash.PrivacyUI.xex.privacyu.xzp"
+  },
+  {
+    "bytes": 2984,
+    "crc32": "5D9ECBAB",
+    "path": "$SystemUpdate/L.Dash.Search.lex.dashsear.xzp"
+  },
+  {
+    "bytes": 11859,
+    "crc32": "8C9D3B62",
+    "path": "$SystemUpdate/L.Dash.Search.lex.vkmedia.xzp"
+  },
+  {
+    "bytes": 36267,
+    "crc32": "337E4984",
+    "path": "$SystemUpdate/L.Dash.Search.xex.dashsear.xzp"
+  },
+  {
+    "bytes": 11859,
+    "crc32": "8C9D3B62",
+    "path": "$SystemUpdate/L.Dash.Search.xex.vkmedia.xzp"
+  },
+  {
+    "bytes": 21775,
+    "crc32": "1222403B",
+    "path": "$SystemUpdate/L.Dash.Social.lex.xzp.xzp"
+  },
+  {
+    "bytes": 1996,
+    "crc32": "E089A926",
+    "path": "$SystemUpdate/L.dash.xex.arcade.xzp"
+  },
+  {
+    "bytes": 363299,
+    "crc32": "4711325A",
+    "path": "$SystemUpdate/L.dash.xex.consoles.xzp"
+  },
+  {
+    "bytes": 7531,
+    "crc32": "D2E426FF",
+    "path": "$SystemUpdate/L.dash.xex.controlp.xzp"
+  },
+  {
+    "bytes": 21632,
+    "crc32": "15A4663B",
+    "path": "$SystemUpdate/L.dash.xex.contui.xzp"
+  },
+  {
+    "bytes": 53406,
+    "crc32": "C174D92C",
+    "path": "$SystemUpdate/L.dash.xex.dashcomm.xzp"
+  },
+  {
+    "bytes": 1215,
+    "crc32": "C22B7B68",
+    "path": "$SystemUpdate/L.dash.xex.dashmain.xzp"
+  },
+  {
+    "bytes": 24303,
+    "crc32": "F47E07BB",
+    "path": "$SystemUpdate/L.dash.xex.download.xzp"
+  },
+  {
+    "bytes": 13905,
+    "crc32": "AD235995",
+    "path": "$SystemUpdate/L.dash.xex.dvd.xzp"
+  },
+  {
+    "bytes": 15525,
+    "crc32": "303D3CE1",
+    "path": "$SystemUpdate/L.dash.xex.epix.xzp"
+  },
+  {
+    "bytes": 2288,
+    "crc32": "D9B0D0A6",
+    "path": "$SystemUpdate/L.dash.xex.gamer.xzp"
+  },
+  {
+    "bytes": 6403,
+    "crc32": "9A310E69",
+    "path": "$SystemUpdate/L.dash.xex.gamercar.xzp"
+  },
+  {
+    "bytes": 2386,
+    "crc32": "092C95DB",
+    "path": "$SystemUpdate/L.dash.xex.hubui.xzp"
+  },
+  {
+    "bytes": 5486,
+    "crc32": "24014869",
+    "path": "$SystemUpdate/L.dash.xex.iptv.xzp"
+  },
+  {
+    "bytes": 70350,
+    "crc32": "F3ECB15E",
+    "path": "$SystemUpdate/L.dash.xex.memory.xzp"
+  },
+  {
+    "bytes": 25496,
+    "crc32": "76048D32",
+    "path": "$SystemUpdate/L.dash.xex.music.xzp"
+  },
+  {
+    "bytes": 124100,
+    "crc32": "E67946A2",
+    "path": "$SystemUpdate/L.dash.xex.network.xzp"
+  },
+  {
+    "bytes": 15809,
+    "crc32": "DC0C699F",
+    "path": "$SystemUpdate/L.dash.xex.oobe.xzp"
+  },
+  {
+    "bytes": 5881,
+    "crc32": "00C07058",
+    "path": "$SystemUpdate/L.dash.xex.parental.xzp"
+  },
+  {
+    "bytes": 5697,
+    "crc32": "73447AA7",
+    "path": "$SystemUpdate/L.dash.xex.pictures.xzp"
+  },
+  {
+    "bytes": 83757,
+    "crc32": "398ED020",
+    "path": "$SystemUpdate/L.dash.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 5276,
+    "crc32": "0AE5112C",
+    "path": "$SystemUpdate/L.dash.xex.signinpr.xzp"
+  },
+  {
+    "bytes": 3699,
+    "crc32": "55BB2B8D",
+    "path": "$SystemUpdate/L.dash.xex.signupbo.xzp"
+  },
+  {
+    "bytes": 3249,
+    "crc32": "6B2F451E",
+    "path": "$SystemUpdate/L.dash.xex.slots.xzp"
+  },
+  {
+    "bytes": 19675,
+    "crc32": "E5163A55",
+    "path": "$SystemUpdate/L.dash.xex.socxzp.xzp"
+  },
+  {
+    "bytes": 4425,
+    "crc32": "E0D55CC3",
+    "path": "$SystemUpdate/L.dash.xex.thermal.xzp"
+  },
+  {
+    "bytes": 12068,
+    "crc32": "64EF40B2",
+    "path": "$SystemUpdate/L.dash.xex.videos.xzp"
+  },
+  {
+    "bytes": 4481,
+    "crc32": "FA06127C",
+    "path": "$SystemUpdate/L.dashnui.xex.speechpa.xzp"
+  },
+  {
+    "bytes": 16178,
+    "crc32": "5F5E6695",
+    "path": "$SystemUpdate/L.deviceselector.xex.media.xzp"
+  },
+  {
+    "bytes": 53406,
+    "crc32": "C174D92C",
+    "path": "$SystemUpdate/L.DvdXPlayer.xex.dashcomm.xzp"
+  },
+  {
+    "bytes": 13905,
+    "crc32": "AD235995",
+    "path": "$SystemUpdate/L.DvdXPlayer.xex.dvd.xzp"
+  },
+  {
+    "bytes": 50008,
+    "crc32": "EEDA94EE",
+    "path": "$SystemUpdate/L.GamerProfile.xex.gp.xzp"
+  },
+  {
+    "bytes": 5411,
+    "crc32": "ACB79FD0",
+    "path": "$SystemUpdate/L.Guide.AccountRecovery.xex.media.xzp"
+  },
+  {
+    "bytes": 71908,
+    "crc32": "7CBFE129",
+    "path": "$SystemUpdate/L.Guide.AccountRecovery.xex.shdmedia.xzp"
+  },
+  {
+    "bytes": 2611,
+    "crc32": "4FC5A7EC",
+    "path": "$SystemUpdate/L.Guide.AvatarMiniCreator.xex.avatarmc.xzp"
+  },
+  {
+    "bytes": 16050,
+    "crc32": "248CC3D3",
+    "path": "$SystemUpdate/L.Guide.Beacons.xex.media.xzp"
+  },
+  {
+    "bytes": 8699,
+    "crc32": "77177DA3",
+    "path": "$SystemUpdate/L.Guide.ChatAndMessenger.xex.media.xzp"
+  },
+  {
+    "bytes": 12275,
+    "crc32": "B9EC9C8D",
+    "path": "$SystemUpdate/L.Guide.CSVTrans.xex.CSVTrans.xzp"
+  },
+  {
+    "bytes": 44301,
+    "crc32": "82197F16",
+    "path": "$SystemUpdate/L.Guide.Fitness.xex.fitness.xzp"
+  },
+  {
+    "bytes": 59505,
+    "crc32": "96F922CC",
+    "path": "$SystemUpdate/L.Guide.Friends.xex.friends.xzp"
+  },
+  {
+    "bytes": 9052,
+    "crc32": "4C8D2D2A",
+    "path": "$SystemUpdate/L.Guide.MP.Download.xex.HudDLUI.xzp"
+  },
+  {
+    "bytes": 89136,
+    "crc32": "8705185F",
+    "path": "$SystemUpdate/L.Guide.MP.Download.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 49340,
+    "crc32": "0BD6594A",
+    "path": "$SystemUpdate/L.Guide.MP.LiveAccount.xex.HudLAUI.xzp"
+  },
+  {
+    "bytes": 89136,
+    "crc32": "8705185F",
+    "path": "$SystemUpdate/L.Guide.MP.LiveAccount.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 29201,
+    "crc32": "4612E2CC",
+    "path": "$SystemUpdate/L.Guide.MP.NuiPurchase.xex.HudPurUI.xzp"
+  },
+  {
+    "bytes": 89136,
+    "crc32": "8705185F",
+    "path": "$SystemUpdate/L.Guide.MP.NuiPurchase.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 32142,
+    "crc32": "9C841B81",
+    "path": "$SystemUpdate/L.Guide.MP.Payment.xex.HudPayUI.xzp"
+  },
+  {
+    "bytes": 89136,
+    "crc32": "8705185F",
+    "path": "$SystemUpdate/L.Guide.MP.Payment.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 50282,
+    "crc32": "F32D065C",
+    "path": "$SystemUpdate/L.Guide.MP.PaymentInst.xex.HudPiUI.xzp"
+  },
+  {
+    "bytes": 77149,
+    "crc32": "6D821A28",
+    "path": "$SystemUpdate/L.Guide.MP.PaymentInst.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 24975,
+    "crc32": "B5F40101",
+    "path": "$SystemUpdate/L.Guide.MP.Purchase.xex.HudPurUI.xzp"
+  },
+  {
+    "bytes": 89136,
+    "crc32": "8705185F",
+    "path": "$SystemUpdate/L.Guide.MP.Purchase.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 12602,
+    "crc32": "EE1910BA",
+    "path": "$SystemUpdate/L.Guide.MP.Subscriptions.xex.HudSubUI.xzp"
+  },
+  {
+    "bytes": 89136,
+    "crc32": "8705185F",
+    "path": "$SystemUpdate/L.Guide.MP.Subscriptions.xex.SharedUI.xzp"
+  },
+  {
+    "bytes": 6935,
+    "crc32": "ADEE5E89",
+    "path": "$SystemUpdate/L.Guide.NetworkStorage.xex.media.xzp"
+  },
+  {
+    "bytes": 24091,
+    "crc32": "FF293A51",
+    "path": "$SystemUpdate/L.Guide.NuiCommunity.xex.media.xzp"
+  },
+  {
+    "bytes": 75302,
+    "crc32": "4E7F2C94",
+    "path": "$SystemUpdate/L.Guide.NuiTroubleshooter.xex.media.xzp"
+  },
+  {
+    "bytes": 48264,
+    "crc32": "50B672C7",
+    "path": "$SystemUpdate/L.Guide.PlayerFeedback.xex.Feedback.xzp"
+  },
+  {
+    "bytes": 25567,
+    "crc32": "0CADFA8C",
+    "path": "$SystemUpdate/L.Guide.SocialPost.xex.media.xzp"
+  },
+  {
+    "bytes": 45412,
+    "crc32": "C899E469",
+    "path": "$SystemUpdate/L.Guide.TFA.xex.media.xzp"
+  },
+  {
+    "bytes": 6596,
+    "crc32": "B423BA86",
+    "path": "$SystemUpdate/L.Guide.Voicemail.xex.media.xzp"
+  },
+  {
+    "bytes": 42767,
+    "crc32": "9BACD344",
+    "path": "$SystemUpdate/L.hud.xex.hud.xzp"
+  },
+  {
+    "bytes": 61345,
+    "crc32": "8C243AC9",
+    "path": "$SystemUpdate/L.huduiskin.xex.xam.xzp"
+  },
+  {
+    "bytes": 7531,
+    "crc32": "D2E426FF",
+    "path": "$SystemUpdate/L.LiveSignup.xex.controlp.xzp"
+  },
+  {
+    "bytes": 197873,
+    "crc32": "DF4F96E4",
+    "path": "$SystemUpdate/L.LiveSignup.xex.media1.xzp"
+  },
+  {
+    "bytes": 22952,
+    "crc32": "F3D6188B",
+    "path": "$SystemUpdate/L.LiveSignup.xex.media2.xzp"
+  },
+  {
+    "bytes": 14981,
+    "crc32": "EB1BFAB7",
+    "path": "$SystemUpdate/L.MiniMediaPlayer.xex.media.xzp"
+  },
+  {
+    "bytes": 2873,
+    "crc32": "F7D3B324",
+    "path": "$SystemUpdate/L.nuihud.xex.media.xzp"
+  },
+  {
+    "bytes": 36093,
+    "crc32": "731B02B0",
+    "path": "$SystemUpdate/L.signin.xex.signin.xzp"
+  },
+  {
+    "bytes": 68154,
+    "crc32": "9CF0055A",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.app.xzp"
+  },
+  {
+    "bytes": 30212,
+    "crc32": "92E564F1",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.ccapp.xzp"
+  },
+  {
+    "bytes": 7531,
+    "crc32": "D2E426FF",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.controlp.xzp"
+  },
+  {
+    "bytes": 561,
+    "crc32": "549F4B2A",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.embedded.xzp"
+  },
+  {
+    "bytes": 71908,
+    "crc32": "7CBFE129",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.media.xzp"
+  },
+  {
+    "bytes": 22952,
+    "crc32": "F3D6188B",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.media2.xzp"
+  },
+  {
+    "bytes": 11859,
+    "crc32": "8C9D3B62",
+    "path": "$SystemUpdate/L.Title.NewLiveSignup.xex.vkmedia.xzp"
+  },
+  {
+    "bytes": 9804,
+    "crc32": "7D3C07F3",
+    "path": "$SystemUpdate/L.updater.xex.updater.xzp"
+  },
+  {
+    "bytes": 11859,
+    "crc32": "8C9D3B62",
+    "path": "$SystemUpdate/L.vk.xex.vk.xzp"
+  },
+  {
+    "bytes": 958,
+    "crc32": "DD166D96",
+    "path": "$SystemUpdate/L.xam.xex.controlp.xzp"
+  },
+  {
+    "bytes": 6435,
+    "crc32": "E9B97FA6",
+    "path": "$SystemUpdate/L.xam.xex.gamercrd.xzp"
+  },
+  {
+    "bytes": 1492,
+    "crc32": "6BE3955A",
+    "path": "$SystemUpdate/L.xam.xex.mplayer.xzp"
+  },
+  {
+    "bytes": 14021,
+    "crc32": "7A68EADF",
+    "path": "$SystemUpdate/L.xam.xex.shrdres.xzp"
+  },
+  {
+    "bytes": 874,
+    "crc32": "0F6E5687",
+    "path": "$SystemUpdate/L.xam.xex.xam.xzp"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "9689BF35",
+    "path": "$SystemUpdate/natalsu.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "64F54D03",
+    "path": "$SystemUpdate/nuihud.xex"
+  },
+  {
+    "bytes": 3219456,
+    "crc32": "4F650FA8",
+    "path": "$SystemUpdate/PlayReady.xex"
+  },
+  {
+    "bytes": 11862016,
+    "crc32": "F56E3EEE",
+    "path": "$SystemUpdate/su20076000_00000000"
+  },
+  {
+    "bytes": 32228,
+    "crc32": "FA744687",
+    "path": "$SystemUpdate/system.manifest"
+  },
+  {
+    "bytes": 21938176,
+    "crc32": "238D5AAB",
+    "path": "$SystemUpdate/Title.Zune.xex"
+  },
+  {
+    "bytes": 335872,
+    "crc32": "CA874237",
+    "path": "$SystemUpdate/Xam.Community.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "121439F4",
+    "path": "$SystemUpdate/Xam.WordRegister.xex"
+  },
+  {
+    "bytes": 1392640,
+    "crc32": "D7306C7A",
+    "path": "$SystemUpdate/XenonSCLatin.xtt"
+  },
+  {
+    "bytes": 659456,
+    "crc32": "78B09C8F",
+    "path": "$SystemUpdate/XimeDic.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "DF4584C4",
+    "path": "$SystemUpdate/XimeDic_CHS.xex"
+  },
+  {
+    "bytes": 167936,
+    "crc32": "46C15743",
+    "path": "$SystemUpdate/XimeDicCh.xex"
+  },
+  {
+    "bytes": 430080,
+    "crc32": "B098F421",
+    "path": "$SystemUpdate/ximedicex.xex"
+  },
+  {
+    "bytes": 512000,
+    "crc32": "C8834145",
+    "path": "$SystemUpdate/Xna_TitleLauncher.xex"
+  }
+]

@@ -1,0 +1,5317 @@
+[
+  {
+    "bytes": 24110,
+    "crc32": "5C2CF213",
+    "path": "Changelog.txt"
+  },
+  {
+    "bytes": 858624,
+    "crc32": "2B4C3260",
+    "path": "common/7z/7za.exe"
+  },
+  {
+    "bytes": 95660,
+    "crc32": "E7099CC8",
+    "path": "common/ArmV3.hex"
+  },
+  {
+    "bytes": 39488,
+    "crc32": "F7AFA8CC",
+    "path": "common/CB/cb_6750.bin"
+  },
+  {
+    "bytes": 6896,
+    "crc32": "9255DFB1",
+    "path": "common/CB/CB_A.13121.bin"
+  },
+  {
+    "bytes": 26400,
+    "crc32": "62B7B19C",
+    "path": "common/CB/CB_A.1940.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "AF626D51",
+    "path": "common/CB/CB_A.4577.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "14A54859",
+    "path": "common/CB/CB_A.5772.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "B33985A3",
+    "path": "common/CB/CB_A.6752.bin"
+  },
+  {
+    "bytes": 38688,
+    "crc32": "C4E044A0",
+    "path": "common/CB/CB_A.7375.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "DBC9CE6E",
+    "path": "common/CB/CB_A.9188.bin"
+  },
+  {
+    "bytes": 31552,
+    "crc32": "6F3F9C18",
+    "path": "common/CB/CB_B.13121.bin"
+  },
+  {
+    "bytes": 32240,
+    "crc32": "AD4284BD",
+    "path": "common/CB/CB_B.13180.bin"
+  },
+  {
+    "bytes": 33376,
+    "crc32": "42718547",
+    "path": "common/CB/CB_B.4575.bin"
+  },
+  {
+    "bytes": 32544,
+    "crc32": "EE79C182",
+    "path": "common/CB/CB_B.4577.bin"
+  },
+  {
+    "bytes": 37712,
+    "crc32": "48124A72",
+    "path": "common/CB/CB_B.5772.bin"
+  },
+  {
+    "bytes": 38528,
+    "crc32": "4EE83EA3",
+    "path": "common/CB/CB_B.5773.bin"
+  },
+  {
+    "bytes": 37776,
+    "crc32": "B8A4B624",
+    "path": "common/CB/CB_B.6752.bin"
+  },
+  {
+    "bytes": 38592,
+    "crc32": "554ED413",
+    "path": "common/CB/CB_B.6753.bin"
+  },
+  {
+    "bytes": 30720,
+    "crc32": "AEDC0E78",
+    "path": "common/CB/CB_B.9188.bin"
+  },
+  {
+    "bytes": 31280,
+    "crc32": "F952C521",
+    "path": "common/CB/CB_B.9230.bin"
+  },
+  {
+    "bytes": 1024,
+    "crc32": "AE6E6362",
+    "path": "common/CB/CB_X_g3fix.bin"
+  },
+  {
+    "bytes": 24576,
+    "crc32": "6DFD85F5",
+    "path": "common/cdxell/CD"
+  },
+  {
+    "bytes": 24576,
+    "crc32": "4C40B224",
+    "path": "common/cdxell/CDjasper"
+  },
+  {
+    "bytes": 24576,
+    "crc32": "D0FB5B9D",
+    "path": "common/cdxell/CDRGH2"
+  },
+  {
+    "bytes": 57632,
+    "crc32": "6D98CE58",
+    "path": "common/demon_firmware_1.04.bin"
+  },
+  {
+    "bytes": 137,
+    "crc32": "BC5C095D",
+    "path": "common/drivers/del_old.bat"
+  },
+  {
+    "bytes": 60291,
+    "crc32": "B9758646",
+    "path": "common/drivers/dm.jpg"
+  },
+  {
+    "bytes": 56831,
+    "crc32": "EBCB7356",
+    "path": "common/drivers/driver_files.jpg"
+  },
+  {
+    "bytes": 139069,
+    "crc32": "97F7411E",
+    "path": "common/drivers/error.jpg"
+  },
+  {
+    "bytes": 53,
+    "crc32": "09CB5B54",
+    "path": "common/drivers/FOR NAND-X AND JR-PROGRAMMER.txt"
+  },
+  {
+    "bytes": 76815,
+    "crc32": "1FAC442C",
+    "path": "common/drivers/install.jpg"
+  },
+  {
+    "bytes": 76514,
+    "crc32": "2A3B6870",
+    "path": "common/drivers/install_anyway.jpg"
+  },
+  {
+    "bytes": 76384,
+    "crc32": "5206C60E",
+    "path": "common/drivers/mtx usb/amd64/libusb0.dll"
+  },
+  {
+    "bytes": 52320,
+    "crc32": "B0588424",
+    "path": "common/drivers/mtx usb/amd64/libusb0.sys"
+  },
+  {
+    "bytes": 157792,
+    "crc32": "4BB06E53",
+    "path": "common/drivers/mtx usb/ia64/libusb0.dll"
+  },
+  {
+    "bytes": 110688,
+    "crc32": "519AC378",
+    "path": "common/drivers/mtx usb/ia64/libusb0.sys"
+  },
+  {
+    "bytes": 25088,
+    "crc32": "3FF662CB",
+    "path": "common/drivers/mtx usb/installer_x64.exe"
+  },
+  {
+    "bytes": 23552,
+    "crc32": "DA085715",
+    "path": "common/drivers/mtx usb/installer_x86.exe"
+  },
+  {
+    "bytes": 43302,
+    "crc32": "2F172CFE",
+    "path": "common/drivers/mtx usb/license/libusb0/installer_license.txt"
+  },
+  {
+    "bytes": 8066,
+    "crc32": "7F2F4C3D",
+    "path": "common/drivers/mtx usb/MemoryAccess.inf"
+  },
+  {
+    "bytes": 42592,
+    "crc32": "0E98240A",
+    "path": "common/drivers/mtx usb/x86/libusb0.sys"
+  },
+  {
+    "bytes": 67680,
+    "crc32": "09786A68",
+    "path": "common/drivers/mtx usb/x86/libusb0_x86.dll"
+  },
+  {
+    "bytes": 11732,
+    "crc32": "DF7F35EA",
+    "path": "common/drivers/mtx usb bootloader/mchpusb.cat"
+  },
+  {
+    "bytes": 3535,
+    "crc32": "8FAFADF6",
+    "path": "common/drivers/mtx usb bootloader/mchpusb.inf"
+  },
+  {
+    "bytes": 53760,
+    "crc32": "18198DD4",
+    "path": "common/drivers/mtx usb bootloader/mchpusb.sys"
+  },
+  {
+    "bytes": 64512,
+    "crc32": "759A9851",
+    "path": "common/drivers/mtx usb bootloader/mchpusb64.sys"
+  },
+  {
+    "bytes": 12068,
+    "crc32": "1D63B9D2",
+    "path": "common/drivers/PRUFTECHNIK.cat"
+  },
+  {
+    "bytes": 4108,
+    "crc32": "509DF1D3",
+    "path": "common/drivers/PRUFTECHNIK.inf"
+  },
+  {
+    "bytes": 11996,
+    "crc32": "2115A244",
+    "path": "common/drivers/PRUFTECHNIK_X64.cat"
+  },
+  {
+    "bytes": 33280,
+    "crc32": "21195F77",
+    "path": "common/drivers/ptlibusb0.dll"
+  },
+  {
+    "bytes": 22144,
+    "crc32": "81C156DA",
+    "path": "common/drivers/ptlibusb0.sys"
+  },
+  {
+    "bytes": 53760,
+    "crc32": "776B3BE9",
+    "path": "common/drivers/ptlibusb0_x64.dll"
+  },
+  {
+    "bytes": 30720,
+    "crc32": "9AD37C36",
+    "path": "common/drivers/ptlibusb0_x64.sys"
+  },
+  {
+    "bytes": 2093,
+    "crc32": "FFFD6095",
+    "path": "common/drivers/readme.txt"
+  },
+  {
+    "bytes": 50998,
+    "crc32": "671B2230",
+    "path": "common/drivers/success.jpg"
+  },
+  {
+    "bytes": 2691032,
+    "crc32": "6AECBE68",
+    "path": "common/drivers/xFlasher-Drivers.exe"
+  },
+  {
+    "bytes": 168,
+    "crc32": "E7B160A7",
+    "path": "common/mtx-tools/DebugLog.txt"
+  },
+  {
+    "bytes": 98304,
+    "crc32": "009D6F3A",
+    "path": "common/mtx-tools/DLPortIO.dll"
+  },
+  {
+    "bytes": 41984,
+    "crc32": "46C64D1F",
+    "path": "common/mtx-tools/libusb0.dll"
+  },
+  {
+    "bytes": 28160,
+    "crc32": "325CA9C3",
+    "path": "common/mtx-tools/libusb0.sys"
+  },
+  {
+    "bytes": 54272,
+    "crc32": "4E6433D3",
+    "path": "common/mtx-tools/libusb0_x64.dll"
+  },
+  {
+    "bytes": 32256,
+    "crc32": "19BBC9D9",
+    "path": "common/mtx-tools/libusb0_x64.sys"
+  },
+  {
+    "bytes": 241664,
+    "crc32": "BB3C62BB",
+    "path": "common/mtx-tools/NandPro2b_Armv3.exe"
+  },
+  {
+    "bytes": 67680,
+    "crc32": "09786A68",
+    "path": "common/mtx-tools/xsvf/libusb0.dll"
+  },
+  {
+    "bytes": 42592,
+    "crc32": "0E98240A",
+    "path": "common/mtx-tools/xsvf/libusb0.sys"
+  },
+  {
+    "bytes": 76384,
+    "crc32": "5206C60E",
+    "path": "common/mtx-tools/xsvf/libusb0_x64.dll"
+  },
+  {
+    "bytes": 52320,
+    "crc32": "B0588424",
+    "path": "common/mtx-tools/xsvf/libusb0_x64.sys"
+  },
+  {
+    "bytes": 58368,
+    "crc32": "05165B93",
+    "path": "common/mtx-tools/xsvf/xsvf.exe"
+  },
+  {
+    "bytes": 37198,
+    "crc32": "0BBF413F",
+    "path": "common/mtx-utility/matrix_128.hex"
+  },
+  {
+    "bytes": 37198,
+    "crc32": "0BBF413F",
+    "path": "common/mtx-utility/matrix_64a.HEX"
+  },
+  {
+    "bytes": 90960,
+    "crc32": "41B4F958",
+    "path": "common/mtx-utility/matrix_orig.hex"
+  },
+  {
+    "bytes": 19008,
+    "crc32": "516406C6",
+    "path": "common/mtx-utility/matrix_post.hex"
+  },
+  {
+    "bytes": 59904,
+    "crc32": "285A5B87",
+    "path": "common/mtx-utility/mpusbapi.dll"
+  },
+  {
+    "bytes": 268800,
+    "crc32": "1F3BD91A",
+    "path": "common/mtx-utility/mtx-utility.exe"
+  },
+  {
+    "bytes": 33028,
+    "crc32": "2F460BA1",
+    "path": "common/PICFLASH_E_1_0_4.HEX"
+  },
+  {
+    "bytes": 33952,
+    "crc32": "CEF12E9C",
+    "path": "common/PICFLASH_E_1_0_4_ISD_BIT.HEX"
+  },
+  {
+    "bytes": 35272,
+    "crc32": "E8DEDA49",
+    "path": "common/PICFLASH_E_1_0_4_JRP1_ISD.HEX"
+  },
+  {
+    "bytes": 39135,
+    "crc32": "743F2498",
+    "path": "common/PICFLASH_E_1_0_5-JRP-V2.HEX"
+  },
+  {
+    "bytes": 5990,
+    "crc32": "2DC2E252",
+    "path": "common/scripts/getWineComPorts.sh"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "F98B443E",
+    "path": "common/sounds/GOW3.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "B6053C00",
+    "path": "common/sounds/Halo3.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "76D932ED",
+    "path": "common/sounds/Halo4.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "E83CCCFD",
+    "path": "common/sounds/MW3.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "7477C775",
+    "path": "common/sounds/proto_beep.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "EA022A52",
+    "path": "common/sounds/proto_vista.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "D33BA041",
+    "path": "common/sounds/Standard.bin"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "C5B67042",
+    "path": "common/sounds/SW.bin"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "C2F77444",
+    "path": "common/svf/CO_L_0.2_T_54.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "6DBAC2BB",
+    "path": "common/svf/CO_L_0.2_T_54.8_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "660FD0FD",
+    "path": "common/svf/CO_L_0.2_T_55.2_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "68410256",
+    "path": "common/svf/CO_L_0.2_T_55.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "FD5DFA81",
+    "path": "common/svf/CO_L_0.3_T_54.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "0B152E81",
+    "path": "common/svf/CO_L_0.3_T_54.8_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "C7D20FE3",
+    "path": "common/svf/CO_L_0.3_T_55.2_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "555DF94E",
+    "path": "common/svf/CO_L_0.3_T_55.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "91B9CA37",
+    "path": "common/svf/CO_L_0.5_T_54.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "E24F7A61",
+    "path": "common/svf/CO_L_0.5_T_54.8_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "BDC5B2D0",
+    "path": "common/svf/CO_L_0.5_T_55.2_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "56F7D986",
+    "path": "common/svf/CO_L_0.5_T_55.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "A6C299C3",
+    "path": "common/svf/CO_L_0.6_T_54.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "9709CE53",
+    "path": "common/svf/CO_L_0.6_T_54.8_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "5BDEAF58",
+    "path": "common/svf/CO_L_0.6_T_55.2_PRO_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "F6E020A8",
+    "path": "common/svf/CO_L_0.6_T_55.5_PRO_DU.svf"
+  },
+  {
+    "bytes": 167444,
+    "crc32": "FA5B378F",
+    "path": "common/svf/openxenium.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "30043D70",
+    "path": "common/svf/rgh12_co_100_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "981DDE5B",
+    "path": "common/svf/rgh12_co_105_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "C2916D87",
+    "path": "common/svf/rgh12_co_110_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "EE85B5ED",
+    "path": "common/svf/rgh12_co_115_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "2D1ED386",
+    "path": "common/svf/rgh12_co_120_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "C231FC69",
+    "path": "common/svf/rgh12_co_125_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "E1CC0A1F",
+    "path": "common/svf/rgh12_co_130_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "68592CF1",
+    "path": "common/svf/rgh12_co_135_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "CE48A72B",
+    "path": "common/svf/rgh12_co_60_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "A57595D5",
+    "path": "common/svf/rgh12_co_65_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "52109F1A",
+    "path": "common/svf/rgh12_co_70_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "27709A82",
+    "path": "common/svf/rgh12_co_75_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "C10A3D00",
+    "path": "common/svf/rgh12_co_80_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "0C3F2411",
+    "path": "common/svf/rgh12_co_85_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "E0FBF91D",
+    "path": "common/svf/rgh12_co_90_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "A8F3703F",
+    "path": "common/svf/rgh12_co_95_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "E6E830E9",
+    "path": "common/svf/rgh12_fj_17_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "9BDC17DD",
+    "path": "common/svf/rgh12_fj_18_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "415E0713",
+    "path": "common/svf/rgh12_fj_19_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "DDDD02F7",
+    "path": "common/svf/rgh12_fj_20_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "94ED3DD8",
+    "path": "common/svf/rgh12_fj_21_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "B55587EC",
+    "path": "common/svf/rgh12_fj_22_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "E7CB49EE",
+    "path": "common/svf/rgh12_fj_23_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "211AA780",
+    "path": "common/svf/rgh12_fj_24_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "03FBC6EF",
+    "path": "common/svf/rgh12_tr_100_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "0B17C448",
+    "path": "common/svf/rgh12_tr_105_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "999E69F6",
+    "path": "common/svf/rgh12_tr_110_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "C493172F",
+    "path": "common/svf/rgh12_tr_115_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "8E8AEBD6",
+    "path": "common/svf/rgh12_tr_120_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "0F55E140",
+    "path": "common/svf/rgh12_tr_125_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "5C7714E4",
+    "path": "common/svf/rgh12_tr_130_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "AE319AD4",
+    "path": "common/svf/rgh12_tr_135_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "9D867370",
+    "path": "common/svf/rgh12_tr_60_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "5673C00E",
+    "path": "common/svf/rgh12_tr_65_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "43F0509F",
+    "path": "common/svf/rgh12_tr_70_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "00F7F162",
+    "path": "common/svf/rgh12_tr_75_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "CE2B56B2",
+    "path": "common/svf/rgh12_tr_80_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "694F43AA",
+    "path": "common/svf/rgh12_tr_85_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "A01951CD",
+    "path": "common/svf/rgh12_tr_90_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "63FE9AEF",
+    "path": "common/svf/rgh12_tr_95_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "77CEA77C",
+    "path": "common/svf/rgh12_wb_100_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "445BA6FF",
+    "path": "common/svf/rgh12_wb_105_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "DF5B431E",
+    "path": "common/svf/rgh12_wb_110_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "A6560787",
+    "path": "common/svf/rgh12_wb_115_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "F448F8AB",
+    "path": "common/svf/rgh12_wb_120_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "D68EAB6D",
+    "path": "common/svf/rgh12_wb_125_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "9997ADB4",
+    "path": "common/svf/rgh12_wb_130_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "1AE6B3B8",
+    "path": "common/svf/rgh12_wb_135_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "C5D13159",
+    "path": "common/svf/rgh12_wb_60_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "7DBD85DE",
+    "path": "common/svf/rgh12_wb_65_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "AB34A8C1",
+    "path": "common/svf/rgh12_wb_70_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "5ECCAA59",
+    "path": "common/svf/rgh12_wb_75_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "7F2D2341",
+    "path": "common/svf/rgh12_wb_80_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "DC00E9CF",
+    "path": "common/svf/rgh12_wb_85_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "CD05130D",
+    "path": "common/svf/rgh12_wb_90_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "C3476820",
+    "path": "common/svf/rgh12_wb_95_v2.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "E8DEAED6",
+    "path": "common/svf/rgh1_falcon.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "669F0D9A",
+    "path": "common/svf/rgh1_jasper.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "4D097AAA",
+    "path": "common/svf/rgh1_zephyr.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "A2B70880",
+    "path": "common/svf/rjtop_falcon.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "87BA16EC",
+    "path": "common/svf/rjtop_jasper.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "7BC10539",
+    "path": "common/svf/TR_L_0.3_T_60.0.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "455BEA03",
+    "path": "common/svf/TR_L_0.3_T_60.0_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "B9C6E566",
+    "path": "common/svf/TR_L_0.3_T_60.3.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "2BC06B1F",
+    "path": "common/svf/TR_L_0.3_T_60.3_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "1F5D1568",
+    "path": "common/svf/TR_L_0.3_T_60.6.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "08184FDC",
+    "path": "common/svf/TR_L_0.3_T_60.6_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "74AC9942",
+    "path": "common/svf/TR_L_0.3_T_60.9.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "BF64FEDE",
+    "path": "common/svf/TR_L_0.3_T_60.9_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "2EF18CB0",
+    "path": "common/svf/TR_L_0.5_T_60.0.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "EB54F195",
+    "path": "common/svf/TR_L_0.5_T_60.0_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "A35108AC",
+    "path": "common/svf/TR_L_0.5_T_60.3.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "AF532BAD",
+    "path": "common/svf/TR_L_0.5_T_60.3_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "2EE2FBA6",
+    "path": "common/svf/TR_L_0.5_T_60.6.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "113D2DF4",
+    "path": "common/svf/TR_L_0.5_T_60.6_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "CF51870E",
+    "path": "common/svf/TR_L_0.5_T_60.9.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "DA445386",
+    "path": "common/svf/TR_L_0.5_T_60.9_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "9D52683C",
+    "path": "common/svf/TR_L_0.6_T_60.0.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "0B65CD9A",
+    "path": "common/svf/TR_L_0.6_T_60.0_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "3272C6A8",
+    "path": "common/svf/TR_L_0.6_T_60.3.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "200EB4E5",
+    "path": "common/svf/TR_L_0.6_T_60.3_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "C623C57F",
+    "path": "common/svf/TR_L_0.6_T_60.6.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "76BA6D78",
+    "path": "common/svf/TR_L_0.6_T_60.6_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "70F03755",
+    "path": "common/svf/TR_L_0.6_T_60.9.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "89CD6A18",
+    "path": "common/svf/TR_L_0.6_T_60.9_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "F3C59D05",
+    "path": "common/svf/TR_L_0.8_T_60.0.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "38B6861A",
+    "path": "common/svf/TR_L_0.8_T_60.0_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "60D35C89",
+    "path": "common/svf/TR_L_0.8_T_60.3.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "6B2CDBC1",
+    "path": "common/svf/TR_L_0.8_T_60.3_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "8896E1EB",
+    "path": "common/svf/TR_L_0.8_T_60.6.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "447DE7A7",
+    "path": "common/svf/TR_L_0.8_T_60.6_DU.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "4D8F096E",
+    "path": "common/svf/TR_L_0.8_T_60.9.svf"
+  },
+  {
+    "bytes": 97864,
+    "crc32": "AE1E6B75",
+    "path": "common/svf/TR_L_0.8_T_60.9_DU.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "29F0419E",
+    "path": "common/svf/XE_192_L_0.9_T_59.4.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "790003BE",
+    "path": "common/svf/XE_192_L_1.0_T_59.4.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "CB33ACAF",
+    "path": "common/svf/XE_96_L_0.9_T_59.4.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "37FADCCE",
+    "path": "common/svf/XE_96_L_1.0_T_59.4.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "8D96D80F",
+    "path": "common/svf/ZE_192_L_0.9_T_62.5.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "802E30C7",
+    "path": "common/svf/ZE_192_L_1.0_T_62.5.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "270F872C",
+    "path": "common/svf/ZE_96_L_0.9_T_62.5.svf"
+  },
+  {
+    "bytes": 57732,
+    "crc32": "64EDA9D4",
+    "path": "common/svf/ZE_96_L_1.0_T_62.5.svf"
+  },
+  {
+    "bytes": 123648,
+    "crc32": "6E76DCC9",
+    "path": "common/XDKbuild-Timings.rar"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "9AD1C214",
+    "path": "common/xell-images/glitch2/CORONA.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "E87B9847",
+    "path": "common/xell-images/glitch2/CORONA_4GB.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "6A655BAA",
+    "path": "common/xell-images/glitch2/CORONA_4GB_CR4.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "5829FBC5",
+    "path": "common/xell-images/glitch2/CORONA_4GB_RGH3.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "9C5B4577",
+    "path": "common/xell-images/glitch2/CORONA_4GB_SMC+.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "47204365",
+    "path": "common/xell-images/glitch2/CORONA_4GB_WB.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "C53E8088",
+    "path": "common/xell-images/glitch2/CORONA_4GB_WB_CR4.ecc"
+  },
+  {
+    "bytes": 1310720,
+    "crc32": "33009E55",
+    "path": "common/xell-images/glitch2/CORONA_4GB_WB_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "3801636F",
+    "path": "common/xell-images/glitch2/CORONA_CR4.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "819A0497",
+    "path": "common/xell-images/glitch2/CORONA_RGH3.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "A913E431",
+    "path": "common/xell-images/glitch2/CORONA_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "F0DA3066",
+    "path": "common/xell-images/glitch2/CORONA_WB.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "520A911D",
+    "path": "common/xell-images/glitch2/CORONA_WB_CR4.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "C3181643",
+    "path": "common/xell-images/glitch2/CORONA_WB_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "332B6EDB",
+    "path": "common/xell-images/glitch2/FALCON.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "8AC16D4A",
+    "path": "common/xell-images/glitch2/FALCON_CR4.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "DB59CD7D",
+    "path": "common/xell-images/glitch2/FALCON_RGH3.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "910941A5",
+    "path": "common/xell-images/glitch2/FALCON_RGH3_10.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "E1177AF7",
+    "path": "common/xell-images/glitch2/FALCON_RGH3_OC.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "40AABC63",
+    "path": "common/xell-images/glitch2/FALCON_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "0B06910B",
+    "path": "common/xell-images/glitch2/JASPER.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "934EF2B5",
+    "path": "common/xell-images/glitch2/JASPER_CR4.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "80C725B4",
+    "path": "common/xell-images/glitch2/JASPER_RGH3.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "CA97A96C",
+    "path": "common/xell-images/glitch2/JASPER_RGH3_10.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "6B26DD82",
+    "path": "common/xell-images/glitch2/JASPER_RGH3_OC.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "89AEDBBF",
+    "path": "common/xell-images/glitch2/JASPER_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "8AC3FF45",
+    "path": "common/xell-images/glitch2/TRINITY.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "49CBFCDB",
+    "path": "common/xell-images/glitch2/TRINITY_CR4.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "E0F4900D",
+    "path": "common/xell-images/glitch2/TRINITY_RGH3.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "F8891B94",
+    "path": "common/xell-images/glitch2/TRINITY_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "7DCA82EB",
+    "path": "common/xell-images/glitch2/XENON.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "C75BCED0",
+    "path": "common/xell-images/glitch2/XENON_ELPIS.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "75D87818",
+    "path": "common/xell-images/glitch2/XENON_ELPIS_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "CF493423",
+    "path": "common/xell-images/glitch2/XENON_SMC+.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "03D8C434",
+    "path": "common/xell-images/glitch2/ZEPHYR.ecc"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "49B65BA6",
+    "path": "common/xell-images/jtag/falcon.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "9519AD8E",
+    "path": "common/xell-images/jtag/falcon_aud_clamp.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "F8256638",
+    "path": "common/xell-images/jtag/jasper.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "24A7EE1E",
+    "path": "common/xell-images/jtag/jasper_aud_clamp.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "6B92B3E6",
+    "path": "common/xell-images/jtag/jasper_bb.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "FFF59BF0",
+    "path": "common/xell-images/jtag/jasper_bb_aud_clamp.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "410F332B",
+    "path": "common/xell-images/jtag/xenon.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "FCDA450D",
+    "path": "common/xell-images/jtag/zephyr.bin"
+  },
+  {
+    "bytes": 1351680,
+    "crc32": "2058CD2B",
+    "path": "common/xell-images/jtag/zephyr_aud_clamp.bin"
+  },
+  {
+    "bytes": 118080,
+    "crc32": "90478DE4",
+    "path": "common/xflasher/FTCSPI.dll"
+  },
+  {
+    "bytes": 203144,
+    "crc32": "9B3425E6",
+    "path": "common/xflasher/FTD2XX.dll"
+  },
+  {
+    "bytes": 8993744,
+    "crc32": "EC53BD6E",
+    "path": "common/xflasher/vcredist_x86.exe"
+  },
+  {
+    "bytes": 143872,
+    "crc32": "60F357E7",
+    "path": "common/xflasher/xFlasher.dll"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "E377B60E",
+    "path": "common/xsvf/CO_L_0.2_T_54.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "F22F7BAF",
+    "path": "common/xsvf/CO_L_0.2_T_54.8_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "61C476BC",
+    "path": "common/xsvf/CO_L_0.2_T_55.2_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "A9659A2E",
+    "path": "common/xsvf/CO_L_0.2_T_55.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "58904544",
+    "path": "common/xsvf/CO_L_0.3_T_54.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "49C888E5",
+    "path": "common/xsvf/CO_L_0.3_T_54.8_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "DA2385F6",
+    "path": "common/xsvf/CO_L_0.3_T_55.2_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "12826964",
+    "path": "common/xsvf/CO_L_0.3_T_55.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "B902CACD",
+    "path": "common/xsvf/CO_L_0.5_T_54.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "2290DFFF",
+    "path": "common/xsvf/CO_L_0.5_T_54.8_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "2C1B923C",
+    "path": "common/xsvf/CO_L_0.5_T_55.2_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "EF874FE2",
+    "path": "common/xsvf/CO_L_0.5_T_55.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "02E53987",
+    "path": "common/xsvf/CO_L_0.6_T_54.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "99772CB5",
+    "path": "common/xsvf/CO_L_0.6_T_54.8_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "97FC6176",
+    "path": "common/xsvf/CO_L_0.6_T_55.2_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "5460BCA8",
+    "path": "common/xsvf/CO_L_0.6_T_55.5_PRO_DU.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "E204BB8F",
+    "path": "common/xsvf/rgh12_co_100_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "455E6BFC",
+    "path": "common/xsvf/rgh12_co_105_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "0D542FA9",
+    "path": "common/xsvf/rgh12_co_110_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "FAF2AF12",
+    "path": "common/xsvf/rgh12_co_115_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "4566203C",
+    "path": "common/xsvf/rgh12_co_120_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "357D22FC",
+    "path": "common/xsvf/rgh12_co_125_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "F0C9E8BD",
+    "path": "common/xsvf/rgh12_co_130_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "1EF7B5BE",
+    "path": "common/xsvf/rgh12_co_135_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "2A26811E",
+    "path": "common/xsvf/rgh12_co_60_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "25463C33",
+    "path": "common/xsvf/rgh12_co_65_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "196EE080",
+    "path": "common/xsvf/rgh12_co_70_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "335817B8",
+    "path": "common/xsvf/rgh12_co_75_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "9933A41E",
+    "path": "common/xsvf/rgh12_co_80_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "843A7A71",
+    "path": "common/xsvf/rgh12_co_85_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "DC9B02FD",
+    "path": "common/xsvf/rgh12_co_90_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "82D8AB83",
+    "path": "common/xsvf/rgh12_co_95_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "AE0B4ECB",
+    "path": "common/xsvf/rgh12_fj_17_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "01C0EC28",
+    "path": "common/xsvf/rgh12_fj_18_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "5A57E95D",
+    "path": "common/xsvf/rgh12_fj_19_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "564DC5CE",
+    "path": "common/xsvf/rgh12_fj_20_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "67A33839",
+    "path": "common/xsvf/rgh12_fj_21_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "2D6B99F1",
+    "path": "common/xsvf/rgh12_fj_22_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "52251311",
+    "path": "common/xsvf/rgh12_fj_23_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "13BF457C",
+    "path": "common/xsvf/rgh12_fj_24_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "69FB403D",
+    "path": "common/xsvf/rgh12_tr_100_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "CEA1904E",
+    "path": "common/xsvf/rgh12_tr_105_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "86ABD41B",
+    "path": "common/xsvf/rgh12_tr_110_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "6A09E757",
+    "path": "common/xsvf/rgh12_tr_115_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "3DE6F5EF",
+    "path": "common/xsvf/rgh12_tr_120_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "BE82D94E",
+    "path": "common/xsvf/rgh12_tr_125_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "3242298B",
+    "path": "common/xsvf/rgh12_tr_130_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "64553C49",
+    "path": "common/xsvf/rgh12_tr_135_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "9AE2D92B",
+    "path": "common/xsvf/rgh12_tr_60_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "AEB9C781",
+    "path": "common/xsvf/rgh12_tr_65_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "D1C33C53",
+    "path": "common/xsvf/rgh12_tr_70_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "FB123411",
+    "path": "common/xsvf/rgh12_tr_75_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "E1B371CD",
+    "path": "common/xsvf/rgh12_tr_80_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "0FC581C3",
+    "path": "common/xsvf/rgh12_tr_85_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "5764F94F",
+    "path": "common/xsvf/rgh12_tr_90_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "AA13401A",
+    "path": "common/xsvf/rgh12_tr_95_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "AC7187BA",
+    "path": "common/xsvf/rgh12_wb_100_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "CD7D4526",
+    "path": "common/xsvf/rgh12_wb_105_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "B2CC3E53",
+    "path": "common/xsvf/rgh12_wb_110_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "07652559",
+    "path": "common/xsvf/rgh12_wb_115_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "2E43E546",
+    "path": "common/xsvf/rgh12_wb_120_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "953550A0",
+    "path": "common/xsvf/rgh12_wb_125_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "CFEA337B",
+    "path": "common/xsvf/rgh12_wb_130_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "5904FD13",
+    "path": "common/xsvf/rgh12_wb_135_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "66B87DF7",
+    "path": "common/xsvf/rgh12_wb_60_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "12D8FE25",
+    "path": "common/xsvf/rgh12_wb_65_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "27AC4C0C",
+    "path": "common/xsvf/rgh12_wb_70_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "1F68717F",
+    "path": "common/xsvf/rgh12_wb_75_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "50BF5B14",
+    "path": "common/xsvf/rgh12_wb_80_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "1B602D5F",
+    "path": "common/xsvf/rgh12_wb_85_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "59322F43",
+    "path": "common/xsvf/rgh12_wb_90_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "9AD2F10D",
+    "path": "common/xsvf/rgh12_wb_95_v2.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "46DEBC13",
+    "path": "common/xsvf/rgh1_falcon.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "645ED4C0",
+    "path": "common/xsvf/rgh1_jasper.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "013818ED",
+    "path": "common/xsvf/rgh1_zephyr.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "98A9ED68",
+    "path": "common/xsvf/rjtop_falcon.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "90342C3F",
+    "path": "common/xsvf/rjtop_jasper.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "57EFD19F",
+    "path": "common/xsvf/TR_L_0.3_T_60.0.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "28B7000F",
+    "path": "common/xsvf/TR_L_0.3_T_60.0_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "30B99050",
+    "path": "common/xsvf/TR_L_0.3_T_60.3.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "A3FF7D68",
+    "path": "common/xsvf/TR_L_0.3_T_60.3_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "B20AF941",
+    "path": "common/xsvf/TR_L_0.3_T_60.6.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "333891CD",
+    "path": "common/xsvf/TR_L_0.3_T_60.6_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "BFA68399",
+    "path": "common/xsvf/TR_L_0.3_T_60.9.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "ED51854D",
+    "path": "common/xsvf/TR_L_0.3_T_60.9_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "AC536A40",
+    "path": "common/xsvf/TR_L_0.5_T_60.0.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "4B97B236",
+    "path": "common/xsvf/TR_L_0.5_T_60.0_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "62225AAD",
+    "path": "common/xsvf/TR_L_0.5_T_60.3.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "3FD35817",
+    "path": "common/xsvf/TR_L_0.5_T_60.3_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "2BE890B4",
+    "path": "common/xsvf/TR_L_0.5_T_60.6.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "4FD2856E",
+    "path": "common/xsvf/TR_L_0.5_T_60.6_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "D3E0645C",
+    "path": "common/xsvf/TR_L_0.5_T_60.9.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "139A3C99",
+    "path": "common/xsvf/TR_L_0.5_T_60.9_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "17B4990A",
+    "path": "common/xsvf/TR_L_0.6_T_60.0.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "F070417C",
+    "path": "common/xsvf/TR_L_0.6_T_60.0_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "D9C5A9E7",
+    "path": "common/xsvf/TR_L_0.6_T_60.3.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "8434AB5D",
+    "path": "common/xsvf/TR_L_0.6_T_60.3_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "900F63FE",
+    "path": "common/xsvf/TR_L_0.6_T_60.6.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "F4357624",
+    "path": "common/xsvf/TR_L_0.6_T_60.6_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "68079716",
+    "path": "common/xsvf/TR_L_0.6_T_60.9.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "A87DCFD3",
+    "path": "common/xsvf/TR_L_0.6_T_60.9_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "9EE2D51D",
+    "path": "common/xsvf/TR_L_0.8_T_60.0.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "6BA75D22",
+    "path": "common/xsvf/TR_L_0.8_T_60.0_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "521ABF0C",
+    "path": "common/xsvf/TR_L_0.8_T_60.3.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "8B334CD7",
+    "path": "common/xsvf/TR_L_0.8_T_60.3_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "1F113B5E",
+    "path": "common/xsvf/TR_L_0.8_T_60.6.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "88AE4E2B",
+    "path": "common/xsvf/TR_L_0.8_T_60.6_DU.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "103B1667",
+    "path": "common/xsvf/TR_L_0.8_T_60.9.xsvf"
+  },
+  {
+    "bytes": 43640,
+    "crc32": "387B5693",
+    "path": "common/xsvf/TR_L_0.8_T_60.9_DU.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "FA291644",
+    "path": "common/xsvf/XE_192_L_0.9_T_59.4.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "DB3C1BAB",
+    "path": "common/xsvf/XE_192_L_1.0_T_59.4.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "0B140748",
+    "path": "common/xsvf/XE_96_L_0.9_T_59.4.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "2A010AA7",
+    "path": "common/xsvf/XE_96_L_1.0_T_59.4.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "58D2C07C",
+    "path": "common/xsvf/ZE_192_L_0.9_T_62.5.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "79C7CD93",
+    "path": "common/xsvf/ZE_192_L_1.0_T_62.5.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "0742E5ED",
+    "path": "common/xsvf/ZE_96_L_0.9_T_62.5.xsvf"
+  },
+  {
+    "bytes": 22846,
+    "crc32": "2657E802",
+    "path": "common/xsvf/ZE_96_L_1.0_T_62.5.xsvf"
+  },
+  {
+    "bytes": 158720,
+    "crc32": "0EC6A77F",
+    "path": "common/xsvftool/x64/libusb-1.0.dll"
+  },
+  {
+    "bytes": 205312,
+    "crc32": "69143A38",
+    "path": "common/xsvftool/x64/xsvftool-dirtyjtag.exe"
+  },
+  {
+    "bytes": 230912,
+    "crc32": "710A1C37",
+    "path": "common/xsvftool/x64/xsvftool-ftd2xx.exe"
+  },
+  {
+    "bytes": 237568,
+    "crc32": "D1F62D40",
+    "path": "common/xsvftool/x64/xsvftool.exe"
+  },
+  {
+    "bytes": 454264,
+    "crc32": "FC0F24AA",
+    "path": "common/xsvftool/x86/ftd2xx.dll"
+  },
+  {
+    "bytes": 130048,
+    "crc32": "A6410322",
+    "path": "common/xsvftool/x86/libusb-1.0.dll"
+  },
+  {
+    "bytes": 167936,
+    "crc32": "A4781BCC",
+    "path": "common/xsvftool/x86/xsvftool-dirtyjtag.exe"
+  },
+  {
+    "bytes": 188416,
+    "crc32": "5D002444",
+    "path": "common/xsvftool/x86/xsvftool-ftd2xx.exe"
+  },
+  {
+    "bytes": 194560,
+    "crc32": "43A73CE4",
+    "path": "common/xsvftool/x86/xsvftool.exe"
+  },
+  {
+    "bytes": 4418048,
+    "crc32": "C33DC639",
+    "path": "JRunner.exe"
+  },
+  {
+    "bytes": 237,
+    "crc32": "A4FEC71B",
+    "path": "Requirements.txt"
+  },
+  {
+    "bytes": 68,
+    "crc32": "0866DBA9",
+    "path": "xeBuild/13604/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E216D276",
+    "path": "xeBuild/13604/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "4CA26345",
+    "path": "xeBuild/13604/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "EFE6BF90",
+    "path": "xeBuild/13604/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2660,
+    "crc32": "5513756B",
+    "path": "xeBuild/13604/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2604,
+    "crc32": "F999D5C7",
+    "path": "xeBuild/13604/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 6836,
+    "crc32": "99A9DF2A",
+    "path": "xeBuild/13604/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "1483561F",
+    "path": "xeBuild/13604/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "F24D7CBF",
+    "path": "xeBuild/13604/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "C2747FFA",
+    "path": "xeBuild/13604/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "1483561F",
+    "path": "xeBuild/13604/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2616,
+    "crc32": "D2FA95C2",
+    "path": "xeBuild/13604/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2668,
+    "crc32": "1483561F",
+    "path": "xeBuild/13604/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "AA4488BA",
+    "path": "xeBuild/13604/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "7B5570A5",
+    "path": "xeBuild/13604/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2500,
+    "crc32": "FC920527",
+    "path": "xeBuild/13604/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 141,
+    "crc32": "DCAB00F8",
+    "path": "xeBuild/13604/bin/readme.txt"
+  },
+  {
+    "bytes": 907,
+    "crc32": "A4B25505",
+    "path": "xeBuild/13604/readme.txt"
+  },
+  {
+    "bytes": 11644928,
+    "crc32": "1E32FDC2",
+    "path": "xeBuild/13604/su20076000_00000000"
+  },
+  {
+    "bytes": 1651,
+    "crc32": "9CDE3DA5",
+    "path": "xeBuild/13604/_devgl.ini"
+  },
+  {
+    "bytes": 2133,
+    "crc32": "DCBBC678",
+    "path": "xeBuild/13604/_glitch2m.ini"
+  },
+  {
+    "bytes": 1487,
+    "crc32": "F1B923EB",
+    "path": "xeBuild/13604/_jtag.ini"
+  },
+  {
+    "bytes": 2284,
+    "crc32": "467DCB57",
+    "path": "xeBuild/13604/_retail.ini"
+  },
+  {
+    "bytes": 36,
+    "crc32": "95F9B765",
+    "path": "xeBuild/15574/bin/nointmu.bin"
+  },
+  {
+    "bytes": 2536,
+    "crc32": "538AB90A",
+    "path": "xeBuild/15574/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2696,
+    "crc32": "AE5CC0B1",
+    "path": "xeBuild/15574/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2640,
+    "crc32": "F2A66739",
+    "path": "xeBuild/15574/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 6872,
+    "crc32": "3B06B7A4",
+    "path": "xeBuild/15574/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2704,
+    "crc32": "7D354BBD",
+    "path": "xeBuild/15574/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2704,
+    "crc32": "216925E2",
+    "path": "xeBuild/15574/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2704,
+    "crc32": "306AE4BE",
+    "path": "xeBuild/15574/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2640,
+    "crc32": "F2A66739",
+    "path": "xeBuild/15574/bin/patches_g2mwinchester.bin"
+  },
+  {
+    "bytes": 2704,
+    "crc32": "7D354BBD",
+    "path": "xeBuild/15574/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2652,
+    "crc32": "54396B2F",
+    "path": "xeBuild/15574/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2704,
+    "crc32": "7D354BBD",
+    "path": "xeBuild/15574/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2536,
+    "crc32": "D0514FD6",
+    "path": "xeBuild/15574/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2536,
+    "crc32": "B6BC36A8",
+    "path": "xeBuild/15574/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2536,
+    "crc32": "34D7E7A6",
+    "path": "xeBuild/15574/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 12324864,
+    "crc32": "322C8169",
+    "path": "xeBuild/15574/su20076000_00000000"
+  },
+  {
+    "bytes": 1851,
+    "crc32": "00411CB7",
+    "path": "xeBuild/15574/_devgl.ini"
+  },
+  {
+    "bytes": 2008,
+    "crc32": "DA5E36EA",
+    "path": "xeBuild/15574/_glitch2m.ini"
+  },
+  {
+    "bytes": 1517,
+    "crc32": "5A9A8317",
+    "path": "xeBuild/15574/_jtag.ini"
+  },
+  {
+    "bytes": 0,
+    "crc32": "00000000",
+    "path": "xeBuild/17489/!XDKbuild Only!.txt"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "13A40496",
+    "path": "xeBuild/17489/17489-fs/bootanim.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "556350F7",
+    "path": "xeBuild/17489/17489-fs/connectx.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "7543BBE0",
+    "path": "xeBuild/17489/17489-fs/createprofile.xex"
+  },
+  {
+    "bytes": 5963776,
+    "crc32": "F4CC74F1",
+    "path": "xeBuild/17489/17489-fs/dash.xex"
+  },
+  {
+    "bytes": 256,
+    "crc32": "565C9AB7",
+    "path": "xeBuild/17489/17489-fs/dashboard.xbx"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "8D02C063",
+    "path": "xeBuild/17489/17489-fs/deviceselector.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "4B4EDAFF",
+    "path": "xeBuild/17489/17489-fs/gamerprofile.xex"
+  },
+  {
+    "bytes": 118784,
+    "crc32": "102B420B",
+    "path": "xeBuild/17489/17489-fs/hud.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "BDA0AD8A",
+    "path": "xeBuild/17489/17489-fs/huduiskin.xex"
+  },
+  {
+    "bytes": 32768,
+    "crc32": "D8684319",
+    "path": "xeBuild/17489/17489-fs/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "FC9AD4B4",
+    "path": "xeBuild/17489/17489-fs/minimediaplayer.xex"
+  },
+  {
+    "bytes": 122880,
+    "crc32": "C9C5585A",
+    "path": "xeBuild/17489/17489-fs/nomni.xex"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "E040C9B2",
+    "path": "xeBuild/17489/17489-fs/nomnifwk.xex"
+  },
+  {
+    "bytes": 53248,
+    "crc32": "7C53C463",
+    "path": "xeBuild/17489/17489-fs/nomnifwm.xex"
+  },
+  {
+    "bytes": 667648,
+    "crc32": "3EBBF060",
+    "path": "xeBuild/17489/17489-fs/processdump.xex"
+  },
+  {
+    "bytes": 257636,
+    "crc32": "0C712069",
+    "path": "xeBuild/17489/17489-fs/recovery.ttf"
+  },
+  {
+    "bytes": 26239,
+    "crc32": "6850A07F",
+    "path": "xeBuild/17489/17489-fs/rrbkgnd.bmp"
+  },
+  {
+    "bytes": 1024,
+    "crc32": "0F3AC1FD",
+    "path": "xeBuild/17489/17489-fs/secdata.bin"
+  },
+  {
+    "bytes": 24576,
+    "crc32": "A1488C86",
+    "path": "xeBuild/17489/17489-fs/SegoeXbox-Light.xtt"
+  },
+  {
+    "bytes": 106496,
+    "crc32": "C56C7727",
+    "path": "xeBuild/17489/17489-fs/signin.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "D9FF0B8A",
+    "path": "xeBuild/17489/17489-fs/updater.xex"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "597BE59E",
+    "path": "xeBuild/17489/17489-fs/vk.xex"
+  },
+  {
+    "bytes": 3190784,
+    "crc32": "6497F53A",
+    "path": "xeBuild/17489/17489-fs/xam.xex"
+  },
+  {
+    "bytes": 258048,
+    "crc32": "2EFAF2D7",
+    "path": "xeBuild/17489/17489-fs/xbdm.xex"
+  },
+  {
+    "bytes": 389120,
+    "crc32": "50ED180C",
+    "path": "xeBuild/17489/17489-fs/xbupdate.xex"
+  },
+  {
+    "bytes": 1236992,
+    "crc32": "73C6B61E",
+    "path": "xeBuild/17489/17489-fs/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1740800,
+    "crc32": "5127EC9E",
+    "path": "xeBuild/17489/17489-fs/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 1392640,
+    "crc32": "CE57A9F3",
+    "path": "xeBuild/17489/17489-fs/xenonsclatin.xtt"
+  },
+  {
+    "bytes": 94208,
+    "crc32": "0FF24AE6",
+    "path": "xeBuild/17489/17489-fs/ximecore.xex"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "BF6B27BE",
+    "path": "xeBuild/17489/17489-fs/ximedic.xex"
+  },
+  {
+    "bytes": 2846720,
+    "crc32": "E96C9031",
+    "path": "xeBuild/17489/17489-fs/xlaunch.fdf"
+  },
+  {
+    "bytes": 130436,
+    "crc32": "2C0BD74D",
+    "path": "xeBuild/17489/17489-fs/xlaunch.strings"
+  },
+  {
+    "bytes": 647168,
+    "crc32": "26BB56CC",
+    "path": "xeBuild/17489/17489-fs/xshell.xex"
+  },
+  {
+    "bytes": 98304,
+    "crc32": "FD682E4E",
+    "path": "xeBuild/17489/17489-fs/xstudio.xex"
+  },
+  {
+    "bytes": 36,
+    "crc32": "2796FAD2",
+    "path": "xeBuild/17489/bin/nointmu.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "92A42318",
+    "path": "xeBuild/17489/bin/patches_devfalcon.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "92A42318",
+    "path": "xeBuild/17489/bin/patches_devjasper.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "92A42318",
+    "path": "xeBuild/17489/bin/patches_devxenon.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "92A42318",
+    "path": "xeBuild/17489/bin/patches_devzephyr.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "6B5178E6",
+    "path": "xeBuild/17489/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "92A42318",
+    "path": "xeBuild/17489/bin/patches_g2mcorona_flash.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "67FC7A72",
+    "path": "xeBuild/17489/bin/patches_g2mjasper_flash.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 1916,
+    "crc32": "67FC7A72",
+    "path": "xeBuild/17489/bin/patches_g2mtrinity_flash.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mwinchester.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2036,
+    "crc32": "3977D4C3",
+    "path": "xeBuild/17489/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "6B5178E6",
+    "path": "xeBuild/17489/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2048,
+    "crc32": "57CC0E4A",
+    "path": "xeBuild/17489/bin/patches_jasper_flash.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "6B5178E6",
+    "path": "xeBuild/17489/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2168,
+    "crc32": "6B5178E6",
+    "path": "xeBuild/17489/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 19,
+    "crc32": "D39C84FB",
+    "path": "xeBuild/17489/bin/xell-addr.txt"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "13A40496",
+    "path": "xeBuild/17489/bootanim.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "556350F7",
+    "path": "xeBuild/17489/connectx.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "7543BBE0",
+    "path": "xeBuild/17489/createprofile.xex"
+  },
+  {
+    "bytes": 5963776,
+    "crc32": "F4CC74F1",
+    "path": "xeBuild/17489/dash.xex"
+  },
+  {
+    "bytes": 256,
+    "crc32": "565C9AB7",
+    "path": "xeBuild/17489/dashboard.xbx"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "8D02C063",
+    "path": "xeBuild/17489/deviceselector.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "4B4EDAFF",
+    "path": "xeBuild/17489/gamerprofile.xex"
+  },
+  {
+    "bytes": 118784,
+    "crc32": "102B420B",
+    "path": "xeBuild/17489/hud.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "BDA0AD8A",
+    "path": "xeBuild/17489/huduiskin.xex"
+  },
+  {
+    "bytes": 32768,
+    "crc32": "D8684319",
+    "path": "xeBuild/17489/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "FC9AD4B4",
+    "path": "xeBuild/17489/minimediaplayer.xex"
+  },
+  {
+    "bytes": 122880,
+    "crc32": "C9C5585A",
+    "path": "xeBuild/17489/nomni.xex"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "E040C9B2",
+    "path": "xeBuild/17489/nomnifwk.xex"
+  },
+  {
+    "bytes": 53248,
+    "crc32": "7C53C463",
+    "path": "xeBuild/17489/nomnifwm.xex"
+  },
+  {
+    "bytes": 667648,
+    "crc32": "3EBBF060",
+    "path": "xeBuild/17489/processdump.xex"
+  },
+  {
+    "bytes": 257636,
+    "crc32": "0C712069",
+    "path": "xeBuild/17489/recovery.ttf"
+  },
+  {
+    "bytes": 26239,
+    "crc32": "6850A07F",
+    "path": "xeBuild/17489/rrbkgnd.bmp"
+  },
+  {
+    "bytes": 24576,
+    "crc32": "A1488C86",
+    "path": "xeBuild/17489/SegoeXbox-Light.xtt"
+  },
+  {
+    "bytes": 767472,
+    "crc32": "4408E7B4",
+    "path": "xeBuild/17489/SE_17489.bin"
+  },
+  {
+    "bytes": 106496,
+    "crc32": "C56C7727",
+    "path": "xeBuild/17489/signin.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "D9FF0B8A",
+    "path": "xeBuild/17489/updater.xex"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "597BE59E",
+    "path": "xeBuild/17489/vk.xex"
+  },
+  {
+    "bytes": 3190784,
+    "crc32": "6497F53A",
+    "path": "xeBuild/17489/xam.xex"
+  },
+  {
+    "bytes": 258048,
+    "crc32": "2EFAF2D7",
+    "path": "xeBuild/17489/xbdm.xex"
+  },
+  {
+    "bytes": 389120,
+    "crc32": "50ED180C",
+    "path": "xeBuild/17489/xbupdate.xex"
+  },
+  {
+    "bytes": 1236992,
+    "crc32": "73C6B61E",
+    "path": "xeBuild/17489/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1740800,
+    "crc32": "5127EC9E",
+    "path": "xeBuild/17489/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 1392640,
+    "crc32": "CE57A9F3",
+    "path": "xeBuild/17489/xenonsclatin.xtt"
+  },
+  {
+    "bytes": 94208,
+    "crc32": "0FF24AE6",
+    "path": "xeBuild/17489/ximecore.xex"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "BF6B27BE",
+    "path": "xeBuild/17489/ximedic.xex"
+  },
+  {
+    "bytes": 2846720,
+    "crc32": "E96C9031",
+    "path": "xeBuild/17489/xlaunch.fdf"
+  },
+  {
+    "bytes": 130436,
+    "crc32": "2C0BD74D",
+    "path": "xeBuild/17489/xlaunch.strings"
+  },
+  {
+    "bytes": 647168,
+    "crc32": "26BB56CC",
+    "path": "xeBuild/17489/xshell.xex"
+  },
+  {
+    "bytes": 98304,
+    "crc32": "FD682E4E",
+    "path": "xeBuild/17489/xstudio.xex"
+  },
+  {
+    "bytes": 1620,
+    "crc32": "0CF1F3D4",
+    "path": "xeBuild/17489/_devgl.ini"
+  },
+  {
+    "bytes": 1490,
+    "crc32": "A847325C",
+    "path": "xeBuild/17489/_devgl_flash.ini"
+  },
+  {
+    "bytes": 2256,
+    "crc32": "604046AB",
+    "path": "xeBuild/17489/_devkit.ini"
+  },
+  {
+    "bytes": 1807,
+    "crc32": "76BB63BE",
+    "path": "xeBuild/17489/_glitch2m.ini"
+  },
+  {
+    "bytes": 1683,
+    "crc32": "8E0A1992",
+    "path": "xeBuild/17489/_glitch2m_flash.ini"
+  },
+  {
+    "bytes": 1482,
+    "crc32": "B123E5BD",
+    "path": "xeBuild/17489/_jtag.ini"
+  },
+  {
+    "bytes": 1103,
+    "crc32": "8726839A",
+    "path": "xeBuild/17489/_jtag_flash.ini"
+  },
+  {
+    "bytes": 0,
+    "crc32": "00000000",
+    "path": "xeBuild/17489_RGL/!XDKbuild Only!.txt"
+  },
+  {
+    "bytes": 36,
+    "crc32": "2796FAD2",
+    "path": "xeBuild/17489_RGL/bin/nointmu.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "3F9C481B",
+    "path": "xeBuild/17489_RGL/bin/patches_devfalcon.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "3F9C481B",
+    "path": "xeBuild/17489_RGL/bin/patches_devjasper.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "3F9C481B",
+    "path": "xeBuild/17489_RGL/bin/patches_devxenon.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "3F9C481B",
+    "path": "xeBuild/17489_RGL/bin/patches_devzephyr.bin"
+  },
+  {
+    "bytes": 3548,
+    "crc32": "BA51581B",
+    "path": "xeBuild/17489_RGL/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "3F9C481B",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mcorona_flash.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "28DCC0BD",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mjasper_flash.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 3280,
+    "crc32": "28DCC0BD",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mtrinity_flash.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 3416,
+    "crc32": "7A21A70D",
+    "path": "xeBuild/17489_RGL/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 3548,
+    "crc32": "BA51581B",
+    "path": "xeBuild/17489_RGL/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 3412,
+    "crc32": "277C1688",
+    "path": "xeBuild/17489_RGL/bin/patches_jasper_flash.bin"
+  },
+  {
+    "bytes": 3548,
+    "crc32": "BA51581B",
+    "path": "xeBuild/17489_RGL/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 3548,
+    "crc32": "BA51581B",
+    "path": "xeBuild/17489_RGL/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 19,
+    "crc32": "D39C84FB",
+    "path": "xeBuild/17489_RGL/bin/xell-addr.txt"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "13A40496",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/bootanim.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "556350F7",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/connectx.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "7543BBE0",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/createprofile.xex"
+  },
+  {
+    "bytes": 5963776,
+    "crc32": "F4CC74F1",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/dash.xex"
+  },
+  {
+    "bytes": 256,
+    "crc32": "565C9AB7",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/dashboard.xbx"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "8D02C063",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/deviceselector.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "4B4EDAFF",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/gamerprofile.xex"
+  },
+  {
+    "bytes": 118784,
+    "crc32": "102B420B",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/hud.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "BDA0AD8A",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/huduiskin.xex"
+  },
+  {
+    "bytes": 32768,
+    "crc32": "D8684319",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "FC9AD4B4",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/minimediaplayer.xex"
+  },
+  {
+    "bytes": 122880,
+    "crc32": "C9C5585A",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/nomni.xex"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "E040C9B2",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/nomnifwk.xex"
+  },
+  {
+    "bytes": 53248,
+    "crc32": "7C53C463",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/nomnifwm.xex"
+  },
+  {
+    "bytes": 667648,
+    "crc32": "3EBBF060",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/processdump.xex"
+  },
+  {
+    "bytes": 257636,
+    "crc32": "0C712069",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/recovery.ttf"
+  },
+  {
+    "bytes": 928,
+    "crc32": "0EC448EF",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/rgloader.ini"
+  },
+  {
+    "bytes": 57344,
+    "crc32": "A46F4256",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/RGLoader.xex"
+  },
+  {
+    "bytes": 216,
+    "crc32": "EF79A29D",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/rglXam.rglp"
+  },
+  {
+    "bytes": 26239,
+    "crc32": "6850A07F",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/rrbkgnd.bmp"
+  },
+  {
+    "bytes": 24576,
+    "crc32": "A1488C86",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/SegoeXbox-Light.xtt"
+  },
+  {
+    "bytes": 106496,
+    "crc32": "C56C7727",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/signin.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "D9FF0B8A",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/updater.xex"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "597BE59E",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/vk.xex"
+  },
+  {
+    "bytes": 3190784,
+    "crc32": "6497F53A",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xam.xex"
+  },
+  {
+    "bytes": 253952,
+    "crc32": "EA351C1E",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xbdm.xex"
+  },
+  {
+    "bytes": 389120,
+    "crc32": "50ED180C",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xbupdate.xex"
+  },
+  {
+    "bytes": 1236992,
+    "crc32": "73C6B61E",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1740800,
+    "crc32": "5127EC9E",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 1392640,
+    "crc32": "CE57A9F3",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xenonsclatin.xtt"
+  },
+  {
+    "bytes": 94208,
+    "crc32": "0FF24AE6",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/ximecore.xex"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "BF6B27BE",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/ximedic.xex"
+  },
+  {
+    "bytes": 4262400,
+    "crc32": "C9E69797",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xlaunch.fdf"
+  },
+  {
+    "bytes": 130436,
+    "crc32": "2C0BD74D",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xlaunch.strings"
+  },
+  {
+    "bytes": 647168,
+    "crc32": "26BB56CC",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xshell.xex"
+  },
+  {
+    "bytes": 98304,
+    "crc32": "5DFFECB8",
+    "path": "xeBuild/17489_RGL/Filesystems/17489-dev/xstudio.xex"
+  },
+  {
+    "bytes": 921,
+    "crc32": "B226640F",
+    "path": "xeBuild/17489_RGL/README.md"
+  },
+  {
+    "bytes": 767472,
+    "crc32": "4408E7B4",
+    "path": "xeBuild/17489_RGL/SE_17489.bin"
+  },
+  {
+    "bytes": 2205,
+    "crc32": "9B5AD4B7",
+    "path": "xeBuild/17489_RGL/_devgl.ini"
+  },
+  {
+    "bytes": 2320,
+    "crc32": "E127EC34",
+    "path": "xeBuild/17489_RGL/_devgl_flash.ini"
+  },
+  {
+    "bytes": 3224,
+    "crc32": "7F9106FA",
+    "path": "xeBuild/17489_RGL/_devkit.ini"
+  },
+  {
+    "bytes": 2342,
+    "crc32": "DB7E7D04",
+    "path": "xeBuild/17489_RGL/_glitch2m.ini"
+  },
+  {
+    "bytes": 2880,
+    "crc32": "AA17DDE9",
+    "path": "xeBuild/17489_RGL/_glitch2m_flash.ini"
+  },
+  {
+    "bytes": 2005,
+    "crc32": "58C40619",
+    "path": "xeBuild/17489_RGL/_jtag.ini"
+  },
+  {
+    "bytes": 1930,
+    "crc32": "967B3912",
+    "path": "xeBuild/17489_RGL/_jtag_flash.ini"
+  },
+  {
+    "bytes": 284,
+    "crc32": "D6525FA4",
+    "path": "xeBuild/17559/bin/addon.idx"
+  },
+  {
+    "bytes": 32,
+    "crc32": "E70FA0E4",
+    "path": "xeBuild/17559/bin/nofcrt.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "60825813",
+    "path": "xeBuild/17559/bin/nohdd.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "4A4191C7",
+    "path": "xeBuild/17559/bin/nohdmiwait.bin"
+  },
+  {
+    "bytes": 36,
+    "crc32": "8C9B6CFB",
+    "path": "xeBuild/17559/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "E8BA3467",
+    "path": "xeBuild/17559/bin/nolan.bin"
+  },
+  {
+    "bytes": 40,
+    "crc32": "52AAD373",
+    "path": "xeBuild/17559/bin/noSShdd.bin"
+  },
+  {
+    "bytes": 32,
+    "crc32": "CCBF1D76",
+    "path": "xeBuild/17559/bin/nowifi.bin"
+  },
+  {
+    "bytes": 2700,
+    "crc32": "6349C06B",
+    "path": "xeBuild/17559/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2340,
+    "crc32": "70C336D0",
+    "path": "xeBuild/17559/bin/patches_fat.bin"
+  },
+  {
+    "bytes": 2404,
+    "crc32": "C38DF8BB",
+    "path": "xeBuild/17559/bin/patches_g2corona.bin"
+  },
+  {
+    "bytes": 2524,
+    "crc32": "2275D464",
+    "path": "xeBuild/17559/bin/patches_g2corona_WB.bin"
+  },
+  {
+    "bytes": 6756,
+    "crc32": "E4579FFE",
+    "path": "xeBuild/17559/bin/patches_g2corona_WB4G.bin"
+  },
+  {
+    "bytes": 2388,
+    "crc32": "4097DC58",
+    "path": "xeBuild/17559/bin/patches_g2falcon.bin"
+  },
+  {
+    "bytes": 2388,
+    "crc32": "F56B6DA2",
+    "path": "xeBuild/17559/bin/patches_g2jasper.bin"
+  },
+  {
+    "bytes": 2872,
+    "crc32": "075ABCF2",
+    "path": "xeBuild/17559/bin/patches_g2mcorona.bin"
+  },
+  {
+    "bytes": 2816,
+    "crc32": "5E7A2D02",
+    "path": "xeBuild/17559/bin/patches_g2mcorona_WB.bin"
+  },
+  {
+    "bytes": 7048,
+    "crc32": "B064CF73",
+    "path": "xeBuild/17559/bin/patches_g2mcorona_WB4G.bin"
+  },
+  {
+    "bytes": 2880,
+    "crc32": "3ED719B7",
+    "path": "xeBuild/17559/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2880,
+    "crc32": "D724C0AD",
+    "path": "xeBuild/17559/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2880,
+    "crc32": "B5BAC9D3",
+    "path": "xeBuild/17559/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2816,
+    "crc32": "5E7A2D02",
+    "path": "xeBuild/17559/bin/patches_g2mwinchester.bin"
+  },
+  {
+    "bytes": 2880,
+    "crc32": "3ED719B7",
+    "path": "xeBuild/17559/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2828,
+    "crc32": "9BD9F4E3",
+    "path": "xeBuild/17559/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2880,
+    "crc32": "3ED719B7",
+    "path": "xeBuild/17559/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2388,
+    "crc32": "B5002F1E",
+    "path": "xeBuild/17559/bin/patches_g2trinity.bin"
+  },
+  {
+    "bytes": 2388,
+    "crc32": "4097DC58",
+    "path": "xeBuild/17559/bin/patches_g2xenon.bin"
+  },
+  {
+    "bytes": 2440,
+    "crc32": "B5527E60",
+    "path": "xeBuild/17559/bin/patches_g2xenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2388,
+    "crc32": "4097DC58",
+    "path": "xeBuild/17559/bin/patches_g2zephyr.bin"
+  },
+  {
+    "bytes": 2700,
+    "crc32": "E230A058",
+    "path": "xeBuild/17559/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2388,
+    "crc32": "B5002F1E",
+    "path": "xeBuild/17559/bin/patches_trinity.bin"
+  },
+  {
+    "bytes": 2700,
+    "crc32": "9B61BF04",
+    "path": "xeBuild/17559/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2700,
+    "crc32": "DF6A1896",
+    "path": "xeBuild/17559/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 3760,
+    "crc32": "EDFA5F13",
+    "path": "xeBuild/17559/bin/xl_both.bin"
+  },
+  {
+    "bytes": 3480,
+    "crc32": "AE33BDC7",
+    "path": "xeBuild/17559/bin/xl_hdd.bin"
+  },
+  {
+    "bytes": 3320,
+    "crc32": "CFC2BBDF",
+    "path": "xeBuild/17559/bin/xl_usb.bin"
+  },
+  {
+    "bytes": 907,
+    "crc32": "A4B25505",
+    "path": "xeBuild/17559/readme.txt"
+  },
+  {
+    "bytes": 11862016,
+    "crc32": "F56E3EEE",
+    "path": "xeBuild/17559/su20076000_00000000"
+  },
+  {
+    "bytes": 2545664,
+    "crc32": "2D29B122",
+    "path": "xeBuild/17559/xl_both/xam.xex"
+  },
+  {
+    "bytes": 1156,
+    "crc32": "911A3264",
+    "path": "xeBuild/17559/xl_both/_devgl.ini"
+  },
+  {
+    "bytes": 1257,
+    "crc32": "BB4D2B0B",
+    "path": "xeBuild/17559/xl_both/_glitch.ini"
+  },
+  {
+    "bytes": 1728,
+    "crc32": "FDCA52A0",
+    "path": "xeBuild/17559/xl_both/_glitch2.ini"
+  },
+  {
+    "bytes": 1317,
+    "crc32": "376EF98A",
+    "path": "xeBuild/17559/xl_both/_glitch2m.ini"
+  },
+  {
+    "bytes": 1516,
+    "crc32": "DFB04478",
+    "path": "xeBuild/17559/xl_both/_jtag.ini"
+  },
+  {
+    "bytes": 2547712,
+    "crc32": "289A4DA5",
+    "path": "xeBuild/17559/xl_hdd/xam.xex"
+  },
+  {
+    "bytes": 1156,
+    "crc32": "D130DB45",
+    "path": "xeBuild/17559/xl_hdd/_devgl.ini"
+  },
+  {
+    "bytes": 1257,
+    "crc32": "FB67C22A",
+    "path": "xeBuild/17559/xl_hdd/_glitch.ini"
+  },
+  {
+    "bytes": 1728,
+    "crc32": "BDE0BB81",
+    "path": "xeBuild/17559/xl_hdd/_glitch2.ini"
+  },
+  {
+    "bytes": 1317,
+    "crc32": "774410AB",
+    "path": "xeBuild/17559/xl_hdd/_glitch2m.ini"
+  },
+  {
+    "bytes": 1516,
+    "crc32": "9F9AAD59",
+    "path": "xeBuild/17559/xl_hdd/_jtag.ini"
+  },
+  {
+    "bytes": 2545664,
+    "crc32": "BB5D8DA7",
+    "path": "xeBuild/17559/xl_usb/xam.xex"
+  },
+  {
+    "bytes": 1156,
+    "crc32": "D632C485",
+    "path": "xeBuild/17559/xl_usb/_devgl.ini"
+  },
+  {
+    "bytes": 1257,
+    "crc32": "FC65DDEA",
+    "path": "xeBuild/17559/xl_usb/_glitch.ini"
+  },
+  {
+    "bytes": 1728,
+    "crc32": "BAE2A441",
+    "path": "xeBuild/17559/xl_usb/_glitch2.ini"
+  },
+  {
+    "bytes": 1317,
+    "crc32": "70460F6B",
+    "path": "xeBuild/17559/xl_usb/_glitch2m.ini"
+  },
+  {
+    "bytes": 1516,
+    "crc32": "9898B299",
+    "path": "xeBuild/17559/xl_usb/_jtag.ini"
+  },
+  {
+    "bytes": 1736,
+    "crc32": "616B3242",
+    "path": "xeBuild/17559/_devgl.ini"
+  },
+  {
+    "bytes": 1257,
+    "crc32": "5FC4BA7B",
+    "path": "xeBuild/17559/_glitch.ini"
+  },
+  {
+    "bytes": 2016,
+    "crc32": "8213965F",
+    "path": "xeBuild/17559/_glitch2.ini"
+  },
+  {
+    "bytes": 2322,
+    "crc32": "C1DBD154",
+    "path": "xeBuild/17559/_glitch2m.ini"
+  },
+  {
+    "bytes": 1516,
+    "crc32": "3B39D508",
+    "path": "xeBuild/17559/_jtag.ini"
+  },
+  {
+    "bytes": 2410,
+    "crc32": "AB2B3AE8",
+    "path": "xeBuild/17559/_retail.ini"
+  },
+  {
+    "bytes": 0,
+    "crc32": "00000000",
+    "path": "xeBuild/1838/!XDKbuild Only!.txt"
+  },
+  {
+    "bytes": 495616,
+    "crc32": "7255D9F7",
+    "path": "xeBuild/1838/1838-fs/bootanim.xex"
+  },
+  {
+    "bytes": 81920,
+    "crc32": "7E7E1C77",
+    "path": "xeBuild/1838/1838-fs/connectx.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "7D82DA00",
+    "path": "xeBuild/1838/1838-fs/createprofile.xex"
+  },
+  {
+    "bytes": 2572288,
+    "crc32": "102CCA2F",
+    "path": "xeBuild/1838/1838-fs/dash.xex"
+  },
+  {
+    "bytes": 256,
+    "crc32": "565C9AB7",
+    "path": "xeBuild/1838/1838-fs/dashboard.xbx"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "E0CB7D62",
+    "path": "xeBuild/1838/1838-fs/deviceselector.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "33679DE8",
+    "path": "xeBuild/1838/1838-fs/feedback.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "17AD8CD3",
+    "path": "xeBuild/1838/1838-fs/friends.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "8579D58F",
+    "path": "xeBuild/1838/1838-fs/gamerprofile.xex"
+  },
+  {
+    "bytes": 126976,
+    "crc32": "C0035FD2",
+    "path": "xeBuild/1838/1838-fs/hud.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "50206D93",
+    "path": "xeBuild/1838/1838-fs/huduiskin.xex"
+  },
+  {
+    "bytes": 147456,
+    "crc32": "9EDFF523",
+    "path": "xeBuild/1838/1838-fs/marketplace.xex"
+  },
+  {
+    "bytes": 32768,
+    "crc32": "1995F75E",
+    "path": "xeBuild/1838/1838-fs/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "ED348FA6",
+    "path": "xeBuild/1838/1838-fs/minimediaplayer.xex"
+  },
+  {
+    "bytes": 401408,
+    "crc32": "17B7258F",
+    "path": "xeBuild/1838/1838-fs/processdump.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "AAD1011D",
+    "path": "xeBuild/1838/1838-fs/quickchat.xex"
+  },
+  {
+    "bytes": 257636,
+    "crc32": "0C712069",
+    "path": "xeBuild/1838/1838-fs/recovery.ttf"
+  },
+  {
+    "bytes": 1233340,
+    "crc32": "D0748968",
+    "path": "xeBuild/1838/1838-fs/rrbkgnd.bmp"
+  },
+  {
+    "bytes": 921656,
+    "crc32": "5DD8A12C",
+    "path": "xeBuild/1838/1838-fs/saferec.bmp"
+  },
+  {
+    "bytes": 45056,
+    "crc32": "C6B62677",
+    "path": "xeBuild/1838/1838-fs/signin.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "9F74B801",
+    "path": "xeBuild/1838/1838-fs/updater.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "A9D8C638",
+    "path": "xeBuild/1838/1838-fs/vk.xex"
+  },
+  {
+    "bytes": 86016,
+    "crc32": "6369716F",
+    "path": "xeBuild/1838/1838-fs/voicemail.xex"
+  },
+  {
+    "bytes": 1728512,
+    "crc32": "5CC6DCD3",
+    "path": "xeBuild/1838/1838-fs/xam.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "67E18D24",
+    "path": "xeBuild/1838/1838-fs/xapi.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "FC29C4B1",
+    "path": "xeBuild/1838/1838-fs/xapid.xex"
+  },
+  {
+    "bytes": 106496,
+    "crc32": "6120533E",
+    "path": "xeBuild/1838/1838-fs/xbdm.xex"
+  },
+  {
+    "bytes": 303104,
+    "crc32": "606ADC90",
+    "path": "xeBuild/1838/1838-fs/xbupdate.xex"
+  },
+  {
+    "bytes": 1159168,
+    "crc32": "101BC4D2",
+    "path": "xeBuild/1838/1838-fs/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1736704,
+    "crc32": "337B9C4D",
+    "path": "xeBuild/1838/1838-fs/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 606208,
+    "crc32": "774D1C80",
+    "path": "xeBuild/1838/1838-fs/ximedic.xex"
+  },
+  {
+    "bytes": 9166848,
+    "crc32": "392F0CFF",
+    "path": "xeBuild/1838/1838-fs/xlaunch.fdf"
+  },
+  {
+    "bytes": 92794,
+    "crc32": "E89DCF37",
+    "path": "xeBuild/1838/1838-fs/xlaunch.strings"
+  },
+  {
+    "bytes": 1318912,
+    "crc32": "39CB4A0C",
+    "path": "xeBuild/1838/1838-fs/xshell.xex"
+  },
+  {
+    "bytes": 2464,
+    "crc32": "9B01D4DD",
+    "path": "xeBuild/1838/bin/patches_devfalcon.bin"
+  },
+  {
+    "bytes": 2464,
+    "crc32": "9B01D4DD",
+    "path": "xeBuild/1838/bin/patches_devjasper.bin"
+  },
+  {
+    "bytes": 2464,
+    "crc32": "9B01D4DD",
+    "path": "xeBuild/1838/bin/patches_devxenon.bin"
+  },
+  {
+    "bytes": 2464,
+    "crc32": "9B01D4DD",
+    "path": "xeBuild/1838/bin/patches_devzephyr.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "8FACE196",
+    "path": "xeBuild/1838/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2588,
+    "crc32": "0E8143E5",
+    "path": "xeBuild/1838/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2588,
+    "crc32": "0E8143E5",
+    "path": "xeBuild/1838/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2588,
+    "crc32": "0E8143E5",
+    "path": "xeBuild/1838/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2588,
+    "crc32": "0E8143E5",
+    "path": "xeBuild/1838/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "8FACE196",
+    "path": "xeBuild/1838/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "8FACE196",
+    "path": "xeBuild/1838/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2584,
+    "crc32": "8FACE196",
+    "path": "xeBuild/1838/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 811008,
+    "crc32": "0758A984",
+    "path": "xeBuild/1838/nandfiles/dash.xex"
+  },
+  {
+    "bytes": 2846720,
+    "crc32": "E96C9031",
+    "path": "xeBuild/1838/nandfiles/xlaunch.fdf"
+  },
+  {
+    "bytes": 5232,
+    "crc32": "B98E769B",
+    "path": "xeBuild/1838/README.md"
+  },
+  {
+    "bytes": 34802,
+    "crc32": "0CA69BDF",
+    "path": "xeBuild/1838/return_to_xshell.zip"
+  },
+  {
+    "bytes": 398960,
+    "crc32": "CB75E6BF",
+    "path": "xeBuild/1838/SE_1838.bin"
+  },
+  {
+    "bytes": 1319,
+    "crc32": "A7871C14",
+    "path": "xeBuild/1838/_devgl.ini"
+  },
+  {
+    "bytes": 1729,
+    "crc32": "56791358",
+    "path": "xeBuild/1838/_devkit.ini"
+  },
+  {
+    "bytes": 1329,
+    "crc32": "B645B3FC",
+    "path": "xeBuild/1838/_glitch2m.ini"
+  },
+  {
+    "bytes": 1653,
+    "crc32": "151A15E4",
+    "path": "xeBuild/1838/_jtag.ini"
+  },
+  {
+    "bytes": 996,
+    "crc32": "A54B1C4F",
+    "path": "xeBuild/1888/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2484,
+    "crc32": "9C0F7782",
+    "path": "xeBuild/1888/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2484,
+    "crc32": "41443FCA",
+    "path": "xeBuild/1888/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2484,
+    "crc32": "9C0F7782",
+    "path": "xeBuild/1888/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2432,
+    "crc32": "5506C077",
+    "path": "xeBuild/1888/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2484,
+    "crc32": "9C0F7782",
+    "path": "xeBuild/1888/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "AB6CB761",
+    "path": "xeBuild/1888/fsdata/bootanim.xex"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "9B68039F",
+    "path": "xeBuild/1888/fsdata/createprofile.xex"
+  },
+  {
+    "bytes": 2596864,
+    "crc32": "01F0E7AC",
+    "path": "xeBuild/1888/fsdata/dash.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "09B27D93",
+    "path": "xeBuild/1888/fsdata/deviceselector.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "81E544B3",
+    "path": "xeBuild/1888/fsdata/feedback.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "E530F31D",
+    "path": "xeBuild/1888/fsdata/friends.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "F7AD0E5D",
+    "path": "xeBuild/1888/fsdata/gamerprofile.xex"
+  },
+  {
+    "bytes": 126976,
+    "crc32": "403C8555",
+    "path": "xeBuild/1888/fsdata/hud.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "CF03D0B1",
+    "path": "xeBuild/1888/fsdata/huduiskin.xex"
+  },
+  {
+    "bytes": 102400,
+    "crc32": "375CFAAB",
+    "path": "xeBuild/1888/fsdata/launch.xex"
+  },
+  {
+    "bytes": 143360,
+    "crc32": "9130ED6D",
+    "path": "xeBuild/1888/fsdata/marketplace.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "817E1D7D",
+    "path": "xeBuild/1888/fsdata/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "C0D0ECD8",
+    "path": "xeBuild/1888/fsdata/minimediaplayer.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "DC6C4F33",
+    "path": "xeBuild/1888/fsdata/quickchat.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "09A200B5",
+    "path": "xeBuild/1888/fsdata/signin.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "C99E0769",
+    "path": "xeBuild/1888/fsdata/updater.xex"
+  },
+  {
+    "bytes": 114688,
+    "crc32": "3B47F263",
+    "path": "xeBuild/1888/fsdata/vk.xex"
+  },
+  {
+    "bytes": 86016,
+    "crc32": "A91F6629",
+    "path": "xeBuild/1888/fsdata/voicemail.xex"
+  },
+  {
+    "bytes": 1220608,
+    "crc32": "7E0A086C",
+    "path": "xeBuild/1888/fsdata/xam.xex"
+  },
+  {
+    "bytes": 1159168,
+    "crc32": "D5D17FF5",
+    "path": "xeBuild/1888/fsdata/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1736704,
+    "crc32": "DDE4A14C",
+    "path": "xeBuild/1888/fsdata/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "1D992BFB",
+    "path": "xeBuild/1888/fsdata/ximedic.xex"
+  },
+  {
+    "bytes": 2154,
+    "crc32": "D4B0753B",
+    "path": "xeBuild/1888/README.md"
+  },
+  {
+    "bytes": 1293,
+    "crc32": "052C7B1E",
+    "path": "xeBuild/1888/_devgl.ini"
+  },
+  {
+    "bytes": 1446,
+    "crc32": "81FA085F",
+    "path": "xeBuild/1888/_glitch2m.ini"
+  },
+  {
+    "bytes": 2372,
+    "crc32": "F42182CB",
+    "path": "xeBuild/6770/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2524,
+    "crc32": "AD116DBA",
+    "path": "xeBuild/6770/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2524,
+    "crc32": "807514D6",
+    "path": "xeBuild/6770/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2524,
+    "crc32": "AD116DBA",
+    "path": "xeBuild/6770/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2472,
+    "crc32": "09E020F0",
+    "path": "xeBuild/6770/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2524,
+    "crc32": "AD116DBA",
+    "path": "xeBuild/6770/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2372,
+    "crc32": "E97C1BBB",
+    "path": "xeBuild/6770/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2372,
+    "crc32": "815B9ACF",
+    "path": "xeBuild/6770/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2372,
+    "crc32": "E9304BD6",
+    "path": "xeBuild/6770/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "AB6CB761",
+    "path": "xeBuild/6770/fsdata/bootanim.xex"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "9B68039F",
+    "path": "xeBuild/6770/fsdata/createprofile.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "09B27D93",
+    "path": "xeBuild/6770/fsdata/deviceselector.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "81E544B3",
+    "path": "xeBuild/6770/fsdata/feedback.xex"
+  },
+  {
+    "bytes": 110592,
+    "crc32": "E530F31D",
+    "path": "xeBuild/6770/fsdata/friends.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "F7AD0E5D",
+    "path": "xeBuild/6770/fsdata/gamerprofile.xex"
+  },
+  {
+    "bytes": 126976,
+    "crc32": "403C8555",
+    "path": "xeBuild/6770/fsdata/hud.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "CF03D0B1",
+    "path": "xeBuild/6770/fsdata/huduiskin.xex"
+  },
+  {
+    "bytes": 143360,
+    "crc32": "9130ED6D",
+    "path": "xeBuild/6770/fsdata/marketplace.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "817E1D7D",
+    "path": "xeBuild/6770/fsdata/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "C0D0ECD8",
+    "path": "xeBuild/6770/fsdata/minimediaplayer.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "DC6C4F33",
+    "path": "xeBuild/6770/fsdata/quickchat.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "09A200B5",
+    "path": "xeBuild/6770/fsdata/signin.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "C99E0769",
+    "path": "xeBuild/6770/fsdata/updater.xex"
+  },
+  {
+    "bytes": 114688,
+    "crc32": "3B47F263",
+    "path": "xeBuild/6770/fsdata/vk.xex"
+  },
+  {
+    "bytes": 86016,
+    "crc32": "A91F6629",
+    "path": "xeBuild/6770/fsdata/voicemail.xex"
+  },
+  {
+    "bytes": 1220608,
+    "crc32": "7E0A086C",
+    "path": "xeBuild/6770/fsdata/xam.xex"
+  },
+  {
+    "bytes": 1159168,
+    "crc32": "D5D17FF5",
+    "path": "xeBuild/6770/fsdata/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1736704,
+    "crc32": "DDE4A14C",
+    "path": "xeBuild/6770/fsdata/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "1D992BFB",
+    "path": "xeBuild/6770/fsdata/ximedic.xex"
+  },
+  {
+    "bytes": 102400,
+    "crc32": "375CFAAB",
+    "path": "xeBuild/6770/launch.xex"
+  },
+  {
+    "bytes": 7315456,
+    "crc32": "A06631D2",
+    "path": "xeBuild/6770/su20076000_00000000"
+  },
+  {
+    "bytes": 2076,
+    "crc32": "193E6E91",
+    "path": "xeBuild/6770/_devgl.ini"
+  },
+  {
+    "bytes": 2245,
+    "crc32": "BE13099B",
+    "path": "xeBuild/6770/_glitch2m.ini"
+  },
+  {
+    "bytes": 2322,
+    "crc32": "E66B4269",
+    "path": "xeBuild/6770/_jtag.ini"
+  },
+  {
+    "bytes": 2200,
+    "crc32": "67CD2B37",
+    "path": "xeBuild/7258/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2360,
+    "crc32": "C4D5B056",
+    "path": "xeBuild/7258/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2360,
+    "crc32": "F64A6D40",
+    "path": "xeBuild/7258/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2360,
+    "crc32": "C4D5B056",
+    "path": "xeBuild/7258/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2308,
+    "crc32": "FB59A359",
+    "path": "xeBuild/7258/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2360,
+    "crc32": "C4D5B056",
+    "path": "xeBuild/7258/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2200,
+    "crc32": "CF8265D5",
+    "path": "xeBuild/7258/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2200,
+    "crc32": "1151CA2E",
+    "path": "xeBuild/7258/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2200,
+    "crc32": "EF54A873",
+    "path": "xeBuild/7258/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "AB6CB761",
+    "path": "xeBuild/7258/fsdata/bootanim.xex"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "9B68039F",
+    "path": "xeBuild/7258/fsdata/createprofile.xex"
+  },
+  {
+    "bytes": 4186112,
+    "crc32": "9215A168",
+    "path": "xeBuild/7258/fsdata/dash.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "09B27D93",
+    "path": "xeBuild/7258/fsdata/deviceselector.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "F7AD0E5D",
+    "path": "xeBuild/7258/fsdata/gamerprofile.xex"
+  },
+  {
+    "bytes": 126976,
+    "crc32": "403C8555",
+    "path": "xeBuild/7258/fsdata/hud.xex"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "CF03D0B1",
+    "path": "xeBuild/7258/fsdata/huduiskin.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "817E1D7D",
+    "path": "xeBuild/7258/fsdata/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "C0D0ECD8",
+    "path": "xeBuild/7258/fsdata/minimediaplayer.xex"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "09A200B5",
+    "path": "xeBuild/7258/fsdata/signin.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "C99E0769",
+    "path": "xeBuild/7258/fsdata/updater.xex"
+  },
+  {
+    "bytes": 114688,
+    "crc32": "3B47F263",
+    "path": "xeBuild/7258/fsdata/vk.xex"
+  },
+  {
+    "bytes": 1220608,
+    "crc32": "7E0A086C",
+    "path": "xeBuild/7258/fsdata/xam.xex"
+  },
+  {
+    "bytes": 1159168,
+    "crc32": "D5D17FF5",
+    "path": "xeBuild/7258/fsdata/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1736704,
+    "crc32": "DDE4A14C",
+    "path": "xeBuild/7258/fsdata/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "1D992BFB",
+    "path": "xeBuild/7258/fsdata/ximedic.xex"
+  },
+  {
+    "bytes": 6754304,
+    "crc32": "5F655163",
+    "path": "xeBuild/7258/su20076000_00000000"
+  },
+  {
+    "bytes": 1734,
+    "crc32": "EBAB696A",
+    "path": "xeBuild/7258/_devgl.ini"
+  },
+  {
+    "bytes": 1902,
+    "crc32": "6DD59664",
+    "path": "xeBuild/7258/_glitch2m.ini"
+  },
+  {
+    "bytes": 1988,
+    "crc32": "8CB73469",
+    "path": "xeBuild/7258/_jtag.ini"
+  },
+  {
+    "bytes": 32,
+    "crc32": "CC9CF669",
+    "path": "xeBuild/9199/bin/addon.idx"
+  },
+  {
+    "bytes": 12,
+    "crc32": "89E6AA16",
+    "path": "xeBuild/9199/bin/nointmu.bin"
+  },
+  {
+    "bytes": 12,
+    "crc32": "89E6AA16",
+    "path": "xeBuild/9199/bin/nomu.bin"
+  },
+  {
+    "bytes": 2452,
+    "crc32": "B10E59FA",
+    "path": "xeBuild/9199/bin/patches_falcon.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "671A0958",
+    "path": "xeBuild/9199/bin/patches_g2mfalcon.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "A151AAE2",
+    "path": "xeBuild/9199/bin/patches_g2mjasper.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "452EDD95",
+    "path": "xeBuild/9199/bin/patches_g2mtrinity.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "671A0958",
+    "path": "xeBuild/9199/bin/patches_g2mxenon.bin"
+  },
+  {
+    "bytes": 2572,
+    "crc32": "61C8B359",
+    "path": "xeBuild/9199/bin/patches_g2mxenon_ELPIS.bin"
+  },
+  {
+    "bytes": 2624,
+    "crc32": "671A0958",
+    "path": "xeBuild/9199/bin/patches_g2mzephyr.bin"
+  },
+  {
+    "bytes": 2452,
+    "crc32": "2BC78ADD",
+    "path": "xeBuild/9199/bin/patches_jasper.bin"
+  },
+  {
+    "bytes": 2452,
+    "crc32": "C2A29EBB",
+    "path": "xeBuild/9199/bin/patches_xenon.bin"
+  },
+  {
+    "bytes": 2452,
+    "crc32": "C005EC01",
+    "path": "xeBuild/9199/bin/patches_zephyr.bin"
+  },
+  {
+    "bytes": 16384,
+    "crc32": "CBAFD7D4",
+    "path": "xeBuild/9199/fsdata/aac.xexp1"
+  },
+  {
+    "bytes": 397312,
+    "crc32": "AB6CB761",
+    "path": "xeBuild/9199/fsdata/bootanim.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "5EC5323F",
+    "path": "xeBuild/9199/fsdata/bootanim.xexp1"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "9B68039F",
+    "path": "xeBuild/9199/fsdata/createprofile.xex"
+  },
+  {
+    "bytes": 28672,
+    "crc32": "2A2B3BB3",
+    "path": "xeBuild/9199/fsdata/createprofile.xexp1"
+  },
+  {
+    "bytes": 4845568,
+    "crc32": "5B179F48",
+    "path": "xeBuild/9199/fsdata/dash.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "09B27D93",
+    "path": "xeBuild/9199/fsdata/deviceselector.xex"
+  },
+  {
+    "bytes": 22528,
+    "crc32": "92B6EB41",
+    "path": "xeBuild/9199/fsdata/deviceselector.xexp1"
+  },
+  {
+    "bytes": 77824,
+    "crc32": "F7AD0E5D",
+    "path": "xeBuild/9199/fsdata/gamerprofile.xex"
+  },
+  {
+    "bytes": 69632,
+    "crc32": "F7115022",
+    "path": "xeBuild/9199/fsdata/gamerprofile.xexp1"
+  },
+  {
+    "bytes": 126976,
+    "crc32": "403C8555",
+    "path": "xeBuild/9199/fsdata/hud.xex"
+  },
+  {
+    "bytes": 133120,
+    "crc32": "BFDB41B3",
+    "path": "xeBuild/9199/fsdata/hud.xexp1"
+  },
+  {
+    "bytes": 311296,
+    "crc32": "6B06C200",
+    "path": "xeBuild/9199/fsdata/huduiskin.xex"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "817E1D7D",
+    "path": "xeBuild/9199/fsdata/mfgbootlauncher.xex"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "7A6D271F",
+    "path": "xeBuild/9199/fsdata/mfgbootlauncher.xexp1"
+  },
+  {
+    "bytes": 36864,
+    "crc32": "C0D0ECD8",
+    "path": "xeBuild/9199/fsdata/minimediaplayer.xex"
+  },
+  {
+    "bytes": 32768,
+    "crc32": "30FA9E45",
+    "path": "xeBuild/9199/fsdata/minimediaplayer.xexp1"
+  },
+  {
+    "bytes": 59392,
+    "crc32": "25F85CD0",
+    "path": "xeBuild/9199/fsdata/nomni.xexp1"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "20EE2A10",
+    "path": "xeBuild/9199/fsdata/nomnifwm.xexp1"
+  },
+  {
+    "bytes": 49152,
+    "crc32": "09A200B5",
+    "path": "xeBuild/9199/fsdata/signin.xex"
+  },
+  {
+    "bytes": 38912,
+    "crc32": "960D6790",
+    "path": "xeBuild/9199/fsdata/signin.xexp1"
+  },
+  {
+    "bytes": 20480,
+    "crc32": "C99E0769",
+    "path": "xeBuild/9199/fsdata/updater.xex"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "550BD560",
+    "path": "xeBuild/9199/fsdata/updater.xexp1"
+  },
+  {
+    "bytes": 114688,
+    "crc32": "3B47F263",
+    "path": "xeBuild/9199/fsdata/vk.xex"
+  },
+  {
+    "bytes": 40960,
+    "crc32": "DABFAF1A",
+    "path": "xeBuild/9199/fsdata/vk.xexp1"
+  },
+  {
+    "bytes": 1220608,
+    "crc32": "7E0A086C",
+    "path": "xeBuild/9199/fsdata/xam.xex"
+  },
+  {
+    "bytes": 1161216,
+    "crc32": "D05EFAA4",
+    "path": "xeBuild/9199/fsdata/xam.xexp1"
+  },
+  {
+    "bytes": 1159168,
+    "crc32": "D5D17FF5",
+    "path": "xeBuild/9199/fsdata/xenonclatin.xtt"
+  },
+  {
+    "bytes": 86016,
+    "crc32": "D88F962E",
+    "path": "xeBuild/9199/fsdata/xenonclatin.xttp1"
+  },
+  {
+    "bytes": 1736704,
+    "crc32": "DDE4A14C",
+    "path": "xeBuild/9199/fsdata/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "CC43C4AC",
+    "path": "xeBuild/9199/fsdata/xenonjklatin.xttp1"
+  },
+  {
+    "bytes": 86016,
+    "crc32": "223F3A8D",
+    "path": "xeBuild/9199/fsdata/ximecore.xex"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "1D992BFB",
+    "path": "xeBuild/9199/fsdata/ximedic.xex"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "52B94062",
+    "path": "xeBuild/9199/fsdata/ximedic.xexp1"
+  },
+  {
+    "bytes": 8003584,
+    "crc32": "7C4451CA",
+    "path": "xeBuild/9199/su20076000_00000000"
+  },
+  {
+    "bytes": 1952,
+    "crc32": "9620407D",
+    "path": "xeBuild/9199/_devgl.ini"
+  },
+  {
+    "bytes": 2022,
+    "crc32": "1950A900",
+    "path": "xeBuild/9199/_glitch2m.ini"
+  },
+  {
+    "bytes": 1952,
+    "crc32": "F80BB448",
+    "path": "xeBuild/9199/_jtag.ini"
+  },
+  {
+    "bytes": 2439,
+    "crc32": "E08725BD",
+    "path": "xeBuild/9199/_retail.ini"
+  },
+  {
+    "bytes": 1727,
+    "crc32": "91C4C15C",
+    "path": "xeBuild/about_patches.S"
+  },
+  {
+    "bytes": 6896,
+    "crc32": "9255DFB1",
+    "path": "xeBuild/common/cba_13121.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "B6AC1C06",
+    "path": "xeBuild/common/cba_13180.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "0DA5267B",
+    "path": "xeBuild/common/cba_13181.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "F5D7CA7A",
+    "path": "xeBuild/common/cba_13182.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "DC0D8104",
+    "path": "xeBuild/common/cba_16128.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "406589CE",
+    "path": "xeBuild/common/cba_1925.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "4F9D06EA",
+    "path": "xeBuild/common/cba_1926.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "F3617781",
+    "path": "xeBuild/common/cba_1927.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "69998D8B",
+    "path": "xeBuild/common/cba_1928.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "D9BE7575",
+    "path": "xeBuild/common/cba_1941.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "55D75C16",
+    "path": "xeBuild/common/cba_1942.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "82361BAA",
+    "path": "xeBuild/common/cba_4559.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "42655ED0",
+    "path": "xeBuild/common/cba_4560.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "44121B93",
+    "path": "xeBuild/common/cba_4561.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "0D0320BC",
+    "path": "xeBuild/common/cba_4562.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "E543831C",
+    "path": "xeBuild/common/cba_4569.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "390B4190",
+    "path": "xeBuild/common/cba_4574.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "2FD8C4AE",
+    "path": "xeBuild/common/cba_4575.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "F8761A70",
+    "path": "xeBuild/common/cba_4576.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "AF626D51",
+    "path": "xeBuild/common/cba_4577.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "E3696F7E",
+    "path": "xeBuild/common/cba_5772.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "B8849C79",
+    "path": "xeBuild/common/cba_5773.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "53E96A15",
+    "path": "xeBuild/common/cba_5774.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "B33985A3",
+    "path": "xeBuild/common/cba_6752.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "E1BF779C",
+    "path": "xeBuild/common/cba_6753.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "4F16775E",
+    "path": "xeBuild/common/cba_6754.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "E89BFC00",
+    "path": "xeBuild/common/cba_7377.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "0BDE9D1C",
+    "path": "xeBuild/common/cba_7378.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "3661A9D6",
+    "path": "xeBuild/common/cba_9188.bin"
+  },
+  {
+    "bytes": 6848,
+    "crc32": "BDA9A1C7",
+    "path": "xeBuild/common/cba_9188_mfg.bin"
+  },
+  {
+    "bytes": 8128,
+    "crc32": "0483216E",
+    "path": "xeBuild/common/cba_9230.bin"
+  },
+  {
+    "bytes": 8192,
+    "crc32": "4B0905B0",
+    "path": "xeBuild/common/cba_9231.bin"
+  },
+  {
+    "bytes": 31552,
+    "crc32": "6F3F9C18",
+    "path": "xeBuild/common/cbb_13121.bin"
+  },
+  {
+    "bytes": 32240,
+    "crc32": "AD4284BD",
+    "path": "xeBuild/common/cbb_13180.bin"
+  },
+  {
+    "bytes": 32240,
+    "crc32": "3D50B56C",
+    "path": "xeBuild/common/cbb_13181.bin"
+  },
+  {
+    "bytes": 36992,
+    "crc32": "BA70E943",
+    "path": "xeBuild/common/cbb_13182.bin"
+  },
+  {
+    "bytes": 36992,
+    "crc32": "528FD932",
+    "path": "xeBuild/common/cbb_16128.bin"
+  },
+  {
+    "bytes": 39872,
+    "crc32": "60A4F556",
+    "path": "xeBuild/common/cbb_1925.bin"
+  },
+  {
+    "bytes": 39872,
+    "crc32": "2E942A05",
+    "path": "xeBuild/common/cbb_1926.bin"
+  },
+  {
+    "bytes": 39872,
+    "crc32": "6449D409",
+    "path": "xeBuild/common/cbb_1927.bin"
+  },
+  {
+    "bytes": 39872,
+    "crc32": "6495464B",
+    "path": "xeBuild/common/cbb_1928.bin"
+  },
+  {
+    "bytes": 27280,
+    "crc32": "EC060138",
+    "path": "xeBuild/common/cbb_1941.bin"
+  },
+  {
+    "bytes": 27280,
+    "crc32": "286F32EC",
+    "path": "xeBuild/common/cbb_1942.bin"
+  },
+  {
+    "bytes": 30496,
+    "crc32": "07EAA4A8",
+    "path": "xeBuild/common/cbb_4559.bin"
+  },
+  {
+    "bytes": 30496,
+    "crc32": "A7C8259E",
+    "path": "xeBuild/common/cbb_4560.bin"
+  },
+  {
+    "bytes": 30496,
+    "crc32": "B8BF176B",
+    "path": "xeBuild/common/cbb_4561.bin"
+  },
+  {
+    "bytes": 30496,
+    "crc32": "BE9FE351",
+    "path": "xeBuild/common/cbb_4562.bin"
+  },
+  {
+    "bytes": 33376,
+    "crc32": "6F92CF36",
+    "path": "xeBuild/common/cbb_4569.bin"
+  },
+  {
+    "bytes": 33376,
+    "crc32": "7BA0DCBB",
+    "path": "xeBuild/common/cbb_4574.bin"
+  },
+  {
+    "bytes": 33376,
+    "crc32": "42718547",
+    "path": "xeBuild/common/cbb_4575.bin"
+  },
+  {
+    "bytes": 33376,
+    "crc32": "C7F5A8CE",
+    "path": "xeBuild/common/cbb_4576.bin"
+  },
+  {
+    "bytes": 32544,
+    "crc32": "EE79C182",
+    "path": "xeBuild/common/cbb_4577.bin"
+  },
+  {
+    "bytes": 37712,
+    "crc32": "FB5AB9A4",
+    "path": "xeBuild/common/cbb_5772.bin"
+  },
+  {
+    "bytes": 38528,
+    "crc32": "4EE83EA3",
+    "path": "xeBuild/common/cbb_5773.bin"
+  },
+  {
+    "bytes": 38528,
+    "crc32": "0D13B810",
+    "path": "xeBuild/common/cbb_5774.bin"
+  },
+  {
+    "bytes": 37776,
+    "crc32": "B8A4B624",
+    "path": "xeBuild/common/cbb_6752.bin"
+  },
+  {
+    "bytes": 38592,
+    "crc32": "554ED413",
+    "path": "xeBuild/common/cbb_6753.bin"
+  },
+  {
+    "bytes": 38592,
+    "crc32": "4AC39CB1",
+    "path": "xeBuild/common/cbb_6754.bin"
+  },
+  {
+    "bytes": 39488,
+    "crc32": "4FC579DD",
+    "path": "xeBuild/common/cbb_7377.bin"
+  },
+  {
+    "bytes": 39488,
+    "crc32": "E9C6A034",
+    "path": "xeBuild/common/cbb_7378.bin"
+  },
+  {
+    "bytes": 30720,
+    "crc32": "B7CFC17C",
+    "path": "xeBuild/common/cbb_9188.bin"
+  },
+  {
+    "bytes": 31280,
+    "crc32": "C2C95118",
+    "path": "xeBuild/common/cbb_9230.bin"
+  },
+  {
+    "bytes": 31280,
+    "crc32": "444F1DF3",
+    "path": "xeBuild/common/cbb_9231.bin"
+  },
+  {
+    "bytes": 25056,
+    "crc32": "80B23390",
+    "path": "xeBuild/common/cb_1888.bin"
+  },
+  {
+    "bytes": 26080,
+    "crc32": "1FDB90FA",
+    "path": "xeBuild/common/cb_1897.bin"
+  },
+  {
+    "bytes": 35968,
+    "crc32": "4F2FDE8F",
+    "path": "xeBuild/common/cb_1902.bin"
+  },
+  {
+    "bytes": 37648,
+    "crc32": "75179244",
+    "path": "xeBuild/common/cb_1903.bin"
+  },
+  {
+    "bytes": 37776,
+    "crc32": "4C8D2312",
+    "path": "xeBuild/common/cb_1920.bin"
+  },
+  {
+    "bytes": 38912,
+    "crc32": "14CEC7B4",
+    "path": "xeBuild/common/cb_1921.bin"
+  },
+  {
+    "bytes": 40192,
+    "crc32": "1FFE1C52",
+    "path": "xeBuild/common/cb_1922.bin"
+  },
+  {
+    "bytes": 40192,
+    "crc32": "993923F2",
+    "path": "xeBuild/common/cb_1923.bin"
+  },
+  {
+    "bytes": 26400,
+    "crc32": "62B7B19C",
+    "path": "xeBuild/common/cb_1940.bin"
+  },
+  {
+    "bytes": 28448,
+    "crc32": "93B50CA5",
+    "path": "xeBuild/common/cb_4540.bin"
+  },
+  {
+    "bytes": 31344,
+    "crc32": "57DBA8FF",
+    "path": "xeBuild/common/cb_4558.bin"
+  },
+  {
+    "bytes": 29664,
+    "crc32": "3CC6D4CC",
+    "path": "xeBuild/common/cb_4571.bin"
+  },
+  {
+    "bytes": 29664,
+    "crc32": "ADB44F76",
+    "path": "xeBuild/common/cb_4572.bin"
+  },
+  {
+    "bytes": 32544,
+    "crc32": "7DCE10BF",
+    "path": "xeBuild/common/cb_4578.bin"
+  },
+  {
+    "bytes": 32544,
+    "crc32": "A504B0F1",
+    "path": "xeBuild/common/cb_4579.bin"
+  },
+  {
+    "bytes": 31280,
+    "crc32": "F75CCCBD",
+    "path": "xeBuild/common/cb_4580.bin"
+  },
+  {
+    "bytes": 31952,
+    "crc32": "A11D5801",
+    "path": "xeBuild/common/cb_5761.bin"
+  },
+  {
+    "bytes": 31888,
+    "crc32": "322EB846",
+    "path": "xeBuild/common/cb_5766.bin"
+  },
+  {
+    "bytes": 36416,
+    "crc32": "3279F0D5",
+    "path": "xeBuild/common/cb_5770.bin"
+  },
+  {
+    "bytes": 37696,
+    "crc32": "859140F0",
+    "path": "xeBuild/common/cb_5771.bin"
+  },
+  {
+    "bytes": 36448,
+    "crc32": "B6DF60B5",
+    "path": "xeBuild/common/cb_6712.bin"
+  },
+  {
+    "bytes": 38224,
+    "crc32": "E9292B90",
+    "path": "xeBuild/common/cb_6723.bin"
+  },
+  {
+    "bytes": 39488,
+    "crc32": "F7AFA8CC",
+    "path": "xeBuild/common/cb_6750.bin"
+  },
+  {
+    "bytes": 37760,
+    "crc32": "0AE60BDD",
+    "path": "xeBuild/common/cb_6751.bin"
+  },
+  {
+    "bytes": 38688,
+    "crc32": "7D2E1EE0",
+    "path": "xeBuild/common/cb_7373.bin"
+  },
+  {
+    "bytes": 38688,
+    "crc32": "C4E044A0",
+    "path": "xeBuild/common/cb_7375.bin"
+  },
+  {
+    "bytes": 37408,
+    "crc32": "F754A19D",
+    "path": "xeBuild/common/cb_8192.bin"
+  },
+  {
+    "bytes": 20624,
+    "crc32": "58221592",
+    "path": "xeBuild/common/cd_12905.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "A8466DDD",
+    "path": "xeBuild/common/cd_13180.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "A84F3C6D",
+    "path": "xeBuild/common/cd_13181.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "54EBA3D6",
+    "path": "xeBuild/common/cd_13182.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "8824D7D8",
+    "path": "xeBuild/common/cd_16128.bin"
+  },
+  {
+    "bytes": 22256,
+    "crc32": "6ED128E0",
+    "path": "xeBuild/common/cd_1888.bin"
+  },
+  {
+    "bytes": 22272,
+    "crc32": "35D7FB1B",
+    "path": "xeBuild/common/cd_1920.bin"
+  },
+  {
+    "bytes": 22208,
+    "crc32": "B907093A",
+    "path": "xeBuild/common/cd_1921.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "3DAF72D5",
+    "path": "xeBuild/common/cd_1925.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "30FE63B6",
+    "path": "xeBuild/common/cd_1926.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "D6A33EA3",
+    "path": "xeBuild/common/cd_1927.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "7863862C",
+    "path": "xeBuild/common/cd_1928.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "E308D933",
+    "path": "xeBuild/common/cd_1941.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "56F1EBC4",
+    "path": "xeBuild/common/cd_1942.bin"
+  },
+  {
+    "bytes": 22272,
+    "crc32": "4072D8CD",
+    "path": "xeBuild/common/cd_4540.bin"
+  },
+  {
+    "bytes": 22272,
+    "crc32": "3286F409",
+    "path": "xeBuild/common/cd_4558.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "A596727E",
+    "path": "xeBuild/common/cd_4559.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "2D1680F2",
+    "path": "xeBuild/common/cd_4560.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "8B1C373F",
+    "path": "xeBuild/common/cd_4561.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "280A5E27",
+    "path": "xeBuild/common/cd_4562.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "0BCCF560",
+    "path": "xeBuild/common/cd_4569.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "8EF4BC3E",
+    "path": "xeBuild/common/cd_4574.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "61E80E1B",
+    "path": "xeBuild/common/cd_4575.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "E9FFC2CD",
+    "path": "xeBuild/common/cd_4576.bin"
+  },
+  {
+    "bytes": 22208,
+    "crc32": "449401B9",
+    "path": "xeBuild/common/cd_4580.bin"
+  },
+  {
+    "bytes": 22272,
+    "crc32": "C614676D",
+    "path": "xeBuild/common/cd_5761.bin"
+  },
+  {
+    "bytes": 22208,
+    "crc32": "E5E70214",
+    "path": "xeBuild/common/cd_5766.bin"
+  },
+  {
+    "bytes": 22208,
+    "crc32": "D04E8927",
+    "path": "xeBuild/common/cd_5770.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "4FCCF593",
+    "path": "xeBuild/common/cd_5773.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "C677E4D4",
+    "path": "xeBuild/common/cd_5774.bin"
+  },
+  {
+    "bytes": 22256,
+    "crc32": "E83C9D0B",
+    "path": "xeBuild/common/cd_6712.bin"
+  },
+  {
+    "bytes": 22256,
+    "crc32": "0FCFF305",
+    "path": "xeBuild/common/cd_6723.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "BAC2E29E",
+    "path": "xeBuild/common/cd_6753.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "1D685A08",
+    "path": "xeBuild/common/cd_6754.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "04B004B5",
+    "path": "xeBuild/common/cd_7377.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "27C07976",
+    "path": "xeBuild/common/cd_7378.bin"
+  },
+  {
+    "bytes": 22288,
+    "crc32": "0E27FA5F",
+    "path": "xeBuild/common/cd_8192.bin"
+  },
+  {
+    "bytes": 22400,
+    "crc32": "25E0ACD0",
+    "path": "xeBuild/common/cd_8453.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "1D800CF0",
+    "path": "xeBuild/common/cd_9230.bin"
+  },
+  {
+    "bytes": 20608,
+    "crc32": "CF9FF4C9",
+    "path": "xeBuild/common/cd_9231.bin"
+  },
+  {
+    "bytes": 20256,
+    "crc32": "B6959549",
+    "path": "xeBuild/common/cd_9452.bin"
+  },
+  {
+    "bytes": 352362,
+    "crc32": "FF9B60DF",
+    "path": "xeBuild/common/ce_1888.bin"
+  },
+  {
+    "bytes": 17600,
+    "crc32": "D28EF722",
+    "path": "xeBuild/common/cf_4532.bin"
+  },
+  {
+    "bytes": 192320,
+    "crc32": "2CC9B951",
+    "path": "xeBuild/common/cg_4532.bin"
+  },
+  {
+    "bytes": 16640,
+    "crc32": "814C81B8",
+    "path": "xeBuild/common/SB_10375.bin"
+  },
+  {
+    "bytes": 16608,
+    "crc32": "4712224F",
+    "path": "xeBuild/common/SB_14352.bin"
+  },
+  {
+    "bytes": 18176,
+    "crc32": "6A9C890C",
+    "path": "xeBuild/common/SC_12625_slim.bin"
+  },
+  {
+    "bytes": 25920,
+    "crc32": "1E6C19AC",
+    "path": "xeBuild/common/SC_16547_phat.bin"
+  },
+  {
+    "bytes": 23536,
+    "crc32": "FC19085D",
+    "path": "xeBuild/common/SC_16547_slim.bin"
+  },
+  {
+    "bytes": 25920,
+    "crc32": "C378AD16",
+    "path": "xeBuild/common/SC_17489.bin"
+  },
+  {
+    "bytes": 26448,
+    "crc32": "D38C5D07",
+    "path": "xeBuild/common/SC_17489_xenon.bin"
+  },
+  {
+    "bytes": 19936,
+    "crc32": "86B2DFAC",
+    "path": "xeBuild/common/SD_12611.bin"
+  },
+  {
+    "bytes": 20272,
+    "crc32": "0B3CFB10",
+    "path": "xeBuild/common/SD_17489.bin"
+  },
+  {
+    "bytes": 20080,
+    "crc32": "395CE3A0",
+    "path": "xeBuild/common/sd_21076.bin"
+  },
+  {
+    "bytes": 1159168,
+    "crc32": "D5D17FF5",
+    "path": "xeBuild/common/xenonclatin.xtt"
+  },
+  {
+    "bytes": 1736704,
+    "crc32": "DDE4A14C",
+    "path": "xeBuild/common/xenonjklatin.xtt"
+  },
+  {
+    "bytes": 589824,
+    "crc32": "1D992BFB",
+    "path": "xeBuild/common/ximedic.xex"
+  },
+  {
+    "bytes": 14336,
+    "crc32": "266904F7",
+    "path": "xeBuild/data/CORONA_CLEAN.bin"
+  },
+  {
+    "bytes": 14336,
+    "crc32": "6157C42A",
+    "path": "xeBuild/data/CORONA_CR4.bin"
+  },
+  {
+    "bytes": 14336,
+    "crc32": "305E171D",
+    "path": "xeBuild/data/CORONA_SMC+.bin"
+  },
+  {
+    "bytes": 2560,
+    "crc32": "87DC38E8",
+    "path": "xeBuild/data/crl.bin"
+  },
+  {
+    "bytes": 44336,
+    "crc32": "D66FE9E1",
+    "path": "xeBuild/data/dae.bin"
+  },
+  {
+    "bytes": 16384,
+    "crc32": "AB54D286",
+    "path": "xeBuild/data/extended.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "9177B14B",
+    "path": "xeBuild/data/FALCON_CLEAN.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "C99036FF",
+    "path": "xeBuild/data/FALCON_CR4.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "53642F35",
+    "path": "xeBuild/data/FALCON_SMC+.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "9BA15D46",
+    "path": "xeBuild/data/JASPER_CLEAN.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "89F50DD3",
+    "path": "xeBuild/data/JASPER_CR4.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "ECF3587F",
+    "path": "xeBuild/data/JASPER_SMC+.bin"
+  },
+  {
+    "bytes": 16,
+    "crc32": "FC75AB70",
+    "path": "xeBuild/data/key.bin"
+  },
+  {
+    "bytes": 7119,
+    "crc32": "FC618106",
+    "path": "xeBuild/data/options.ini"
+  },
+  {
+    "bytes": 1024,
+    "crc32": "EFB5AF2E",
+    "path": "xeBuild/data/secdata.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "8E5711CB",
+    "path": "xeBuild/data/SMCaud.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "6D5E0940",
+    "path": "xeBuild/data/SMCfzj.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "74440742",
+    "path": "xeBuild/data/SMCx.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "DE774900",
+    "path": "xeBuild/data/TRINITY_CLEAN.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "56D4FC97",
+    "path": "xeBuild/data/TRINITY_CR4.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "CCADD8FF",
+    "path": "xeBuild/data/TRINITY_SMC+.bin"
+  },
+  {
+    "bytes": 14336,
+    "crc32": "65D2CF28",
+    "path": "xeBuild/data/WINCHESTER_CLEAN.bin"
+  },
+  {
+    "bytes": 262144,
+    "crc32": "9C431393",
+    "path": "xeBuild/data/xell-1f.bin"
+  },
+  {
+    "bytes": 262144,
+    "crc32": "7E145FE5",
+    "path": "xeBuild/data/xell-2f.bin"
+  },
+  {
+    "bytes": 262144,
+    "crc32": "83B9F82E",
+    "path": "xeBuild/data/xell-gggggg.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "548723CC",
+    "path": "xeBuild/data/XENON_CLEAN.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "AF3905F2",
+    "path": "xeBuild/data/XENON_SMC+.bin"
+  },
+  {
+    "bytes": 12288,
+    "crc32": "96AFDE23",
+    "path": "xeBuild/data/ZEPHYR_CLEAN.bin"
+  },
+  {
+    "bytes": 16384,
+    "crc32": "2CFB7B38",
+    "path": "xeBuild/Donor Files/fcrt.bin"
+  },
+  {
+    "bytes": 16384,
+    "crc32": "2ED223FD",
+    "path": "xeBuild/Donor Files/phat_t1.bin"
+  },
+  {
+    "bytes": 16384,
+    "crc32": "FCA95CAC",
+    "path": "xeBuild/Donor Files/phat_t2.bin"
+  },
+  {
+    "bytes": 16384,
+    "crc32": "C8B1EF49",
+    "path": "xeBuild/Donor Files/slim_nofcrt.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "419A1CF3",
+    "path": "xeBuild/Donor Files/smc_config/Corona.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "81E3F671",
+    "path": "xeBuild/Donor Files/smc_config/Falcon.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "B91EF2FE",
+    "path": "xeBuild/Donor Files/smc_config/Jasper.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "214A07EE",
+    "path": "xeBuild/Donor Files/smc_config/Trinity.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "6B8A6FB2",
+    "path": "xeBuild/Donor Files/smc_config/Winchester.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "F83235A3",
+    "path": "xeBuild/Donor Files/smc_config/Xenon.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "BA8F14B7",
+    "path": "xeBuild/Donor Files/smc_config/Zephyr.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "BE137551",
+    "path": "xeBuild/Falcon Power Fix SMC/smc_config.bin"
+  },
+  {
+    "bytes": 65536,
+    "crc32": "4886A4B4",
+    "path": "xeBuild/Falcon Power Fix SMC/smc_config_2.bin"
+  },
+  {
+    "bytes": 47104,
+    "crc32": "AA0A46E0",
+    "path": "xeBuild/launch.xex"
+  },
+  {
+    "bytes": 18432,
+    "crc32": "B0916A28",
+    "path": "xeBuild/lhelper.xex"
+  },
+  {
+    "bytes": 4636,
+    "crc32": "E1D760BC",
+    "path": "xeBuild/license.txt"
+  },
+  {
+    "bytes": 7119,
+    "crc32": "FC618106",
+    "path": "xeBuild/options.ini"
+  },
+  {
+    "bytes": 7119,
+    "crc32": "FC618106",
+    "path": "xeBuild/options_edited.ini"
+  },
+  {
+    "bytes": 1093632,
+    "crc32": "94906445",
+    "path": "xeBuild/updserv/default.xex"
+  },
+  {
+    "bytes": 738,
+    "crc32": "FE39EB01",
+    "path": "xeBuild/updserv/readme.txt"
+  },
+  {
+    "bytes": 1088477,
+    "crc32": "14CF5A09",
+    "path": "xeBuild/updserv.rar"
+  },
+  {
+    "bytes": 23536,
+    "crc32": "9E834D81",
+    "path": "xeBuild/XDKbuild/corona.bin"
+  },
+  {
+    "bytes": 25920,
+    "crc32": "C665B4EC",
+    "path": "xeBuild/XDKbuild/falcon.bin"
+  },
+  {
+    "bytes": 25920,
+    "crc32": "C665B4EC",
+    "path": "xeBuild/XDKbuild/jasper.bin"
+  },
+  {
+    "bytes": 23536,
+    "crc32": "9E834D81",
+    "path": "xeBuild/XDKbuild/trinity.bin"
+  },
+  {
+    "bytes": 95744,
+    "crc32": "747AFDCB",
+    "path": "xeBuild/XDKbuild/XDKbuild.exe"
+  },
+  {
+    "bytes": 26448,
+    "crc32": "D38C5D07",
+    "path": "xeBuild/XDKbuild/xenon.bin"
+  },
+  {
+    "bytes": 25920,
+    "crc32": "C665B4EC",
+    "path": "xeBuild/XDKbuild/zephyr.bin"
+  },
+  {
+    "bytes": 451584,
+    "crc32": "31D068DC",
+    "path": "xeBuild/xeBuild.exe"
+  },
+  {
+    "bytes": 12827,
+    "crc32": "3891C1D6",
+    "path": "xeBuild/zfbuild/hdd.tools.py"
+  },
+  {
+    "bytes": 17984,
+    "crc32": "586D4CF1",
+    "path": "xeBuild/zfbuild/LICENSE"
+  },
+  {
+    "bytes": 476,
+    "crc32": "6C68E0ED",
+    "path": "xeBuild/zfbuild/Readme.md"
+  },
+  {
+    "bytes": 27789,
+    "crc32": "B3CD02F6",
+    "path": "xeBuild/zfbuild/xe/xtaf.py"
+  }
+]
