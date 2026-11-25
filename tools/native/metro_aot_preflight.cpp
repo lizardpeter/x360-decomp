@@ -91,6 +91,9 @@ public:
                 return fail("dashboard_thunk_registration");
             if (!title_.FindFunction(binding.target))
                 return fail("xam_export_registration");
+            const auto value = title_.GetGuestMemory().Load<rex::be_u32>(binding.value_slot);
+            if (!value || static_cast<rex::u32>(*value) != binding.thunk)
+                return fail("dashboard_import_value");
         }
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
