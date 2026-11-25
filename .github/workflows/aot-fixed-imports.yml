@@ -8,6 +8,7 @@ on:
       - 'tools/stage_metro_xam_aot.py'
       - 'tests/test_metro_xam_aot.py'
       - 'tools/stage_metro_preflight.py'
+      - 'tools/filter_zero_aot_mappings.py'
       - 'tools/patch_rexglue_function_tables.py'
       - 'tools/patch_metro_import_slots.py'
       - 'tools/native/metro_aot_boot.hpp'
@@ -95,6 +96,12 @@ jobs:
           python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/dashboard-diagnostics.json
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
           python tools/aot_receipt.py "$folder/generated_xam" --status "$status" --output build/receipts/xam-generated.json
+      - name: Filter invalid zero-address mappings and refresh generated receipts
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          python tools/filter_zero_aot_mappings.py "$folder" --receipt build/receipts/zero-address-mappings.json
+          python tools/aot_receipt.py "$folder/generated" --status 0 --output build/receipts/dashboard-generated.json
+          python tools/aot_receipt.py "$folder/generated_xam" --status 0 --output build/receipts/xam-generated.json
       - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"

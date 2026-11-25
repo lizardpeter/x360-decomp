@@ -17,6 +17,22 @@ from patch_rexglue_function_tables import (  # noqa: E402
 
 
 class MetroSDKPatchTests(unittest.TestCase):
+    def test_zero_address_mapping_is_removed_but_null_sentinel_is_preserved(self):
+        source = '''const PPCFuncMapping kPPCFuncMappings[] = {\n  { 0x0, &sub_00000000 },\n  { 0x92196610, &xstart },\n  { 0, nullptr }\n};\n'''
+        updated, removed, retained = filter_text(source, (0x92196610,))
+        self.assertEqual(removed, ["&sub_00000000"])
+        self.assertEqual(retained, 1)
+        self.assertNotIn("&sub_00000000", updated)
+        self.assertIn("{ 0, nullptr }", updated)
+        again, removed_again, retained_again = filter_text(updated, (0x92196610,))
+        self.assertEqual(again, updated)
+        self.assertEqual(removed_again, [])
+        self.assertEqual(retained_again, 1)
+
+    def test_zero_address_filter_rejects_missing_required_entrypoint(self):
+        source = '''const PPCFuncMapping kPPCFuncMappings[] = {\n  { 0x1000, &sub_1000 },\n  { 0, nullptr }\n};\n'''
+        with self.assertRaises(ValueError):
+            filter_text(source, (0x92196610,))
     def test_original_dashboard_slots_match_exact_xam_ordinals(self):
         imports = rows(ROOT / "analysis/dash_17559/imports.tsv")
         exports = rows(ROOT / "analysis/xam_17559/exports.tsv")
