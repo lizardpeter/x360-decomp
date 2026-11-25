@@ -1,0 +1,59 @@
+name: Original AOT code-generation trial
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/prepare_recompilation.py'
+      - 'tools/aot_receipt.py'
+      - 'tests/test_aot.py'
+      - '.github/workflows/recompile.yml'
+permissions:
+  contents: read
+jobs:
+  codegen:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [dash_17559, xam_17559]
+    env:
+      MODULE: ${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test staging and receipt logic
+        run: python -m unittest discover -s tests -p test_aot.py
+      - name: Stage exact original images
+        run: |
+          python tools/fetch_originals.py --only dash --only pirs
+          python tools/prepare_recompilation.py --module "$MODULE"
+      - name: Install checksum-pinned ReXGlue 0.11.0
+        run: |
+          mkdir -p build/sdk
+          curl --fail --location --retry 3 -o build/sdk/sdk.zip https://github.com/rexglue/rexglue-sdk/releases/download/v0.11.0/rexglue-sdk-0.11.0-linux-amd64.zip
+          echo 'e7d543ab8dde2c7839836a0417bfe84691c10f93357ec2c023fa98d3d315803b  build/sdk/sdk.zip' | sha256sum -c
+          unzip -q build/sdk/sdk.zip -d build/sdk
+          mapfile -t executables < <(find build/sdk -type f -name rexglue)
+          test "${#executables[@]}" -eq 1
+          chmod +x "${executables[0]}"
+          echo "REXGLUE=$(realpath "${executables[0]}")" >> "$GITHUB_ENV"
+      - name: Strict ahead-of-time generation
+        run: |
+          "$REXGLUE" --version
+          mkdir -p build/receipts
+          folder="$PWD/build/aot/$MODULE"
+          cd "$folder"
+          set +e
+          "$REXGLUE" codegen "$MODULE"_manifest.toml > codegen.log 2>&1
+          status=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          echo "Codegen exit: $status"
+          python tools/aot_receipt.py "$folder/generated" --status "$status" --output "build/receipts/$MODULE.json"
+      - name: Upload metadata-only receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aot-${{ matrix.module }}-receipt
+          path: build/receipts/${{ matrix.module }}.json
+          if-no-files-found: ignore
