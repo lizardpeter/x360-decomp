@@ -5,7 +5,8 @@ import json
 from pathlib import Path
 from prepare_recompilation import ROOT, EXPECTED, sha
 from stage_aot_host import write_exact
-from stage_metro_xam_aot import BINDINGS, rows, verify_bindings, manifest
+from stage_metro_xam_aot import BINDINGS, rows, manifest
+from patch_metro_import_slots import VALUE_SLOTS, verify_slots
 
 OLD = "add_executable(dash_17559 src/main.cpp)"
 NEW = "add_executable(dash_17559 src/metro_aot_preflight.cpp)"
@@ -42,9 +43,9 @@ def header(dash, xam):
     for name, values in (("Dash", d), ("Xam", x)):
         for field, value in zip(("Base", "Size", "Entry"), values):
             result += f"inline constexpr std::uint32_t k{name}{field} = 0x{value:08X}u;\n"
-    result += "struct Binding {std::uint16_t ordinal; std::uint32_t thunk, target;};\n"
+    result += "struct Binding {std::uint16_t ordinal; std::uint32_t thunk, target, value_slot;};\n"
     result += "inline constexpr Binding kBindings[] = {\n"
-    result += "".join(f"    {{0x{o:04X}u, 0x{a:08X}u, 0x{b:08X}u}},\n"
+    result += "".join(f"    {{0x{o:04X}u, 0x{a:08X}u, 0x{b:08X}u, 0x{VALUE_SLOTS[o]:08X}u}},\n"
                       for o, (a, b) in sorted(BINDINGS.items()))
     return result + "};\n"
 
@@ -61,7 +62,7 @@ def stage(folder):
     for name, module in (("dash.xex", "dash_17559"), ("xam.xex", "xam_17559")):
         if sha((folder/"inputs"/name).read_bytes()) != EXPECTED[module]:
             raise ValueError(f"staged {name} identity mismatch")
-    verify_bindings(rows(ROOT/"analysis/dash_17559/imports.tsv"), rows(ROOT/"analysis/xam_17559/exports.tsv"))
+    verify_slots(rows(ROOT/"analysis/dash_17559/imports.tsv"), rows(ROOT/"analysis/xam_17559/exports.tsv"))
     dash, xam = (json.loads((ROOT/"analysis"/module/"decoded.json").read_text())
                  for module in ("dash_17559", "xam_17559"))
     bindings = header(dash, xam)
