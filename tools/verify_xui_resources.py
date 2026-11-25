@@ -39,6 +39,9 @@ def main():
         output=subprocess.check_output([str(args.probe.resolve()),str(temp/"image.bin"),str(temp/"manifest.tsv")],text=True)
     counts=dict((k,int(v)) for k,v in (token.split("=") for token in output.split()))
     expected=dict(archives=35,members=5035,scenes=363,sections=2034,scene_strings=13155,localizations=3824,localized_strings=46598,duplicates=1,unicode_delta=2)
+    expected.update(floats=5621,vectors=5206,quaternions=87,colors=786,shapes=258,segments=1057,paths=258)
+    points=counts.pop('path_points')
+    assert points>=258
     assert counts==expected,(counts,expected)
     print("All 36 resource SHA-256 digests and complete native XUI inventory verified:",output.strip())
 

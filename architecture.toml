@@ -41,7 +41,7 @@ allow = ["abi","hardware","kernel"]
 id = "xam"
 source = "src/os/xam"
 headers = "include/os/xam"
-allow = ["abi","kernel","drivers"]
+allow = ["abi","kernel","drivers","formats"]
 
 [[component]]
 id = "system_apps"
