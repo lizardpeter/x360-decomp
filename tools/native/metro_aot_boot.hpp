@@ -67,10 +67,13 @@ protected:
         if (!xx || xx->GetBaseAddress() != kXamBase || xx->GetImageSize() != kXamSize ||
             xx->GetEntryPoint() != kXamEntry || !xam->user.is_dll_module ||
             !xam->hmodule_ptr || !title.FindFunction(kXamEntry)) return fail("xam_identity");
-        for (const auto& b : kBindings)
+        for (const auto& b : kBindings) {
+            const auto value = title.GetGuestMemory().Load<rex::be_u32>(b.value_slot);
             if (xx->GetExportAddress(b.ordinal) != b.target ||
-                !title.FindFunction(b.thunk) || !title.FindFunction(b.target))
+                !title.FindFunction(b.thunk) || !title.FindFunction(b.target) ||
+                !value || static_cast<rex::u32>(*value) != b.thunk)
                 return fail("export_mapping");
+        }
         const auto original = title.FindFunction(kDashEntry);
         auto* dispatcher = dx->GetFunctionDispatcher();
         if (!original || !dispatcher || *original == &startup) return fail("entry_binding");
