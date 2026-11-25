@@ -4,12 +4,28 @@
 #include <rex/kernel/function_dispatcher.h>
 #include <rex/kernel/object/kernel_thread.h>
 #include <rex/gpu/graphics_system.h>
+#include <rex/filesystem/file_system.h>
 #include <atomic>
 #include <iostream>
 #include <stdexcept>
 #include "metro_preflight_bindings.hpp"
 
 namespace metro_boot {
+inline bool mount_flash(rex::kernel::TitleRuntime& title) {
+    auto& fs = title.GetFileSystem();
+    const auto root = title.GetTitlePaths().game_root.Get() / "flash";
+    // Diagnostic mount from the verified PIRS flash-member names.
+    // Never expose arbitrary host files or make the original resources writable.
+    if (!fs.Mount({"\\Device\\Flash", rex::filesystem::ProviderType::kHostDirectory,
+                   root, rex::filesystem::MountFlags::kNone, {}}))
+        return false;
+    if (!fs.Link("flash:", "\\Device\\Flash"))
+        return false;
+    return bool(fs.Stat("flash:\\dash.xex")) &&
+           bool(fs.Stat("flash:\\xam.xex")) &&
+           bool(fs.Stat("flash:\\shrdres.xzp"));
+}
+
 struct EntryBinding {
     PPCFunc* dashboard{};
     rex::kernel::FunctionDispatcher* dispatcher{};
@@ -50,6 +66,8 @@ protected:
         auto& paths = title.GetTitlePaths();
         if (paths.game_root.Get().empty() || paths.entry.Get() != "dash.xex" ||
             paths.game_writable.Get()) return fail("input_settings");
+        if (!mount_flash(title)) return fail("flash_mount");
+        std::cout << "METRO_BOOT pass flash_mount" << std::endl;
         auto& registry = title.GetModuleRegistry();
         const auto executable = registry.GetExecutable();
         if (!executable) return fail("dashboard_handle");
