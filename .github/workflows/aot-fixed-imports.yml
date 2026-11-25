@@ -1,10 +1,12 @@
-name: Rebuild SDK with repeated-import correction
+name: Rebuild SDK with verified Metro XAM bindings
 on:
   workflow_dispatch:
   push:
     paths:
       - 'tools/patch_rexglue_imports.py'
       - 'tools/verify_repeated_imports.py'
+      - 'tools/stage_metro_xam_aot.py'
+      - 'tests/test_metro_xam_aot.py'
       - '.github/workflows/aot-fixed-imports.yml'
 permissions:
   contents: read
@@ -19,11 +21,10 @@ jobs:
       - name: Verify original input and patch tests
         run: |
           python -m unittest discover -s tests -p test_rexglue_import_patch.py
-          python tools/fetch_originals.py --only dash --only dash_basic
+          python -m unittest discover -s tests -p test_metro_xam_aot.py
+          python tools/fetch_originals.py --only dash --only dash_basic --only pirs
           python tools/verify_repeated_imports.py
-          python tools/stage_aot_host.py --module dash_17559 --output build/fixed-imports
-          python tools/verify_aot_hints.py --output build/fixed-imports/dash_17559/verified-entries.toml
-          echo 'includes = ["verified-entries.toml"]' >> build/fixed-imports/dash_17559/dash_17559_manifest.toml
+          python tools/stage_metro_xam_aot.py stage build/fixed-imports
           mkdir -p build/receipts
       - uses: actions/checkout@v4
         with:
@@ -34,7 +35,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Correct import record walker
-        run: python tools/patch_rexglue_imports.py build/sdk-source
+        run: |
+          python tools/patch_rexglue_imports.py build/sdk-source
+          python tools/stage_metro_xam_aot.py patch build/sdk-source
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -45,7 +48,7 @@ jobs:
           cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=OFF -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
           cmake --build out/build/linux-amd64 --target install --parallel 4
           echo "SDK=$(realpath out/install/linux-amd64)" >> "$GITHUB_ENV"
-      - name: Strict dashboard generation
+      - name: Strict dashboard and XAM generation
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           cd "$folder"
@@ -56,7 +59,8 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/dashboard-diagnostics.json
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
-      - name: Compile and link dashboard host
+          python tools/aot_receipt.py "$folder/generated_xam" --status "$status" --output build/receipts/xam-generated.json
+      - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -g0' -DCMAKE_PREFIX_PATH="$SDK"
@@ -69,10 +73,11 @@ jobs:
           test -x "$folder/native/dash_17559"
           file "$folder/native/dash_17559"
           sha256sum "$folder/native/dash_17559" > build/receipts/dashboard-executable.sha256
+          find "$folder/native" -type f -name "libdash_17559_xam.so" -print -quit | grep -q .
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: corrected-sdk-dashboard-receipt
+          name: verified-metro-xam-receipt
           path: build/receipts/
           if-no-files-found: ignore
