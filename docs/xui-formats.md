@@ -1,0 +1,9 @@
+# Original XUI resources: native structural reconstruction
+
+The dashboard's independently decoded SHA-256-pinned image contains 36 XEX resources: one XDBF and 35 XUIZ v3 archives. We parsed their exact big-endian directory records, bounds and payload offsets, with 5,035 members. The C++ formats library exposes zero-copy, read-only views and never extracts to filesystem paths.
+
+- XUIZ: version 3, exact total size, observed zero flags, variable-size entry directory, relative payload offsets. All observed payloads are contiguous. The original contains an identical duplicate member and 30 virtual ../handles names; preserve names and ordering, reject ambiguous duplicate payloads on lookup, never interpret as disk paths.
+- XUIB: version 8, observed subtype 14, variable header prefix retained as opaque bytes, 12-byte section records. The directory is uniquely located by STRN and exact contiguous section extents. 363 scenes have 2,034 sections, including STRN, VECT, QUAT, CUST, FLOT, COLR, KEYP, KEYD, NAME and DATA. The variable prefix and non-STRN section semantics are not established. A STRN header counts UTF-16 code units (including terminators), not encoded UTF-8 bytes; two original scenes demonstrate the difference. 13,155 strings.
+- XUIS: version 2, modes 0/1/2, null-terminated UTF-8 strings. Mode 1 stores four metadata bytes after each string; mode 2 has no metadata; mode 0 is empty in the observed files. Preserve unknown metadata instead of guessing property/element identities. 3,824 files, 46,598 strings.
+
+The source audit verifies all 36 resource hashes and exercises the native parser on every XUIZ/XUIB/XUIS file. It exports counts only, not original files or strings. Synthetic tests cover exact and ambiguous duplicates, virtual names, truncation, Unicode and invalid boundaries. These are structural parsers, not yet full XUI scene, vector or animation semantics. No UI rendering or dashboard boot is claimed.

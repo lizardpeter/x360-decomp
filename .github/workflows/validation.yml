@@ -33,6 +33,7 @@ jobs:
       - run: ctest --test-dir build/native --output-on-failure
       - run: python tools/fetch_originals.py --only dash_basic
       - run: python tools/verify_native_leaf.py
+      - run: python tools/verify_xui_resources.py build/native/x360_resource_probe
   original-audit:
     if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.original_audit) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[original-audit]')))
     needs: formats
