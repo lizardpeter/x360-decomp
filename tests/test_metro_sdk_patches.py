@@ -8,7 +8,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from filter_zero_aot_mappings import filter_text  # noqa: E402
 from patch_metro_import_slots import (  # noqa: E402
-    BINDINGS, VALUE_SLOTS, VARIABLE_ORDINAL, VARIABLE_SLOT, VARIABLE_TARGET,
+    BINDINGS, VALUE_SLOTS, VARIABLE_ORDINAL, VARIABLE_SLOT, VARIABLE_THUNK_SLOT, VARIABLE_TARGET,
     VARIABLE_OLD, VARIABLE_NEW, OLD as IMPORT_OLD, NEW as IMPORT_NEW,
     corrected as corrected_imports, rows, verify_slots,
 )
@@ -78,7 +78,7 @@ class MetroSDKPatchTests(unittest.TestCase):
         item = next(r for r in imports if r["library"] == "xam.xex" and
                     int(r["ordinal"], 16) == VARIABLE_ORDINAL)
         self.assertEqual(item["value_slots"], f"{VARIABLE_SLOT:08X}")
-        self.assertEqual(item["thunk_slots"], "")
+        self.assertEqual(item["thunk_slots"], f"{VARIABLE_THUNK_SLOT:08X}")
         item = next(r for r in exports if int(r["ordinal"], 16) == VARIABLE_ORDINAL)
         self.assertEqual(int(item["address"], 16), VARIABLE_TARGET)
 
