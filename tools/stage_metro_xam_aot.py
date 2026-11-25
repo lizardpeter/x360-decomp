@@ -60,7 +60,7 @@ def verify_catalog(source):
             raise ValueError(f"SDK now lists XAM ordinal {ordinal:04X}; re-evaluate patch")
 
 def corrected(source):
-    if source.count(OLD) != 1 or "state.module_imports[sym.address] = {lib_name, ordinal};" not in source:
+    if NEW in source or source.count(OLD) != 1 or "state.module_imports[sym.address] = {lib_name, ordinal};" not in source:
         raise ValueError("unexpected SDK register phase; refusing to patch")
     return source.replace(OLD, NEW, 1)
 
