@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
+from filter_zero_aot_mappings import filter_text  # noqa: E402
 from patch_metro_import_slots import (  # noqa: E402
     BINDINGS, VALUE_SLOTS, OLD as IMPORT_OLD, NEW as IMPORT_NEW,
     corrected as corrected_imports, rows, verify_slots,
