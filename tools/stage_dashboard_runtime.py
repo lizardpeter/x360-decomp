@@ -50,7 +50,7 @@ def put(destination, relative, data):
         path.write_bytes(data)
     return {"path":relative,"bytes":len(data),"sha256":digest(data)}
 
-def stage(destination, members, census, shared, font_dir=None, require_fonts=False):
+def stage(destination, members, census, shared, font_dir=None, require_fonts=False, include_flash=False):
     verify_members(members,census)
     entries=[]
     fonts=config().get("local_resource",[])
@@ -74,6 +74,15 @@ def stage(destination, members, census, shared, font_dir=None, require_fonts=Fal
     entries.append(put(destination,"shrdres.xzp",shared))
     for name,payload in font_payloads.items():
         entries.append(put(destination,name,payload))
+    if include_flash:
+        # PIRS names explicitly designate flash files. Stage only selected
+        # runtime files, never manufacturing/update modules or patch payloads.
+        for name in LAYOUT:
+            entries.append(put(destination, "flash/"+name.removeprefix("$flash_"),
+                               members[name]["payload"]))
+        entries.append(put(destination, "flash/shrdres.xzp", shared))
+        for name,payload in font_payloads.items():
+            entries.append(put(destination, "flash/"+name, payload))
     return {"files":sorted(entries,key=lambda x:x["path"]),
             "file_count":len(entries),"total_bytes":sum(r["bytes"] for r in entries),
             "missing_local_fonts":missing,"guest_boot_verified":False}
@@ -84,13 +93,14 @@ def main():
     p.add_argument("--receipt",type=Path,default=ROOT/"build/dashboard-runtime-receipt.json")
     p.add_argument("--font-dir",type=Path)
     p.add_argument("--require-fonts",action="store_true")
+    p.add_argument("--flash-tree",action="store_true",help="also stage read-only flash mount inputs")
     a=p.parse_args()
     for path in (a.output,a.receipt):
         if not path.resolve().is_relative_to((ROOT/"build").resolve()):
             p.error("runtime tree and receipt must remain under ignored build/")
     census=json.loads((ROOT/"analysis/pirs_17559/members.json").read_text())
     members=parse_pirs(original("pirs"))
-    result=stage(a.output.resolve(),members,census,original("shared_resources"),a.font_dir,a.require_fonts)
+    result=stage(a.output.resolve(),members,census,original("shared_resources"),a.font_dir,a.require_fonts,a.flash_tree)
     a.receipt.parent.mkdir(parents=True,exist_ok=True)
     a.receipt.write_text(json.dumps(result,indent=2)+"\n")
     print(json.dumps({k:v for k,v in result.items() if k!="files"}))
