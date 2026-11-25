@@ -88,14 +88,7 @@ jobs:
           status=$?
           set -e
           cd "$GITHUB_WORKSPACE"
-          grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: verified-metro-xam-receipt
-          path: build/receipts/
-          if-no-files-found: ignore
- "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
+          grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+$' "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
           cat build/receipts/metro-preflight.txt
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
