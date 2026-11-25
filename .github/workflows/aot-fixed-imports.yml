@@ -7,6 +7,9 @@ on:
       - 'tools/verify_repeated_imports.py'
       - 'tools/stage_metro_xam_aot.py'
       - 'tests/test_metro_xam_aot.py'
+      - 'tools/stage_metro_preflight.py'
+      - 'tools/native/metro_aot_preflight.cpp'
+      - 'tests/test_metro_preflight.py'
       - '.github/workflows/aot-fixed-imports.yml'
 permissions:
   contents: read
@@ -22,9 +25,11 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_rexglue_import_patch.py
           python -m unittest discover -s tests -p test_metro_xam_aot.py
+          python -m unittest discover -s tests -p test_metro_preflight.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
+          python tools/stage_metro_preflight.py build/fixed-imports/dash_17559
           mkdir -p build/receipts
       - uses: actions/checkout@v4
         with:
@@ -74,6 +79,30 @@ jobs:
           file "$folder/native/dash_17559"
           sha256sum "$folder/native/dash_17559" > build/receipts/dashboard-executable.sha256
           find "$folder/native" -type f -name "libdash_17559_xam.so" -print -quit | grep -q .
+      - name: Verify native dashboard and XAM mapping without guest execution
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          cd "$folder/native"
+          set +e
+          timeout --kill-after=10s 90s ./dash_17559 --title.game_root="$folder/inputs" --title.entry=dash.xex > "$folder/preflight.log" 2>&1
+          status=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-metro-xam-receipt
+          path: build/receipts/
+          if-no-files-found: ignore
+ "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
+          cat build/receipts/metro-preflight.txt
+          printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
+          python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
+          test "$status" -eq 0
+          for gate in dashboard_load xam_load five_export_mappings clean_unload; do
+            grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
+          done
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4
