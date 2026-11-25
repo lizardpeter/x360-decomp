@@ -8,7 +8,8 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 from filter_zero_aot_mappings import filter_text  # noqa: E402
 from patch_metro_import_slots import (  # noqa: E402
-    BINDINGS, VALUE_SLOTS, OLD as IMPORT_OLD, NEW as IMPORT_NEW,
+    BINDINGS, VALUE_SLOTS, VARIABLE_ORDINAL, VARIABLE_SLOT, VARIABLE_TARGET,
+    VARIABLE_OLD, VARIABLE_NEW, OLD as IMPORT_OLD, NEW as IMPORT_NEW,
     corrected as corrected_imports, rows, verify_slots,
 )
 from patch_rexglue_function_tables import (  # noqa: E402
@@ -55,16 +56,31 @@ class MetroSDKPatchTests(unittest.TestCase):
             verify_slots(changed, exports)
 
     def test_import_slot_patch_is_exact_and_guarded(self):
-        patched = corrected_imports(IMPORT_OLD)
-        self.assertEqual(patched, IMPORT_NEW)
+        source = VARIABLE_OLD + "\n" + IMPORT_OLD
+        patched = corrected_imports(source)
+        self.assertIn(VARIABLE_NEW, patched)
+        self.assertIn(IMPORT_NEW, patched)
         self.assertIn("base_address_ == 0x92000000", patched)
         self.assertIn('base_name == "xam"', patched)
         self.assertIn("import_info.value_address", patched)
         self.assertIn("import_info.thunk_address", patched)
+        self.assertIn("record_addr == 0x92000550", patched)
+        self.assertIn('kernel_export->name == "g_XuiAutomation"', patched)
         with self.assertRaises(ValueError):
             corrected_imports(patched)
         with self.assertRaises(ValueError):
-            corrected_imports(IMPORT_OLD.replace("Patched function import", "Patched function imports", 1))
+            corrected_imports(source.replace("Patched function import", "Patched function imports", 1))
+
+    def test_g_xui_automation_data_binding_is_exact(self):
+        imports = rows(ROOT / "analysis/dash_17559/imports.tsv")
+        exports = rows(ROOT / "analysis/xam_17559/exports.tsv")
+        verify_slots(imports, exports)
+        item = next(r for r in imports if r["library"] == "xam.xex" and
+                    int(r["ordinal"], 16) == VARIABLE_ORDINAL)
+        self.assertEqual(item["value_slots"], f"{VARIABLE_SLOT:08X}")
+        self.assertEqual(item["thunk_slots"], "")
+        item = next(r for r in exports if int(r["ordinal"], 16) == VARIABLE_ORDINAL)
+        self.assertEqual(int(item["address"], 16), VARIABLE_TARGET)
 
     def test_function_table_patch_selects_heap_from_guest_address(self):
         source = ALLOC + """
