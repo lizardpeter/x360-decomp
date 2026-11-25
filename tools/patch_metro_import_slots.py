@@ -25,8 +25,8 @@ VARIABLE_SLOT = 0x92000550
 VARIABLE_TARGET = 0x81A87F20
 VARIABLE_OLD = '''          } else {
             *record_slot = 0xD000BEEF | (kernel_export->ordinal & 0xFFF) << 16;
-            REXSYS_WARN("Variable import {}:{:#x} ({}) not implemented", base_name,
-                        ordinal, kernel_export->name);
+            REXSYS_WARN("Variable import {}:{:#x} ({}) not implemented", base_name, ordinal,
+                        kernel_export->name);
           }'''
 VARIABLE_NEW = '''          } else if (base_address_ == 0x92000000 && base_name == "xam" &&
                      ordinal == 0x03DB && record_addr == 0x92000550 &&
