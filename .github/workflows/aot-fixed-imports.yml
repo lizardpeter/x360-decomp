@@ -64,9 +64,7 @@ jobs:
         id: sdk_cache
         uses: actions/cache/restore@v4
         with:
-          path: |
-            build/sdk-source/out/build/linux-amd64
-            build/sdk-source/out/install/linux-amd64
+          path: build/sdk-source/out/install/linux-amd64
           key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
