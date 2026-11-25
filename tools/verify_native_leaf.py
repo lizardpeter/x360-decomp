@@ -21,6 +21,14 @@ def main():
     bindings=[int(a,16) for a in re.findall(r"\{0x([0-9A-F]{8})u,\s*return_one\}",native)]
     assert len(bindings)==len(set(bindings))==47
     assert set(bindings)==expected
+    memory=(ROOT/"src/os/dashboard/memory_leaf_17559.cpp").read_text()
+    patterns={"compare_17":"3d60c000616b001781430000814a00007d6a58507d6b00345563dffe7d0843784e800020","compare_05":"3d60c000616a000581230000810900007ce850507ce6003454c3dffe7d0843784e800020"}
+    for name,pattern in patterns.items():
+        payload=bytes.fromhex(pattern)
+        expected={a for a,n,_ in pe["functions"] if n==len(payload) and image[a-base:a-base+n]==payload}
+        actual=[int(a,16) for a in re.findall(r"\{0x([0-9A-F]{8})u,"+name+r"\}",memory)]
+        assert len(actual)==len(set(actual)) and set(actual)==expected and actual
+        print(f"{name}: {len(actual)} exact original bodies verified")
     print(f"Original image digest and every one of {len(bindings)} native leaf entry bodies verified")
 if __name__=="__main__":
     main()
