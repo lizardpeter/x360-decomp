@@ -1,0 +1,77 @@
+name: AOT host compilation trial
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/stage_aot_host.py'
+      - 'tools/aot_diagnostics.py'
+      - '.github/workflows/aot-host.yml'
+permissions:
+  contents: read
+jobs:
+  native-host:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [dash_17559, xam_17559]
+    env:
+      MODULE: ${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage original and host scaffold
+        run: |
+          python tools/fetch_originals.py --only dash --only pirs
+          python tools/stage_aot_host.py --module "$MODULE"
+          mkdir -p build/host-receipts
+      - name: Install pinned SDK
+        run: |
+          mkdir -p build/sdk
+          curl --fail --location --retry 3 -o build/sdk/sdk.zip https://github.com/rexglue/rexglue-sdk/releases/download/v0.11.0/rexglue-sdk-0.11.0-linux-amd64.zip
+          echo 'e7d543ab8dde2c7839836a0417bfe84691c10f93357ec2c023fa98d3d315803b  build/sdk/sdk.zip' | sha256sum -c
+          unzip -q build/sdk/sdk.zip -d build/sdk
+          echo "SDK=$(realpath build/sdk/linux-amd64)" >> "$GITHUB_ENV"
+      - name: Generate and capture bounded diagnostics
+        run: |
+          folder="$PWD/build/aot-host/$MODULE"
+          cd "$folder"
+          set +e
+          "$SDK/bin/rexglue" codegen "$MODULE"_manifest.toml > codegen.log 2>&1
+          status=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          python tools/aot_diagnostics.py "$folder/codegen.log" --output "build/host-receipts/$MODULE-codegen-diagnostics.json"
+          python tools/aot_receipt.py "$folder/generated" --status "$status" --output "build/host-receipts/$MODULE-generated.json"
+      - name: Install compatible C++ toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y clang-20 lld-20 g++-13 libstdc++-13-dev ninja-build libvulkan-dev libgtk-3-dev libx11-xcb-dev libxss-dev libwayland-dev libwayland-bin wayland-protocols libxkbcommon-dev libdecor-0-dev libasound2-dev libpulse-dev libpipewire-0.3-dev
+      - name: Compile and link generated host
+        run: |
+          folder="$PWD/build/aot-host/$MODULE"
+          set +e
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS=--gcc-install-dir=/usr/lib/gcc/x86_64-linux-gnu/13 '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -g0' -DCMAKE_PREFIX_PATH="$SDK" > "$folder/configure.log" 2>&1
+          status=$?
+          set -e
+          python tools/aot_diagnostics.py "$folder/configure.log" --output "build/host-receipts/$MODULE-configure.json"
+          echo "Configure exit: $status"
+          test "$status" -eq 0
+          set +e
+          cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
+          status=$?
+          set -e
+          python tools/aot_diagnostics.py "$folder/build.log" --output "build/host-receipts/$MODULE-build.json"
+          echo "Build exit: $status"
+          test "$status" -eq 0
+          test -x "$folder/native/$MODULE"
+          file "$folder/native/$MODULE"
+          sha256sum "$folder/native/$MODULE" > "build/host-receipts/$MODULE-executable.sha256"
+          echo "Native executable linked; guest execution not tested"
+      - name: Upload metadata only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-${{ matrix.module }}-receipt
+          path: build/host-receipts/
+          if-no-files-found: ignore
