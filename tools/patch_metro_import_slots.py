@@ -22,6 +22,7 @@ VALUE_SLOTS = {
 }
 VARIABLE_ORDINAL = 0x03DB
 VARIABLE_SLOT = 0x92000550
+VARIABLE_THUNK_SLOT = 0x9293D11C
 VARIABLE_TARGET = 0x81A87F20
 VARIABLE_OLD = '''          } else {
             *record_slot = 0xD000BEEF | (kernel_export->ordinal & 0xFFF) << 16;
@@ -71,7 +72,7 @@ def verify_slots(imports, exports):
                    int(r["ordinal"], 16) == VARIABLE_ORDINAL]
     exports_3db = [r for r in exports if int(r["ordinal"], 16) == VARIABLE_ORDINAL]
     if (len(imports_3db) != 1 or imports_3db[0]["value_slots"] != f"{VARIABLE_SLOT:08X}" or
-            imports_3db[0]["thunk_slots"] or len(exports_3db) != 1 or
+            imports_3db[0]["thunk_slots"] != f"{VARIABLE_THUNK_SLOT:08X}" or len(exports_3db) != 1 or
             int(exports_3db[0]["address"], 16) != VARIABLE_TARGET):
         raise ValueError("unexpected Metro g_XuiAutomation import/export binding")
     meta = json.loads((ROOT/"analysis/xam_17559/decoded.json").read_text())
