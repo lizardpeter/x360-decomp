@@ -10,6 +10,7 @@ on:
       - 'tools/stage_metro_preflight.py'
       - 'tools/patch_rexglue_function_tables.py'
       - 'tools/patch_metro_import_slots.py'
+      - 'tools/patch_rexglue_pdata_rvas.py'
       - 'tools/native/metro_aot_boot.hpp'
       - 'tools/capture_metro_boot.sh'
       - 'tools/stage_dashboard_runtime.py'
@@ -56,6 +57,7 @@ jobs:
           python tools/stage_metro_xam_aot.py patch build/sdk-source
           python tools/patch_rexglue_function_tables.py build/sdk-source
           python tools/patch_metro_import_slots.py build/sdk-source
+          python tools/patch_rexglue_pdata_rvas.py build/sdk-source
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -64,8 +66,10 @@ jobs:
         id: sdk_cache
         uses: actions/cache/restore@v4
         with:
-          path: build/sdk-source/out/install/linux-amd64
-          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py') }}
+          path: |
+            build/sdk-source/out/build/linux-amd64
+            build/sdk-source/out/install/linux-amd64
+          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_rexglue_pdata_rvas.py') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
