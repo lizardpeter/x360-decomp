@@ -12,8 +12,11 @@
 #include <rex/kernel/object/object_table.h>
 #include <rex/setting.h>
 #include <iostream>
+#include <cstdlib>
+#include <string_view>
 #include "generated/dash_17559_init.h"
 #include "metro_preflight_bindings.hpp"
+#include "metro_aot_boot.hpp"
 
 namespace {
 using rex::kernel::ModuleObject;
@@ -126,4 +129,10 @@ int main_preflight(MetroPreflight& app, const rex::CLIArgList& args) {
     return 1;
 }
 }
-REX_CONSOLE_APP_MAIN(MetroPreflight, main_preflight)
+int MetroHostEntry(const rex::CLIArgList& args) {
+    const char* boot = std::getenv("X360_METRO_BOOT");
+    if (boot && std::string_view(boot) == "1") return metro_boot::run(args);
+    MetroPreflight app;
+    return main_preflight(app, args);
+}
+REX_DETAIL_ENTRY_POINTS(MetroHostEntry)
