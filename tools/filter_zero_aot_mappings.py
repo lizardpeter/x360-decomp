@@ -10,7 +10,7 @@ XAM_REQUIRED = (
     0x81696AF0, 0x8168EB50, 0x8168EB88, 0x8168EBC0, 0x8168EBF8, 0x816DEF20,
 )
 TABLE = "const PPCFuncMapping kPPCFuncMappings[] = {"
-ROW = re.compile(r"^(\s*)\{\s*(0x[0-9A-Fa-f]+|0)\s*,\s*([^}]+?)\s*\},\s*$")
+ROW = re.compile(r"^(\s*)\{\s*(0x[0-9A-Fa-f]+|0)\s*,\s*([^}]+?)\s*\},?\s*$")
 
 def filter_text(source, required=()):
     if source.count(TABLE) != 1:
