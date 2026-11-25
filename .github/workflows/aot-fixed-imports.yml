@@ -9,6 +9,9 @@ on:
       - 'tests/test_metro_xam_aot.py'
       - 'tools/stage_metro_preflight.py'
       - 'tools/patch_rexglue_function_tables.py'
+      - 'tools/patch_metro_import_slots.py'
+      - 'tools/native/metro_aot_boot.hpp'
+      - 'tools/capture_metro_boot.sh'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
       - '.github/workflows/aot-fixed-imports.yml'
@@ -27,11 +30,12 @@ jobs:
           python -m unittest discover -s tests -p test_rexglue_import_patch.py
           python -m unittest discover -s tests -p test_metro_xam_aot.py
           python -m unittest discover -s tests -p test_metro_preflight.py
-          python tools/fetch_originals.py --only dash --only dash_basic --only pirs
+          python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
           python tools/stage_metro_preflight.py build/fixed-imports/dash_17559
           mkdir -p build/receipts
+          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json
       - uses: actions/checkout@v4
         with:
           repository: rexglue/rexglue-sdk
@@ -45,6 +49,7 @@ jobs:
           python tools/patch_rexglue_imports.py build/sdk-source
           python tools/stage_metro_xam_aot.py patch build/sdk-source
           python tools/patch_rexglue_function_tables.py build/sdk-source
+          python tools/patch_metro_import_slots.py build/sdk-source
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -99,6 +104,21 @@ jobs:
           for gate in dashboard_load xam_load five_export_mappings clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
+      - name: Attempt original graphical boot and capture actual presented title frame
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
+          folder="$PWD/build/fixed-imports/dash_17559"
+          timeout --kill-after=15s 120s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+      - name: Upload actual frame candidate (not menu verification)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-native-frame-candidate
+          path: |
+            build/fixed-imports/dash_17559/native/metro-capture/candidate.png
+            build/fixed-imports/dash_17559/native/metro-capture/receipt.txt
+          if-no-files-found: error
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4
