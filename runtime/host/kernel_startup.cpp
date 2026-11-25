@@ -42,6 +42,21 @@ std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint
 ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){
     if(!ready_||lib!="xboxkrnl.exe")return ImportCallResult::unsupported;
     if(o==204&&virtual_memory_)return virtual_memory_->allocate(s,memory);
+    if(process_type_&&o==102){
+        s.gpr[3]=static_cast<std::uint32_t>(*process_type_);
+        return ImportCallResult::completed;
+    }
+    if(process_type_&&o==302){
+        const auto address=static_cast<abi::Address>(s.gpr[3]);
+        std::array<std::uint8_t,28> record{};
+        if(!address||(address&3u)||!memory.read(address,record))return ImportCallResult::fault;
+        // Only the observed initialization contract. Preserve opaque bytes,
+        // including the wait-list fields. No scheduling or waiters yet.
+        record[0]=1;record[1]=0;
+        put(record,4,0);put(record,16,0xffffffffu);put(record,20,0);put(record,24,0);
+        if(!memory.write(address,record))return ImportCallResult::fault;
+        return ImportCallResult::completed;
+    }
     if(o==299){
         if(static_cast<abi::Address>(s.gpr[3])!=header_address)return ImportCallResult::unsupported;
         const auto key=static_cast<std::uint32_t>(s.gpr[4]);

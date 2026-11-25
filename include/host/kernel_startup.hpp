@@ -14,9 +14,12 @@ public:
     std::optional<std::uint32_t> value(std::string_view library,std::uint16_t ordinal) const override;
     abi::ImportCallResult call(std::string_view library,std::uint16_t ordinal,abi::GuestCall& state,abi::GuestMemory& memory) override;
     void enable_virtual_memory(machine::AddressSpace& memory){virtual_memory_.emplace(memory);}
+    enum class ProcessType:std::uint32_t {idle=0,user=1,system=2};
+    void enable_heap_startup(ProcessType type){process_type_=type;}
     const std::map<abi::Address,Notification>& notifications() const noexcept{return notifications_;}
 private:
     std::optional<VirtualMemory> virtual_memory_;
+    std::optional<ProcessType> process_type_;
     bool ready_{};
     std::uint32_t header_bytes_{},header_count_{};
     abi::Address callback_begin_{},callback_end_{};

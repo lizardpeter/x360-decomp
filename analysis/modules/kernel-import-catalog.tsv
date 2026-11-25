@@ -51,7 +51,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 0059	KeDebugMonitorData	variable	1	0	1	0	missing
 005A	KeDelayExecutionThread	function	1	1	1	1	missing
 005F	KeEnterCriticalRegion	function	1	1	1	1	missing
-0066	KeGetCurrentProcessType	function	1	1	1	1	missing
+0066	KeGetCurrentProcessType	function	1	1	1	1	host_adapter
 006B	KeLockL2	function	1	1	1	1	missing
 006C	KeUnlockL2	function	1	1	1	1	missing
 006D	KeInitializeApc	function	1	1	1	1	missing
@@ -175,7 +175,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 012B	RtlImageXexHeaderField	function	1	1	1	1	host_adapter
 012C	RtlInitAnsiString	function	1	1	1	1	missing
 012D	RtlInitUnicodeString	function	1	1	1	1	missing
-012E	RtlInitializeCriticalSection	function	1	1	1	1	missing
+012E	RtlInitializeCriticalSection	function	1	1	1	1	host_adapter
 012F	RtlInitializeCriticalSectionAndSpinCount	function	1	1	1	1	missing
 0130	RtlLeaveCriticalSection	function	1	1	1	1	missing
 0133	RtlMultiByteToUnicodeN	function	1	1	1	1	missing

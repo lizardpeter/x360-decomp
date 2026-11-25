@@ -90,6 +90,33 @@ BootstrapResult bootstrap_ppc(const ModuleManifest& m,abi::GuestMemory& memory,
             s.gpr[a]=s.gpr[d]&s.gpr[b];
         }else if(op==31&&xo==136&&!(w&1)){
             s.gpr[d]=add_carry(s,~s.gpr[a],s.gpr[b],bool(s.xer&0x20000000u));
+        }else if(op==31&&xo==40){
+            s.gpr[d]=s.gpr[b]-s.gpr[a];
+            if(w&1)compare_field(s,0,compare(std::bit_cast<std::int64_t>(s.gpr[d]),std::int64_t{0}));
+        }else if(op==31&&xo==824){
+            const auto value=static_cast<std::uint32_t>(s.gpr[d]);
+            const auto signed_value=sign_extend(value,32);
+            // C++20 signed right shift is arithmetic.
+            s.gpr[a]=static_cast<std::uint64_t>(signed_value>>b);
+            const bool carry=signed_value<0&&(value&((std::uint64_t{1}<<b)-1));
+            s.xer=(s.xer&~0x20000000u)|(carry?0x20000000u:0u);
+            if(w&1)compare_field(s,0,compare(std::bit_cast<std::int64_t>(s.gpr[a]),std::int64_t{0}));
+        }else if(op==31&&xo==202&&b==0){
+            s.gpr[d]=add_carry(s,s.gpr[a],0,bool(s.xer&0x20000000u));
+            if(w&1)compare_field(s,0,compare(std::bit_cast<std::int64_t>(s.gpr[d]),std::int64_t{0}));
+        }else if(op==31&&(xo==23||xo==151)&&!(w&1)){
+            const auto ea=static_cast<abi::Address>(reg_base(s,a)+s.gpr[b]);
+            if(auto i=import_at(m,ea,ImportKind::value,4)){
+                auto v=provider&&xo==23&&ea==i->address?provider->value(i->library,i->ordinal):std::nullopt;
+                if(!v)return stop(BootstrapStop::import_value,i->address,i);
+                s.gpr[d]=*v;result.services.push_back({i->address,i->ordinal,i->kind});s.pc=next;++result.retired;continue;
+            }
+            if(xo==23){
+                std::uint32_t value{};
+                if(!memory.load_be32(ea,value))return stop(BootstrapStop::access_fault,ea);
+                s.gpr[d]=value;
+            }else if(!memory.store_be32(ea,static_cast<std::uint32_t>(s.gpr[d])))
+                return stop(BootstrapStop::access_fault,ea);
         }else if(op==31&&xo==266&&!(w&1)){
             s.gpr[d]=s.gpr[a]+s.gpr[b];
         }else if(op==31&&(xo==0||xo==32)&&!(w&1)){

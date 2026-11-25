@@ -42,5 +42,14 @@ int main(){
     s.cr=0x20000000;r=run(0x40e20008,s);check(r.pc==0x1004,"hinted bne not taken");
     s.cr=0;r=run(0x40e20008,s);check(r.pc==0x1008,"hinted bne taken");
     auto before=s;r=run(x(0,0,4,278),s);before.pc=0x1004;check(r==before,"cache hint is nonmutating");
+    s.gpr[4]=5;s.gpr[5]=3;s.xer=0x20000000;
+    r=run(x(3,4,5,40),s);check(r.gpr[3]==~std::uint64_t{1}&&r.xer==s.xer,"subf preserves carry");
+    s.gpr[4]=0x80000003u;s.xer=0;
+    r=run(x(4,3,1,824),s);check(r.gpr[3]==0xffffffffc0000001ull&&(r.xer&0x20000000),"srawi sign and carry");
+    s.gpr[4]=~0ull;s.xer=0x20000000;
+    r=run(x(3,4,0,202),s);check(r.gpr[3]==0&&(r.xer&0x20000000),"addze");
+    s.gpr[4]=0x2000;s.gpr[5]=4;
+    r=run(x(3,4,5,23),s);check(r.gpr[3]==0x89abcdefu,"indexed load");
+    s.gpr[3]=0x12345678;r=run(x(3,4,5,151),s);check(r.gpr[3]==s.gpr[3],"indexed store");
     std::cout<<"PPC carry, wrap masks, insert, DS loads, hinted branches and cache-hint regressions passed\n";
 }

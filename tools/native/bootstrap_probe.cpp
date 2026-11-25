@@ -55,7 +55,12 @@ int main(int argc,char** argv){
             for(auto& section:m.sections)if(section.executable()){begin=section.address;end=section.address+section.size;break;}
             require(hosted.install(memory,header,begin,end),"hosted header install failed");
         }
-        if(argc==6){require(std::string_view(argv[5])=="--allocator","unknown bootstrap option");hosted.enable_virtual_memory(memory);}
+        const bool heap_startup=argc==6&&std::string_view(argv[5])=="--heap-startup";
+        if(argc==6){
+            require(heap_startup||std::string_view(argv[5])=="--allocator","unknown bootstrap option");
+            hosted.enable_virtual_memory(memory);
+            if(heap_startup)hosted.enable_heap_startup(host::KernelStartup::ProcessType::system);
+        }
         auto r=bootstrap_ppc(m,memory,s,sentinel,10000,argc>=5?&hosted:nullptr);
         const auto path=std::filesystem::path(argv[3]);
         std::ofstream trace(path/"trace",std::ios::binary),state(path/"state",std::ios::binary),stack_out(path/"stack",std::ios::binary),image_out(path/"image_after",std::ios::binary);
@@ -73,7 +78,10 @@ int main(int argc,char** argv){
         trace.close();state.close();stack_out.close();image_out.close();
         require(trace&&state&&stack_out&&image_out,"snapshot output failed");
         if(argc==6&&manifest.name=="dash.xex"){
-            require(r.stop==BootstrapStop::unsupported_instruction,"unexpected allocation-enabled dashboard stop");
+            if(heap_startup)
+                require(r.stop==BootstrapStop::import_value&&r.ordinal==342&&r.address==0x920010c4,"unexpected heap startup boundary");
+            else
+                require(r.stop==BootstrapStop::import_thunk&&r.ordinal==102,"unexpected allocation-enabled dashboard stop");
             auto reserved=memory.reservation(host::VirtualMemory::arena_begin);
             require(reserved&&reserved->base==host::VirtualMemory::arena_begin&&reserved->size==0x100000&&reserved->page_size==65536,"reservation mismatch");
             std::uint32_t word{};
