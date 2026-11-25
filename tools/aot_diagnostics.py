@@ -13,9 +13,9 @@ def summarize(text):
     addresses = collections.defaultdict(set)
     for line in text.splitlines():
         low = line.lower()
-        if not re.search(r"\berror\b|\bfatal\b|\bcritical\b|\bfailed\b|\[e\]",low):
+        if not re.search(r"\berror\b|\bfatal\b|\bcritical\b|\bfailed\b|\[e\]|\bunresolved\b|not in any function|\be>|\bvalidation\b",low):
             continue
-        if "branch" in low or "jump" in low or "target" in low:
+        if "branch" in low or "jump" in low or "target" in low or "unresolved" in low or "not in any function" in low:
             kind = "control_flow"
         elif "instruction" in low or "opcode" in low:
             kind = "instruction"

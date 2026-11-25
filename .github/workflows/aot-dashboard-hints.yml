@@ -1,0 +1,49 @@
+name: Dashboard AOT verified entry hints
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/verify_aot_hints.py'
+      - 'analysis/aot/dashboard-tail-entries.tsv'
+      - '.github/workflows/aot-dashboard-hints.yml'
+permissions:
+  contents: read
+jobs:
+  dashboard:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m unittest discover -s tests -p test_aot_hints.py
+      - name: Stage original and verified candidate functions
+        run: |
+          python tools/fetch_originals.py --only dash --only dash_basic
+          python tools/stage_aot_host.py --module dash_17559 --output build/aot-hints
+          python tools/verify_aot_hints.py --output build/aot-hints/dash_17559/verified-entries.toml
+          echo 'includes = ["verified-entries.toml"]' >> build/aot-hints/dash_17559/dash_17559_manifest.toml
+          mkdir -p build/receipts
+      - name: Install pinned SDK
+        run: |
+          mkdir -p build/sdk
+          curl --fail --location --retry 3 -o build/sdk/sdk.zip https://github.com/rexglue/rexglue-sdk/releases/download/v0.11.0/rexglue-sdk-0.11.0-linux-amd64.zip
+          echo 'e7d543ab8dde2c7839836a0417bfe84691c10f93357ec2c023fa98d3d315803b  build/sdk/sdk.zip' | sha256sum -c
+          unzip -q build/sdk/sdk.zip -d build/sdk
+      - name: Generate original dashboard with verified entry hints
+        run: |
+          folder="$PWD/build/aot-hints/dash_17559"
+          SDK="$PWD/build/sdk/linux-amd64"
+          cd "$folder"
+          set +e
+          "$SDK/bin/rexglue" codegen dash_17559_manifest.toml > codegen.log 2>&1
+          status=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          python tools/aot_diagnostics.py "$folder/codegen.log" --output build/receipts/dashboard-diagnostics.json
+          python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
+      - name: Upload metadata only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-verified-hints-receipt
+          path: build/receipts/
+          if-no-files-found: ignore
