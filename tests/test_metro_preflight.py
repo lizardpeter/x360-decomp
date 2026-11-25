@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/"tools"))
-from stage_metro_preflight import BINDINGS, ROOT, OLD, NEW, header, cmake_preflight
+from stage_metro_preflight import BINDINGS, VALUE_SLOTS, ROOT, OLD, NEW, header, cmake_preflight
 
 class MetroPreflightTests(unittest.TestCase):
     def setUp(self):
@@ -16,7 +16,7 @@ class MetroPreflightTests(unittest.TestCase):
         self.assertIn("kDashBase = 0x92000000u", result)
         self.assertIn("kXamBase = 0x815F0000u", result)
         for ordinal, (thunk, target) in BINDINGS.items():
-            self.assertIn(f"{{0x{ordinal:04X}u, 0x{thunk:08X}u, 0x{target:08X}u}}", result)
+            self.assertIn(f"{{0x{ordinal:04X}u, 0x{thunk:08X}u, 0x{target:08X}u, 0x{VALUE_SLOTS[ordinal]:08X}u}}", result)
 
     def test_reject_wrong_identity(self):
         bad = copy.deepcopy(self.xam)
