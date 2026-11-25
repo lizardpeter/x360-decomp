@@ -60,7 +60,7 @@ jobs:
           platform: linux-amd64
       - name: Restore exact patched SDK installation
         id: sdk_cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/linux-amd64
           key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py') }}
@@ -74,6 +74,13 @@ jobs:
         run: |
           test -x build/sdk-source/out/install/linux-amd64/bin/rexglue
           echo "SDK=$(realpath build/sdk-source/out/install/linux-amd64)" >> "$GITHUB_ENV"
+      - name: Cache successful SDK build before guest tests
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/sdk-source/out/install/linux-amd64
+          key: ${{ steps.sdk_cache.outputs.cache-primary-key }}
+        continue-on-error: true
       - name: Strict dashboard and XAM generation
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
