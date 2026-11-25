@@ -44,6 +44,8 @@ public:
         if (!title_.IsLoaded() || title_.IsRunning())
             return fail("dashboard_state");
         std::cout << "METRO_PREFLIGHT pass dashboard_load" << std::endl;
+        if (!metro_boot::mount_flash(title_)) return fail("flash_mount");
+        std::cout << "METRO_PREFLIGHT pass flash_mount" << std::endl;
 
         auto& registry = title_.GetModuleRegistry();
         const auto exe = registry.GetExecutable();
