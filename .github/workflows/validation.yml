@@ -47,6 +47,7 @@ jobs:
           python tools/verify_module_loading.py build/native/x360_module_probe --lzx build/lzx_adapter.so
           python tools/fetch_originals.py --only shared_resources
           python tools/verify_textures.py build/native/x360_texture_probe --lzx build/lzx_adapter.so
+          python tools/verify_xui_mounts.py build/native/x360_uri_probe
   original-audit:
     if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.original_audit) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[original-audit]')))
     needs: formats
