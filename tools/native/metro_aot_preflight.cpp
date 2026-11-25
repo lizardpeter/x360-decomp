@@ -106,14 +106,16 @@ public:
         // The SDK's built-in hosted XAM is not the retail XAM user module.
         // Map the separately generated native library through the existing loader.
         // false explicitly prevents DLL_PROCESS_ATTACH / guest execution.
-        if (registry.FindUserModule("game:\\xam.xex"))
+        if (metro_boot::find_retail_xam(registry))
             return fail("unexpected_preloaded_xam");
-        const auto loaded = registry.LoadUserModule("game:\\xam.xex", false);
-        if (!loaded)
+        const auto loaded = registry.LoadUserModule(metro_boot::kXamPath, false);
+        if (!loaded || !*loaded)
             return fail("xam_load");
-        const auto user = registry.FindUserModule("game:\\xam.xex");
-        if (!user || *user != *loaded)
+        const auto user = metro_boot::find_retail_xam(registry);
+        const auto by_name = registry.FindUserModule("xam.xex");
+        if (!user || *user != *loaded || !by_name || *by_name != *loaded)
             return fail("xam_registry");
+        std::cout << "METRO_PREFLIGHT pass xam_registry" << std::endl;
         const auto kernel = registry.FindKernelModule("xam");
         if (!kernel || *kernel == *user)
             return fail("xam_isolation");

@@ -11,6 +11,15 @@
 #include "metro_preflight_bindings.hpp"
 
 namespace metro_boot {
+inline constexpr char kXamPath[] = "game:\\xam.xex";
+
+// LoadFromFile stores the canonical filesystem path rather than the input
+// alias. GetModule resolves the alias through Stat before searching the user
+// registry; user_only keeps the hosted kernel XAM out of this lookup.
+inline auto find_retail_xam(rex::kernel::IModuleRegistry& registry) {
+    return registry.GetModule(kXamPath, true);
+}
+
 inline bool mount_flash(rex::kernel::TitleRuntime& title) {
     auto& fs = title.GetFileSystem();
     const auto root = title.GetTitlePaths().game_root.Get() / "flash";
@@ -75,9 +84,13 @@ protected:
         auto* dx = dash ? dash->GetXEX() : nullptr;
         if (!dx || dx->GetBaseAddress() != kDashBase || dx->GetImageSize() != kDashSize ||
             dx->GetEntryPoint() != kDashEntry) return fail("dashboard_identity");
-        if (registry.FindUserModule("game:\\xam.xex")) return fail("unexpected_preloaded_xam");
-        const auto loaded = registry.LoadUserModule("game:\\xam.xex", false);
-        if (!loaded) return fail("xam_load");
+        if (find_retail_xam(registry)) return fail("unexpected_preloaded_xam");
+        const auto loaded = registry.LoadUserModule(kXamPath, false);
+        if (!loaded || !*loaded) return fail("xam_load");
+        const auto user = find_retail_xam(registry);
+        const auto by_name = registry.FindUserModule("xam.xex");
+        if (!user || *user != *loaded || !by_name || *by_name != *loaded)
+            return fail("xam_registry");
         const auto kernel = registry.FindKernelModule("xam");
         if (!kernel || *kernel == *loaded) return fail("xam_isolation");
         auto xam = title.GetObjectTable().Get<rex::kernel::ModuleObject>(*loaded);

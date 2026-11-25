@@ -13,3 +13,7 @@ The next observed forms are subfic, addic, subfe, and, rlwimi, wrapped rlwinm ma
 ## Zero-address function mapping sentinel
 
 The generated dashboard mapping table contains one invalid function mapping at guest address zero, followed by 39,280 valid entries and the final {0, nullptr} terminator. The SDK's image installer and call-usage lookup stop at the first zero address, so this single invalid row prevented all dashboard functions from being registered. The deterministic post-codegen filter in tools/filter_zero_aot_mappings.py removes only zero-address rows before the final null sentinel from both dashboard and XAM mapping tables, verifies the dashboard entrypoint and five XAM exports remain, and refreshes the generated receipts. It does not change function bodies or original executable bytes.
+
+## Retail XAM registry identity
+
+Run 45667552863 verified the dashboard entrypoint and 39,280 nonzero mappings, followed by the retail XAM native module registering 20,043 functions. The next gate failed because the preflight queried FindUserModule with the game: alias, but the SDK stores the canonical filesystem path returned by Stat. The shared boot/preflight lookup now uses GetModule(alias, user_only=true), and also verifies the basename resolves to the same nonzero handle returned by LoadUserModule. No identity or function checks are removed. The hosted kernel XAM remains separate.
