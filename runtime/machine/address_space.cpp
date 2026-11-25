@@ -7,14 +7,28 @@ constexpr std::uint64_t limit=std::uint64_t{1}<<32;
 bool fits(abi::Address base,std::size_t bytes) noexcept { return bytes<=limit-base; }
 }
 bool AddressSpace::map(abi::Address base,std::span<const std::uint8_t> bytes,bool writable) {
-    if(bytes.empty()||!fits(base,bytes.size()))return false;
-    auto next=regions_.lower_bound(base);
-    if(next!=regions_.end()&&std::uint64_t(base)+bytes.size()>next->first)return false;
-    if(next!=regions_.begin()){
-        auto prev=std::prev(next);
-        if(std::uint64_t(prev->first)+prev->second.bytes.size()>base)return false;
+    const RegionMapping one{base,bytes,writable};
+    return map_batch(std::span(&one,1));
+}
+bool AddressSpace::map_batch(std::span<const RegionMapping> regions){
+    if(regions.empty())return false;
+    std::map<abi::Address,Region> pending;
+    auto available=[](const auto& map,abi::Address base,std::size_t size){
+        auto next=map.lower_bound(base);
+        if(next!=map.end()&&std::uint64_t(base)+size>next->first)return false;
+        if(next!=map.begin()){
+            auto prev=std::prev(next);
+            if(std::uint64_t(prev->first)+prev->second.bytes.size()>base)return false;
+        }
+        return true;
+    };
+    for(auto& r:regions){
+        if(r.bytes.empty()||!fits(r.base,r.bytes.size())||
+           !available(regions_,r.base,r.bytes.size())||!available(pending,r.base,r.bytes.size()))return false;
+        pending.emplace(r.base,Region{{r.bytes.begin(),r.bytes.end()},r.writable});
     }
-    return regions_.emplace(base,Region{{bytes.begin(),bytes.end()},writable}).second;
+    regions_.merge(pending);
+    return true;
 }
 bool AddressSpace::read(abi::Address address,std::span<std::uint8_t> bytes) const noexcept {
     if(bytes.empty()||!fits(address,bytes.size()))return false;

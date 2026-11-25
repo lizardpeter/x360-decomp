@@ -1,0 +1,29 @@
+{
+  "source": "independent decoded image inspection; native audit tools/verify_module_loading.py",
+  "dashboard_slots": 1628,
+  "xam_slots": 906,
+  "slots_total": 2534,
+  "dashboard_xam_ordinals": 522,
+  "dashboard_xam_slots": 1044,
+  "xam_address_resolvable_slots": 1043,
+  "xam_non_executable_thunks": [
+    {
+      "ordinal": 987,
+      "address": "81A87F20"
+    }
+  ],
+  "kernel_missing_slots": 1490,
+  "distinct_kernel_ordinals": 519,
+  "xam_exports": 1606,
+  "xam_exec_exports": 1604,
+  "xam_data_exports": [
+    {
+      "ordinal": 987,
+      "address": "81A87F20"
+    },
+    {
+      "ordinal": 2601,
+      "address": "81AC7C50"
+    }
+  ]
+}
