@@ -5,9 +5,13 @@ ImportCallResult VirtualMemory::allocate(abi::GuestCall& s,abi::GuestMemory& mem
     if(&memory!=&memory_)return ImportCallResult::unsupported;
     auto flags=static_cast<std::uint32_t>(s.gpr[5]),protect=static_cast<std::uint32_t>(s.gpr[6]);
     constexpr std::uint32_t page=65536,reserve=0x60002000,commit=0x60001000,combined=0x60003000;
-    // The original XAM uses selector 2 with an additional NOZERO flag.
-    // Its semantics are not established. Leave that path unresolved.
-    if(static_cast<std::uint32_t>(s.gpr[7])!=0||protect!=4||
+    // Explicitly opt-in diagnostic model only: isolate the observed XAM
+    // request in a different arena and zero fresh host backing even for
+    // NOZERO. Do not assert retail selector or physical memory semantics.
+    const auto selector=static_cast<std::uint32_t>(s.gpr[7]);
+    const bool experimental=diagnostic_selector2_&&selector==2&&flags==0x60803000;
+    if(experimental)flags=combined;
+    if((selector!=0&&!experimental)||protect!=4||
        (flags!=reserve&&flags!=commit&&flags!=combined))return ImportCallResult::unsupported;
     auto base_ptr=static_cast<abi::Address>(s.gpr[3]),size_ptr=static_cast<abi::Address>(s.gpr[4]);
     if((base_ptr&3u)||(size_ptr&3u)||base_ptr==size_ptr||!memory_.writable_range(base_ptr,4)||!memory_.writable_range(size_ptr,4))
@@ -20,7 +24,7 @@ ImportCallResult VirtualMemory::allocate(abi::GuestCall& s,abi::GuestMemory& mem
     abi::Address address=requested;bool created=false;
     if(flags==reserve||flags==combined){
         if(requested)return ImportCallResult::unsupported; // fixed reservation not observed
-        auto result=memory_.reserve_first(arena_begin,arena_end,rounded,page);
+        auto result=memory_.reserve_first(experimental?selector2_begin:arena_begin,experimental?selector2_end:arena_end,rounded,page);
         if(!result)return status(0xc0000017u);
         address=*result;created=true;
     }else{

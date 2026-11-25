@@ -13,7 +13,9 @@ public:
                  abi::Address callback_begin,abi::Address callback_end);
     std::optional<std::uint32_t> value(std::string_view library,std::uint16_t ordinal) const override;
     abi::ImportCallResult call(std::string_view library,std::uint16_t ordinal,abi::GuestCall& state,abi::GuestMemory& memory) override;
-    void enable_virtual_memory(machine::AddressSpace& memory){virtual_memory_.emplace(memory);}
+    void enable_virtual_memory(machine::AddressSpace& memory,bool diagnostic_selector2=false){virtual_memory_.emplace(memory,diagnostic_selector2);}
+    static constexpr abi::Address hardware_info_address=0x71000100;
+    bool install_hardware_info(machine::AddressSpace& memory,const std::array<std::uint8_t,16>& bytes);
     enum class ProcessType:std::uint32_t {idle=0,user=1,system=2};
     void enable_heap_startup(ProcessType type){process_type_=type;}
     // Opt-in diagnostic identity; no guest scheduler is installed.
@@ -23,6 +25,7 @@ private:
     std::optional<VirtualMemory> virtual_memory_;
     std::optional<ProcessType> process_type_;
     abi::Address diagnostic_thread_{};
+    bool hardware_ready_{};
     bool ready_{};
     std::uint32_t header_bytes_{},header_count_{};
     abi::Address callback_begin_{},callback_end_{};

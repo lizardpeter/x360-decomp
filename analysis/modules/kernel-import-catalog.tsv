@@ -203,7 +203,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 0153	KeTlsFree	function	1	1	1	1	missing
 0154	KeTlsGetValue	function	1	1	1	1	missing
 0155	KeTlsSetValue	function	1	1	1	1	missing
-0156	XboxHardwareInfo	variable	1	0	1	0	missing
+0156	XboxHardwareInfo	variable	1	0	1	0	host_adapter
 0157	XboxKrnlBaseVersion	variable	1	0	1	0	missing
 0158	XboxKrnlVersion	variable	1	0	1	0	missing
 0159	XeCryptAesKey	function	1	1	1	1	missing

@@ -36,8 +36,13 @@ bool KernelStartup::install(machine::AddressSpace& memory,std::span<const std::u
     header_bytes_=static_cast<std::uint32_t>(header.size());header_count_=n;
     callback_begin_=begin;callback_end_=end;ready_=true;return true;
 }
+bool KernelStartup::install_hardware_info(machine::AddressSpace& memory,const std::array<std::uint8_t,16>& bytes){
+    if(!ready_||hardware_ready_||!bytes[4]||!memory.map(hardware_info_address,bytes,false))return false;
+    hardware_ready_=true;return true;
+}
 std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint16_t o) const{
     if(ready_&&lib=="xboxkrnl.exe"&&o==403)return handle_cell;
+    if(hardware_ready_&&lib=="xboxkrnl.exe"&&o==342)return hardware_info_address;
     return {};
 }
 ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){

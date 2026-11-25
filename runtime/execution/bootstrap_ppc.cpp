@@ -126,8 +126,9 @@ BootstrapResult bootstrap_ppc(const ModuleManifest& m,abi::GuestMemory& memory,
             compare_field(s,field,condition);
         }else if(op==24||op==25){
             s.gpr[a]=s.gpr[d]|(std::uint64_t(w&65535)<<(op==25?16:0));
-        }else if(op==31&&xo==444&&!(w&1)){
+        }else if(op==31&&xo==444){
             s.gpr[a]=s.gpr[d]|s.gpr[b];
+            if(w&1)compare_field(s,0,compare(std::bit_cast<std::int64_t>(s.gpr[a]),std::int64_t{0}));
         }else if(op==31&&(xo==339||xo==467)&&!(w&1)){
             auto spr=a|(b<<5);std::uint64_t* target=nullptr;
             if(spr==8)target=&s.lr;else if(spr==9)target=&s.ctr;else return unsupported();

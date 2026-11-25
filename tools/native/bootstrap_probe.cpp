@@ -55,10 +55,16 @@ int main(int argc,char** argv){
             for(auto& section:m.sections)if(section.executable()){begin=section.address;end=section.address+section.size;break;}
             require(hosted.install(memory,header,begin,end),"hosted header install failed");
         }
-        const bool heap_startup=argc==6&&std::string_view(argv[5])=="--heap-startup";
+        const bool hardware=argc==6&&std::string_view(argv[5])=="--hardware";
+        const bool selector2=argc==6&&std::string_view(argv[5])=="--selector2";
+        const bool heap_startup=hardware||(argc==6&&std::string_view(argv[5])=="--heap-startup");
         if(argc==6){
-            require(heap_startup||std::string_view(argv[5])=="--allocator","unknown bootstrap option");
-            hosted.enable_virtual_memory(memory);
+            require(heap_startup||selector2||std::string_view(argv[5])=="--allocator","unknown bootstrap option");
+            hosted.enable_virtual_memory(memory,selector2);
+            if(hardware){
+                require(hosted.install_hardware_info(memory,{0,0,0,0x20,6}),"hardware profile mapping failed");
+                hosted.set_diagnostic_thread(0x71000120);
+            }
             if(heap_startup)hosted.enable_heap_startup(host::KernelStartup::ProcessType::system);
         }
         auto r=bootstrap_ppc(m,memory,s,sentinel,10000,argc>=5?&hosted:nullptr);
@@ -77,8 +83,21 @@ int main(int argc,char** argv){
         if(pos<m.size)dump(image_out,memory,static_cast<abi::Address>(m.base+pos),m.size-pos);
         trace.close();state.close();stack_out.close();image_out.close();
         require(trace&&state&&stack_out&&image_out,"snapshot output failed");
+        if(selector2&&manifest.name=="xam.xex"){
+            require(r.stop==BootstrapStop::access_fault&&r.address==0x8e03860a&&s.pc==0x8168af2c,"unexpected selector2 continuation stop");
+            auto res=memory.reservation(host::VirtualMemory::selector2_begin);
+            require(res&&res->size==0x1f0000&&res->page_size==65536,"selector2 reservation mismatch");
+            std::ofstream heap(path/"heap",std::ios::binary);require(bool(heap),"heap output open");
+            dump(heap,memory,res->base,res->size);heap.close();require(bool(heap),"heap output failed");
+            std::cout<<"selector2 "<<r.retired<<" "<<r.trace.size()<<" "<<s.pc<<" "<<r.address<<" "<<r.services.size()<<" "<<hosted.notifications().size();
+            for(auto& service:r.services)std::cout<<" "<<service.ordinal;
+            for(auto& [routine,record]:hosted.notifications())std::cout<<" "<<routine<<" "<<record.priority;
+            std::cout<<"\n";return 0;
+        }
         if(argc==6&&manifest.name=="dash.xex"){
-            if(heap_startup)
+            if(hardware)
+                require(r.stop==BootstrapStop::import_thunk&&r.ordinal==404&&r.address==0x9293a6ac,"unexpected hardware startup boundary");
+            else if(heap_startup)
                 require(r.stop==BootstrapStop::import_value&&r.ordinal==342&&r.address==0x920010c4,"unexpected heap startup boundary");
             else
                 require(r.stop==BootstrapStop::import_thunk&&r.ordinal==102,"unexpected allocation-enabled dashboard stop");
