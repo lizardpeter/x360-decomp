@@ -4,6 +4,7 @@ set -euo pipefail
 if [[ $# != 2 ]]; then echo "Usage: $0 GHIDRA_HOME MODULE" >&2; exit 2; fi
 GHIDRA="$(realpath "$1")"
 MODULE="$2"
+PROCESSOR="${X360_GHIDRA_PROCESSOR:-PowerPC:BE:64:Xenon}"
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 python tools/ghidra/prepare.py "$MODULE"
@@ -14,7 +15,7 @@ rm -f "$OUT/seed_receipt.json" "$OUT/auto_receipt.json" "$OUT/export/reconcile_r
 "$GHIDRA/support/analyzeHeadless" "$OUT/project" "$MODULE" \
   -import "$ROOT/originals/decoded/$MODULE.image.bin" \
   -loader BinaryLoader -loader-baseAddr "$BASE" \
-  -processor PowerPC:BE:64:64-32addr -cspec default \
+  -processor "$PROCESSOR" -cspec default \
   -scriptPath "$ROOT/tools/ghidra" \
   -preScript SeedX360.java "$OUT/seeds.tsv" "$OUT/seed_receipt.json" \
   -postScript CaptureX360.java "$OUT/auto_receipt.json" "$OUT/export/auto_candidates.tsv" \
