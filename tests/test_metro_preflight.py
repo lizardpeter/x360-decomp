@@ -15,6 +15,7 @@ class MetroPreflightTests(unittest.TestCase):
         result = header(self.dash, self.xam)
         self.assertIn("kDashBase = 0x92000000u", result)
         self.assertIn("kXamBase = 0x815F0000u", result)
+        self.assertIn("kXamDataBinding = {0x03DBu, 0x9293D11Cu, 0x81A87F20u, 0x92000550u};", result)
         for ordinal, (thunk, target) in BINDINGS.items():
             self.assertIn(f"{{0x{ordinal:04X}u, 0x{thunk:08X}u, 0x{target:08X}u, 0x{VALUE_SLOTS[ordinal]:08X}u}}", result)
 

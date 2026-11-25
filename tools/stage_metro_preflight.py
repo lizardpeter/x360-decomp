@@ -6,7 +6,8 @@ from pathlib import Path
 from prepare_recompilation import ROOT, EXPECTED, sha
 from stage_aot_host import write_exact
 from stage_metro_xam_aot import BINDINGS, rows, manifest
-from patch_metro_import_slots import VALUE_SLOTS, verify_slots
+from patch_metro_import_slots import (VALUE_SLOTS, VARIABLE_ORDINAL, VARIABLE_SLOT,
+                                      VARIABLE_THUNK_SLOT, VARIABLE_TARGET, verify_slots)
 
 OLD = "add_executable(dash_17559 src/main.cpp)"
 NEW = "add_executable(dash_17559 src/metro_aot_preflight.cpp)"
@@ -47,7 +48,11 @@ def header(dash, xam):
     result += "inline constexpr Binding kBindings[] = {\n"
     result += "".join(f"    {{0x{o:04X}u, 0x{a:08X}u, 0x{b:08X}u, 0x{VALUE_SLOTS[o]:08X}u}},\n"
                       for o, (a, b) in sorted(BINDINGS.items()))
-    return result + "};\n"
+    result += "};\n"
+    result += (f"inline constexpr Binding kXamDataBinding = "
+               f"{{0x{VARIABLE_ORDINAL:04X}u, 0x{VARIABLE_THUNK_SLOT:08X}u, "
+               f"0x{VARIABLE_TARGET:08X}u, 0x{VARIABLE_SLOT:08X}u}};\n")
+    return result
 
 def cmake_preflight(text):
     if text.count(NEW) == 1 and OLD not in text:

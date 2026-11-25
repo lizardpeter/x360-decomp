@@ -7,6 +7,9 @@
 #include <rex/filesystem/file_system.h>
 #include <atomic>
 #include <iostream>
+#include <iomanip>
+#include <rex/kernel/guest_memory.h>
+#include <rex/kernel/module.h>
 #include <stdexcept>
 #include "metro_preflight_bindings.hpp"
 
@@ -33,6 +36,71 @@ inline bool mount_flash(rex::kernel::TitleRuntime& title) {
     return bool(fs.Stat("flash:\\dash.xex")) &&
            bool(fs.Stat("flash:\\xam.xex")) &&
            bool(fs.Stat("flash:\\shrdres.xzp"));
+}
+
+
+// Bind only an exact recorded retail import to a verified mapped target.
+// The read-only import page is restored after a normal loader relocation.
+// Unexpected values or missing metadata fail closed, never fabricated.
+inline bool verify_live_binding(rex::kernel::TitleRuntime& title,
+                                const rex::kernel::XEXModule& dash,
+                                const rex::kernel::XEXModule& xam,
+                                const Binding& binding, bool data) {
+    std::size_t matches = 0;
+    for (const auto& library : dash.GetImportLibraries()) {
+        if (library.name != "xam" || library.file_name != "xam.xex") continue;
+        for (const auto& item : library.imports) {
+            if (item.ordinal == binding.ordinal &&
+                item.value_address == binding.value_slot &&
+                item.thunk_address == binding.thunk) ++matches;
+        }
+    }
+    const auto export_address = xam.GetExportAddress(binding.ordinal);
+    auto& memory = title.GetGuestMemory();
+    const auto current = memory.Load<rex::be_u32>(binding.value_slot);
+    const auto expected = data ? binding.target : binding.thunk;
+    std::cout << "METRO_BINDING ordinal=0x" << std::hex << binding.ordinal
+              << " slot=0x" << binding.value_slot
+              << " expected=0x" << expected
+              << " actual=0x" << (current ? static_cast<rex::u32>(*current) : 0u)
+              << " export=0x" << export_address
+              << std::dec << " readable=" << static_cast<bool>(current)
+              << " records=" << matches << " data=" << data << std::endl;
+    if (!current) {
+        std::cout << "METRO_BINDING read_error " << current.error().GetDescription()
+                  << std::endl;
+        return false;
+    }
+    if (matches != 1 || export_address != binding.target) return false;
+    if (data) {
+        if (xam.IsExecutableAddress(binding.target) ||
+            !memory.GetWritableSpan(binding.target, sizeof(rex::u32))) return false;
+    } else {
+        if (!xam.IsExecutableAddress(binding.target) ||
+            !title.FindFunction(binding.thunk) ||
+            !title.FindFunction(binding.target)) return false;
+    }
+    const rex::u32 old = *current;
+    if (old == expected) return true;
+    // Only a still-unresolved original import descriptor can be relocated.
+    // The middle byte is the original import library index.
+    const bool raw_record = (old & 0xFF00FFFFu) == binding.ordinal;
+    const bool data_marker = data &&
+        old == (0xD000BEEFu | (static_cast<rex::u32>(binding.ordinal) & 0xFFFu) << 16);
+    if (!raw_record && !data_marker) return false;
+    const bool writable = bool(memory.GetWritableSpan(binding.value_slot, sizeof(rex::u32)));
+    if (!writable && !memory.Protect(binding.value_slot, sizeof(rex::u32),
+                                    rex::kernel::GuestProtect::kReadWrite)) return false;
+    const auto stored = memory.Store(binding.value_slot, rex::be_u32(expected));
+    const bool restored = writable ||
+        bool(memory.Protect(binding.value_slot, sizeof(rex::u32),
+                            rex::kernel::GuestProtect::kReadOnly));
+    if (!stored || !restored) return false;
+    const auto reread = memory.Load<rex::be_u32>(binding.value_slot);
+    if (!reread || static_cast<rex::u32>(*reread) != expected) return false;
+    std::cout << "METRO_BINDING relocated ordinal=0x" << std::hex << binding.ordinal
+              << std::dec << std::endl;
+    return true;
 }
 
 struct EntryBinding {
@@ -98,13 +166,11 @@ protected:
         if (!xx || xx->GetBaseAddress() != kXamBase || xx->GetImageSize() != kXamSize ||
             xx->GetEntryPoint() != kXamEntry || !xam->user.is_dll_module ||
             !xam->hmodule_ptr || !title.FindFunction(kXamEntry)) return fail("xam_identity");
-        for (const auto& b : kBindings) {
-            const auto value = title.GetGuestMemory().Load<rex::be_u32>(b.value_slot);
-            if (xx->GetExportAddress(b.ordinal) != b.target ||
-                !title.FindFunction(b.thunk) || !title.FindFunction(b.target) ||
-                !value || static_cast<rex::u32>(*value) != b.thunk)
+        for (const auto& b : kBindings)
+            if (!verify_live_binding(title, *dx, *xx, b, false))
                 return fail("export_mapping");
-        }
+        if (!verify_live_binding(title, *dx, *xx, kXamDataBinding, true))
+            return fail("data_mapping");
         const auto original = title.FindFunction(kDashEntry);
         auto* dispatcher = dx->GetFunctionDispatcher();
         if (!original || !dispatcher || *original == &startup) return fail("entry_binding");

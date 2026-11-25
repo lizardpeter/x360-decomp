@@ -20,3 +20,7 @@ The new trial stages the hash-verified dashboard and XAM together, preserves the
 ## Verified XAM data import
 
 The dashboard also imports XAM ordinal 0x03DB, g_XuiAutomation, as a variable (not a callable thunk). The original import inventory places its value slot at 0x92000550; the original XAM export inventory places the symbol at 0x81A87F20. The latter is checked against the hash-verified XAM image and must fall inside a writable, non-executable loaded data section. The loader patch writes this original guest address only for the exact dashboard base, library, ordinal, slot, and SDK export name. This makes the dashboard's variable import refer to the actual mapped retail XAM data, rather than the SDK's unresolved-variable marker. The other missing variable imports are not fabricated.
+
+## Live import relocation and diagnostics
+
+The native mapping gate now checks the exact loaded XEX import metadata, the mapped XAM export, and the actual big-endian guest value. It reports all five code slots with their expected/observed values. A still-unresolved original descriptor may be relocated only after both images and both registered function addresses have been verified. A data import is verified as non-executable writable XAM data. Read-only import pages are temporarily made writable only for the relocation and are restored immediately. Unknown values and missing records remain fatal; no guest call is substituted. The graphical boot uses the same verification and requires the data binding as well.
