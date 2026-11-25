@@ -58,10 +58,15 @@ public:
             return fail("dashboard_xex_missing");
 
         std::size_t mapping_count = 0;
+        std::size_t zero_address_mappings = 0;
         bool entry_mapping = false;
-        for (const PPCFuncMapping* mapping = kPPCImageConfig.func_mappings;
-             mapping && mapping->address; ++mapping) {
+        bool first_mapping_has_host = false;
+        const PPCFuncMapping* first_mapping = kPPCImageConfig.func_mappings;
+        if (first_mapping) first_mapping_has_host = first_mapping->host != nullptr;
+        for (const PPCFuncMapping* mapping = first_mapping; mapping; ++mapping) {
+            if (!mapping->address && !mapping->host) break;
             ++mapping_count;
+            if (!mapping->address) ++zero_address_mappings;
             if (static_cast<rex::u32>(mapping->address) == kDashEntry && mapping->host)
                 entry_mapping = true;
         }
@@ -81,6 +86,8 @@ public:
                   << " image_base=0x" << kPPCImageConfig.image_base
                   << " image_size=0x" << kPPCImageConfig.image_size
                   << std::dec << " mappings=" << mapping_count
+                  << " zero_address_mappings=" << zero_address_mappings
+                  << " first_mapping_host=" << first_mapping_has_host
                   << " entry_mapping=" << entry_mapping
                   << " entry_in_code_range=" << entry_in_code_range
                   << " entry_registered=" << static_cast<bool>(entry_function)
