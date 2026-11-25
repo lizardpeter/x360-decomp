@@ -1,6 +1,7 @@
 #pragma once
 #include "abi/import_provider.hpp"
 #include "machine/address_space.hpp"
+#include "host/virtual_memory.hpp"
 #include <map>
 namespace x360::host {
 struct Notification {abi::Address routine;std::uint32_t priority;};
@@ -12,8 +13,10 @@ public:
                  abi::Address callback_begin,abi::Address callback_end);
     std::optional<std::uint32_t> value(std::string_view library,std::uint16_t ordinal) const override;
     abi::ImportCallResult call(std::string_view library,std::uint16_t ordinal,abi::GuestCall& state,abi::GuestMemory& memory) override;
+    void enable_virtual_memory(machine::AddressSpace& memory){virtual_memory_.emplace(memory);}
     const std::map<abi::Address,Notification>& notifications() const noexcept{return notifications_;}
 private:
+    std::optional<VirtualMemory> virtual_memory_;
     bool ready_{};
     std::uint32_t header_bytes_{},header_count_{};
     abi::Address callback_begin_{},callback_end_{};

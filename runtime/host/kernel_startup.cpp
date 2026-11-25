@@ -41,6 +41,7 @@ std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint
 }
 ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){
     if(!ready_||lib!="xboxkrnl.exe")return ImportCallResult::unsupported;
+    if(o==204&&virtual_memory_)return virtual_memory_->allocate(s,memory);
     if(o==299){
         if(static_cast<abi::Address>(s.gpr[3])!=header_address)return ImportCallResult::unsupported;
         const auto key=static_cast<std::uint32_t>(s.gpr[4]);

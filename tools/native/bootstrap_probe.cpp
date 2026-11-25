@@ -38,7 +38,7 @@ static void dump(std::ostream& out,const abi::GuestMemory& memory,abi::Address a
     out.write(reinterpret_cast<const char*>(bytes.data()),bytes.size());
 }
 int main(int argc,char** argv){
-    if(argc!=4&&argc!=5){std::cerr<<"usage: bootstrap_probe MANIFEST IMAGE OUTPUT_DIRECTORY\n";return 2;}
+    if(argc!=4&&argc!=5&&argc!=6){std::cerr<<"usage: bootstrap_probe MANIFEST IMAGE OUTPUT_DIRECTORY\n";return 2;}
     try{
         auto manifest=parse(argv[1]);auto image=read(argv[2]);
         machine::AddressSpace memory;ModuleRegistry registry;
@@ -50,12 +50,13 @@ int main(int argc,char** argv){
         if(manifest.name=="xam.xex"){s.gpr[3]=manifest.base;s.gpr[4]=1;}
         const auto& m=*registry.module(manifest.name);
         host::KernelStartup hosted;
-        if(argc==5){
+        if(argc>=5){
             auto header=read(argv[4]);abi::Address begin=0,end=0;
             for(auto& section:m.sections)if(section.executable()){begin=section.address;end=section.address+section.size;break;}
             require(hosted.install(memory,header,begin,end),"hosted header install failed");
         }
-        auto r=bootstrap_ppc(m,memory,s,sentinel,10000,argc==5?&hosted:nullptr);
+        if(argc==6){require(std::string_view(argv[5])=="--allocator","unknown bootstrap option");hosted.enable_virtual_memory(memory);}
+        auto r=bootstrap_ppc(m,memory,s,sentinel,10000,argc>=5?&hosted:nullptr);
         const auto path=std::filesystem::path(argv[3]);
         std::ofstream trace(path/"trace",std::ios::binary),state(path/"state",std::ios::binary),stack_out(path/"stack",std::ios::binary),image_out(path/"image_after",std::ios::binary);
         require(trace&&state&&stack_out&&image_out,"snapshot output open failed");
@@ -71,7 +72,19 @@ int main(int argc,char** argv){
         if(pos<m.size)dump(image_out,memory,static_cast<abi::Address>(m.base+pos),m.size-pos);
         trace.close();state.close();stack_out.close();image_out.close();
         require(trace&&state&&stack_out&&image_out,"snapshot output failed");
-        if(argc==5){
+        if(argc==6&&manifest.name=="dash.xex"){
+            require(r.stop==BootstrapStop::unsupported_instruction,"unexpected allocation-enabled dashboard stop");
+            auto reserved=memory.reservation(host::VirtualMemory::arena_begin);
+            require(reserved&&reserved->base==host::VirtualMemory::arena_begin&&reserved->size==0x100000&&reserved->page_size==65536,"reservation mismatch");
+            std::uint32_t word{};
+            require(!memory.load_be32(reserved->base+65536,word),"uncommitted region accessible");
+            std::ofstream heap(path/"heap",std::ios::binary);require(bool(heap),"heap output open");
+            dump(heap,memory,reserved->base,65536);heap.close();require(bool(heap),"heap output failed");
+            std::cout<<"heap "<<r.retired<<" "<<r.trace.size()<<" "<<s.pc<<" "<<r.services.size()<<" "<<hosted.notifications().size();
+            for(auto& service:r.services)std::cout<<" "<<service.ordinal;
+            std::cout<<"\n";return 0;
+        }
+        if(argc>=5){
             require(r.stop==BootstrapStop::import_thunk&&r.ordinal==204&&r.library=="xboxkrnl.exe","unexpected hosted startup boundary");
             std::cout<<"allocation "<<r.retired<<" "<<r.trace.size()<<" "<<s.pc<<" "<<r.services.size()<<" "<<hosted.notifications().size();
             for(auto& service:r.services)std::cout<<" "<<service.ordinal;
