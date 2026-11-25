@@ -47,7 +47,7 @@ class MetroSDKPatchTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             corrected_imports(patched)
         with self.assertRaises(ValueError):
-            corrected_imports(IMPORT_OLD.replace("0x", "0X", 1))
+            corrected_imports(IMPORT_OLD.replace("Patched function import", "Patched function imports", 1))
 
     def test_function_table_patch_selects_heap_from_guest_address(self):
         source = ALLOC + """
