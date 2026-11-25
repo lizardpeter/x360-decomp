@@ -1,0 +1,5 @@
+# Original PNG texture decoding
+
+All observed firmware PNGs use non-interlaced PNG with standard DEFLATE, 8-bit gray/gray-alpha/RGB/RGBA or 1/4/8-bit indexed color. The original image analysis also found palette tRNS. The native decoder implements that subset (including 2-bit indexed), validates chunks and CRCs, bounds allocations, inflates with separately supplied zlib, implements all five PNG row filters and unpacks palette samples into straight-alpha RGBA8. Unsupported features fail explicitly. No color management, JPEG, XMA or GPU texture upload is claimed.
+
+Independent reference: Pillow decoded every PNG in original resource directory order and hashed the concatenated RGBA bytes per module. All 930 images (817 embedded, 113 in the external hash-pinned shrdres.xzp), 5,844,455 pixels, are covered by the original audit; empty modules are checked too. Generated RGBA bytes stay in a temporary directory and are never published. Only counts and reference digests are committed. These counts include duplicate resources across modules, not distinct texture identities. Native tests cover filters, packed indexes, alpha, corruption, bounds and truncation.

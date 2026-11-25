@@ -1,0 +1,60 @@
+{
+  "reference": "Pillow independent RGBA decode; concatenated in XEX resource table and XUIZ directory order",
+  "modules": {
+    "dash_17559": {
+      "images": 564,
+      "pixels": 3982791,
+      "rgba_sha256": "fd1a3caf5458758bf0f2d053f93676617ab1337eec970b8cbb098b198d7717fd"
+    },
+    "deviceselector_17559": {
+      "images": 5,
+      "pixels": 25600,
+      "rgba_sha256": "12f734f1a5ae1bbede5c28e6a641df7b3abe73216db866786657b295f89b5a1e"
+    },
+    "hud_17559": {
+      "images": 17,
+      "pixels": 13472,
+      "rgba_sha256": "b2fa6dbf3ba594904ddf73aa85dbc31dea39e880336ecdd0eef47d30d937ad2d"
+    },
+    "minimediaplayer_17559": {
+      "images": 8,
+      "pixels": 8192,
+      "rgba_sha256": "2a39e117c6d41536cf4fcb3e7f733c14d4c4e5627aac931b70d21cdeaba6f94f"
+    },
+    "signin_17559": {
+      "images": 5,
+      "pixels": 20480,
+      "rgba_sha256": "f7e491a81ec1fbaac36b5afadfcf80e27cd2fa2c4a4dc5a463962772fdd5946e"
+    },
+    "systemupdate_17559": {
+      "images": 2,
+      "pixels": 10368,
+      "rgba_sha256": "67569cb8c78e36dbc1a461fe14dc5be1bfdaf90531fa10a20cf58727cc1eaaa4"
+    },
+    "systemupdate2pre_17559": {
+      "images": 2,
+      "pixels": 10368,
+      "rgba_sha256": "67569cb8c78e36dbc1a461fe14dc5be1bfdaf90531fa10a20cf58727cc1eaaa4"
+    },
+    "updater_17559": {
+      "images": 2,
+      "pixels": 5120,
+      "rgba_sha256": "6a037c30af1095e591dbf79cb2c00f1ffb34d3c5297f0f7a06fa9a3bf8b15329"
+    },
+    "vk_17559": {
+      "images": 10,
+      "pixels": 13996,
+      "rgba_sha256": "51d70348f7aab2894a5bed428ec39571078cbc126087486c65780553af0b8331"
+    },
+    "xam_17559": {
+      "images": 202,
+      "pixels": 1096634,
+      "rgba_sha256": "73d0cb8ad31f492feba3b0d07ec3c61ccbcada0b31e9a8c81132ce55347f34d6"
+    },
+    "sharedres": {
+      "images": 113,
+      "pixels": 657434,
+      "rgba_sha256": "9ff94312f02de8637b703a500a2be5481b4501ba01bc4e48cf4730b8f6ecec94"
+    }
+  }
+}
