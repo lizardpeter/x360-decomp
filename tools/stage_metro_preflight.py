@@ -70,6 +70,8 @@ def stage(folder):
     write_exact(folder/"src/metro_preflight_bindings.hpp", bindings)
     write_exact(folder/"src/metro_aot_preflight.cpp",
                 (ROOT/"tools/native/metro_aot_preflight.cpp").read_text())
+    write_exact(folder/"src/metro_aot_boot.hpp",
+                (ROOT/"tools/native/metro_aot_boot.hpp").read_text())
     cmake.write_text(updated)
 
 def main():
