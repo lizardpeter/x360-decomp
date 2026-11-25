@@ -2,6 +2,7 @@
 #include "formats/xui_timeline.hpp"
 #include "formats/xui_structure.hpp"
 #include "formats/lua51.hpp"
+#include "formats/lua51_flow.hpp"
 #include "formats/xui_catalog.hpp"
 #include "formats/xui_values.hpp"
 #include "os/xam/xui/geometry.hpp"
@@ -27,6 +28,7 @@ int main(int argc,char** argv){
     std::size_t floats=0,vectors=0,quaternions=0,colors=0,shapes=0,segments=0,paths=0,path_points=0;
     std::size_t marker_scenes=0,markers=0,marker_related=0,marker_max_frame=0,lua_chunks=0;
     x360::formats::lua51::Census lua{};
+    x360::formats::lua51::FlowCensus flow{};
     std::size_t modern=0,legacy=0,keyp_scenes=0,keyp_tokens=0,keyp_max=0,data_bytes=0,data_root_canvas=0,prefix_extended=0,prefix_32=0,prefix_fields=0,name_records=0;
     std::array<std::size_t,12> prefix_sums{};
     std::string line,id,current;
@@ -62,7 +64,10 @@ int main(int argc,char** argv){
                 }else if(magic(e.data,"XUIS")){
                     auto t=StringTable::parse(e.data);++localizations;localized_strings+=t.entries().size();
                 }else if(magic(e.data,"\x1bLua")){
-                    auto c=x360::formats::lua51::census(x360::formats::lua51::Chunk::parse(e.data));++lua_chunks;
+                    auto chunk=x360::formats::lua51::Chunk::parse(e.data);
+                    auto c=x360::formats::lua51::census(chunk);++lua_chunks;
+                    auto f=x360::formats::lua51::verify_flow(chunk);
+                    flow.prototypes+=f.prototypes;flow.instructions+=f.instructions;flow.edges+=f.edges;flow.branch_nodes+=f.branch_nodes;flow.terminal_nodes+=f.terminal_nodes;flow.reachable+=f.reachable;flow.unreachable+=f.unreachable;flow.capture_words+=f.capture_words;flow.extra_words+=f.extra_words;
                     lua.prototypes+=c.prototypes;lua.words+=c.words;lua.constants+=c.constants;lua.strings+=c.strings;lua.max_depth=std::max(lua.max_depth,c.max_depth);
                     lua.upvalues+=c.upvalues;lua.lines+=c.lines;lua.locals+=c.locals;lua.upvalue_names+=c.upvalue_names;lua.setlist_extra+=c.setlist_extra;
                     for(std::size_t i=0;i<lua.opcodes.size();++i)lua.opcodes[i]+=c.opcodes[i];
@@ -82,6 +87,7 @@ int main(int argc,char** argv){
                  <<" lua_locals="<<lua.locals<<" lua_upvalue_names="<<lua.upvalue_names<<" lua_setlist_extra="<<lua.setlist_extra;
         for(std::size_t i=0;i<lua.opcodes.size();++i)std::cout<<" lua_op_"<<i<<"="<<lua.opcodes[i];
         for(std::size_t i=0;i<lua.constant_types.size();++i)std::cout<<" lua_const_"<<i<<"="<<lua.constant_types[i];
+        std::cout<<" flow_prototypes="<<flow.prototypes<<" flow_instructions="<<flow.instructions<<" flow_edges="<<flow.edges<<" flow_branch_nodes="<<flow.branch_nodes<<" flow_terminal_nodes="<<flow.terminal_nodes<<" flow_reachable="<<flow.reachable<<" flow_unreachable="<<flow.unreachable<<" flow_capture_words="<<flow.capture_words<<" flow_extra_words="<<flow.extra_words;
         std::cout<<" modern="<<modern<<" legacy="<<legacy<<" keyp_scenes="<<keyp_scenes<<" keyp_tokens="<<keyp_tokens<<" keyp_max="<<keyp_max<<" data_bytes="<<data_bytes<<" data_root_canvas="<<data_root_canvas<<" prefix_extended="<<prefix_extended<<" prefix_32="<<prefix_32<<" prefix_fields="<<prefix_fields<<" name_records="<<name_records;
         for(std::size_t i=0;i<prefix_sums.size();++i)std::cout<<" prefix_sum_"<<i<<"="<<prefix_sums[i];
         std::cout<<'\n';
