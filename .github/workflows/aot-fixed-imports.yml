@@ -8,6 +8,7 @@ on:
       - 'tools/stage_metro_xam_aot.py'
       - 'tests/test_metro_xam_aot.py'
       - 'tools/stage_metro_preflight.py'
+      - 'tools/patch_rexglue_function_tables.py'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
       - '.github/workflows/aot-fixed-imports.yml'
@@ -43,6 +44,7 @@ jobs:
         run: |
           python tools/patch_rexglue_imports.py build/sdk-source
           python tools/stage_metro_xam_aot.py patch build/sdk-source
+          python tools/patch_rexglue_function_tables.py build/sdk-source
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -90,6 +92,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+$' "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
           cat build/receipts/metro-preflight.txt
+          if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
