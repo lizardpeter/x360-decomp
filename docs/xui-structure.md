@@ -1,0 +1,5 @@
+# Scene prefix and DATA root evidence
+
+All 477 version-8 scenes across the verified firmware use twelve compact unsigned header fields. Values 0..239 occupy one byte, 0xF0..0xFE introduce a second byte; 0xFF introduces a big-endian 32-bit value (observed in both large skin scenes). Header fields 8 and 10 (zero-based) are independently validated as KEYP token count and NAME record count, respectively. The other fields are preserved, not assigned guessed meanings. The KEYP section is a compact integer stream. Its 8,702 decoded tokens across 137 scenes are not yet mapped to property types. Every modern DATA section begins with a one-based STRN index referring to XuiCanvas; the remaining bytes are retained opaque. No child hierarchy is inferred from incomplete evidence. Eight version-5 scenes are explicitly excluded from this modern grammar, not counted as failures.
+
+The native audit checks exact per-module counts and header-field sums against independent inspection of the pinned original images. This is structural reconstruction, not a full DATA or keyframe playback implementation.

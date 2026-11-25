@@ -1,5 +1,6 @@
 #include "formats/xui.hpp"
 #include "formats/xui_timeline.hpp"
+#include "formats/xui_structure.hpp"
 #include "formats/lua51.hpp"
 #include "formats/xui_catalog.hpp"
 #include "formats/xui_values.hpp"
@@ -26,6 +27,8 @@ int main(int argc,char** argv){
     std::size_t floats=0,vectors=0,quaternions=0,colors=0,shapes=0,segments=0,paths=0,path_points=0;
     std::size_t marker_scenes=0,markers=0,marker_related=0,marker_max_frame=0,lua_chunks=0;
     x360::formats::lua51::Census lua{};
+    std::size_t modern=0,legacy=0,keyp_scenes=0,keyp_tokens=0,keyp_max=0,data_bytes=0,data_root_canvas=0,prefix_extended=0,prefix_32=0,prefix_fields=0,name_records=0;
+    std::array<std::size_t,12> prefix_sums{};
     std::string line,id,current;
     try{
         std::vector<ResourceDescriptor> descriptors;
@@ -47,6 +50,13 @@ int main(int argc,char** argv){
                     auto str=*s.section("STRN");if(s.version()==8&&str.size()-6!=s.string_units())++unicode_delta;
                     auto names=TimelineNames::parse(s);if(!names.markers().empty())++marker_scenes;
                     for(auto& m:names.markers()){++markers;marker_related+=bool(m.related_name_index);marker_max_frame=std::max(marker_max_frame,std::size_t(m.frame));}
+                    if(auto structure=SceneStructure::parse(s)){
+                        ++modern;++data_root_canvas;data_bytes+=s.section("DATA")->size();
+                        prefix_fields+=structure->header.size();name_records+=structure->name_record_count();
+                        for(std::size_t i=0;i<structure->header.size();++i){auto x=structure->header[i];prefix_sums[i]+=x;prefix_extended+=x>=240;prefix_32+=x>=3840;}
+                        keyp_scenes+=!structure->key_tokens.empty();keyp_tokens+=structure->key_tokens.size();
+                        for(auto x:structure->key_tokens)keyp_max=std::max(keyp_max,std::size_t(x));
+                    }else ++legacy;
                     auto v=SceneValues::parse(s);floats+=v.floats.size();vectors+=v.vectors.size();quaternions+=v.quaternions.size();colors+=v.colors.size();shapes+=v.custom.size();
                     for(auto& shape:v.custom){segments+=shape.segments.size();auto contour=x360::os::xam::xui::flatten_closed_shape(shape);if(!contour.empty()&&contour.front()!=contour.back())throw FormatError("open contour");++paths;path_points+=contour.size();}
                 }else if(magic(e.data,"XUIS")){
@@ -72,6 +82,8 @@ int main(int argc,char** argv){
                  <<" lua_locals="<<lua.locals<<" lua_upvalue_names="<<lua.upvalue_names<<" lua_setlist_extra="<<lua.setlist_extra;
         for(std::size_t i=0;i<lua.opcodes.size();++i)std::cout<<" lua_op_"<<i<<"="<<lua.opcodes[i];
         for(std::size_t i=0;i<lua.constant_types.size();++i)std::cout<<" lua_const_"<<i<<"="<<lua.constant_types[i];
+        std::cout<<" modern="<<modern<<" legacy="<<legacy<<" keyp_scenes="<<keyp_scenes<<" keyp_tokens="<<keyp_tokens<<" keyp_max="<<keyp_max<<" data_bytes="<<data_bytes<<" data_root_canvas="<<data_root_canvas<<" prefix_extended="<<prefix_extended<<" prefix_32="<<prefix_32<<" prefix_fields="<<prefix_fields<<" name_records="<<name_records;
+        for(std::size_t i=0;i<prefix_sums.size();++i)std::cout<<" prefix_sum_"<<i<<"="<<prefix_sums[i];
         std::cout<<'\n';
     }catch(const std::exception& e){std::cerr<<current<<": "<<e.what()<<'\n';return 1;}
 }
