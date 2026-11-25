@@ -1,0 +1,156 @@
+{
+  "run": 45539981101,
+  "commit": "ec53bbab95d218e90003c48569b4e0a750a02a2a",
+  "language": "PowerPC:BE:64:Xenon",
+  "seed_count": 49542,
+  "seeds_found": 49542,
+  "functions": 51084,
+  "decompile_success": 51084,
+  "decompile_failed": 0,
+  "empty_disassembly": 0,
+  "unresolved_candidates": 10076,
+  "instructions": 3316781,
+  "recovered_by_retry": 0,
+  "modules": {
+    "dash_17559": {
+      "seed_count": 28350,
+      "seeds_found": 28350,
+      "functions": 28843,
+      "decompile_success": 28843,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 4443,
+      "instructions": 1891190
+    },
+    "xam_17559": {
+      "seed_count": 13799,
+      "seeds_found": 13799,
+      "functions": 14689,
+      "decompile_success": 14689,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 2736,
+      "instructions": 979858
+    },
+    "bootanim_17559": {
+      "seed_count": 661,
+      "seeds_found": 661,
+      "functions": 681,
+      "decompile_success": 681,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 290,
+      "instructions": 67277
+    },
+    "systemupdate2pre_17559": {
+      "seed_count": 1833,
+      "seeds_found": 1833,
+      "functions": 1881,
+      "decompile_success": 1881,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 515,
+      "instructions": 116116
+    },
+    "systemupdate_17559": {
+      "seed_count": 1778,
+      "seeds_found": 1778,
+      "functions": 1828,
+      "decompile_success": 1828,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 514,
+      "instructions": 116003
+    },
+    "hud_17559": {
+      "seed_count": 595,
+      "seeds_found": 595,
+      "functions": 599,
+      "decompile_success": 599,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 321,
+      "instructions": 21871
+    },
+    "gamerprofile_17559": {
+      "seed_count": 715,
+      "seeds_found": 715,
+      "functions": 721,
+      "decompile_success": 721,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 296,
+      "instructions": 29597
+    },
+    "signin_17559": {
+      "seed_count": 456,
+      "seeds_found": 456,
+      "functions": 459,
+      "decompile_success": 459,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 167,
+      "instructions": 21817
+    },
+    "ximecore_17559": {
+      "seed_count": 386,
+      "seeds_found": 386,
+      "functions": 395,
+      "decompile_success": 395,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 163,
+      "instructions": 31150
+    },
+    "minimediaplayer_17559": {
+      "seed_count": 330,
+      "seeds_found": 330,
+      "functions": 339,
+      "decompile_success": 339,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 122,
+      "instructions": 12393
+    },
+    "createprofile_17559": {
+      "seed_count": 222,
+      "seeds_found": 222,
+      "functions": 230,
+      "decompile_success": 230,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 143,
+      "instructions": 8563
+    },
+    "vk_17559": {
+      "seed_count": 177,
+      "seeds_found": 177,
+      "functions": 177,
+      "decompile_success": 177,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 126,
+      "instructions": 11139
+    },
+    "deviceselector_17559": {
+      "seed_count": 129,
+      "seeds_found": 129,
+      "functions": 129,
+      "decompile_success": 129,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 111,
+      "instructions": 5056
+    },
+    "updater_17559": {
+      "seed_count": 111,
+      "seeds_found": 111,
+      "functions": 113,
+      "decompile_success": 113,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 129,
+      "instructions": 4751
+    }
+  }
+}

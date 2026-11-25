@@ -21,6 +21,18 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
       - run: python tools/status.py
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: cmake -S . -B build/native -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build/native --parallel
+      - run: ctest --test-dir build/native --output-on-failure
+      - run: python tools/fetch_originals.py --only dash_basic
+      - run: python tools/verify_native_leaf.py
   original-audit:
     if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.original_audit) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[original-audit]')))
     needs: formats

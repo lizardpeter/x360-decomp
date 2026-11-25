@@ -25,7 +25,11 @@ def main():
         decoded_path = ROOT/"analysis"/ident/"decoded.json"
         decoded = json.loads(decoded_path.read_text()) if decoded_path.is_file() else {}
         lines.append(f"| {ident} | {imports} | {resources} | {decoded.get('pdata_functions', 'pending')} | {decoded.get('distinct_imports', 'pending')} | {len(own)} | {matched} |")
-    lines += ["", "Native executable and differential parity are not established. .pdata is a partial function inventory, not Ghidra decompilation.", ""]
+    baseline = ROOT/"analysis"/"ghidra"/"xenon-12.2-validated.json"
+    if baseline.is_file():
+        g=json.loads(baseline.read_text())
+        lines += ["", "## Ghidra Xenon analysis", "", f"Verified boundaries: {g['seeds_found']:,}/{g['seed_count']:,}; successful C exports: {g['decompile_success']:,}/{g['functions']:,}; unresolved heuristic candidates: {g['unresolved_candidates']:,}.", ""]
+    lines += ["", "Native dashboard boot and full differential parity are not established. .pdata is a partial function inventory. Pseudocode exports are not authored reconstruction.", ""]
     (ROOT/"STATUS.md").write_text("\n".join(lines), encoding="utf-8")
 if __name__ == "__main__":
     main()
