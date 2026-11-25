@@ -51,6 +51,12 @@ jobs:
             build/ghidra/${{ matrix.module }}/export/functions.tsv
             build/ghidra/${{ matrix.module }}/export/decompile_errors.tsv
             build/ghidra/${{ matrix.module }}/export/missing_seeds.tsv
+            build/ghidra/${{ matrix.module }}/export/*candidates.tsv
+            build/ghidra/${{ matrix.module }}/export/seed_reconciliation.tsv
+            build/ghidra/${{ matrix.module }}/export/reconcile_receipt.json
+            build/ghidra/${{ matrix.module }}/auto_receipt.json
+            build/ghidra/${{ matrix.module }}/reconcile.log
+            build/ghidra/${{ matrix.module }}/reconcile-scripts.log
             build/ghidra/${{ matrix.module }}/seed_receipt.json
             build/ghidra/${{ matrix.module }}/headless.log
             build/ghidra/${{ matrix.module }}/scripts.log
