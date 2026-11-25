@@ -56,7 +56,7 @@ def main():
     result=summarize(a.log.read_text(errors="replace"))
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(result,indent=2)+"\n")
-    print(json.dumps(result))
+    print(json.dumps({k:v for k,v in result.items() if k != 'unresolved_branches'} | {'unresolved_branch_records':len(result['unresolved_branches']), 'distinct_unresolved_targets':len({r['target'] for r in result['unresolved_branches']})}))
 
 if __name__=="__main__":
     main()
