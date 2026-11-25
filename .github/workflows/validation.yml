@@ -46,6 +46,7 @@ jobs:
           python tools/fetch_originals.py --only pirs
           python tools/verify_xui_resources.py build/native/x360_resource_probe --system --lzx build/lzx_adapter.so
           python tools/verify_module_loading.py build/native/x360_module_probe --lzx build/lzx_adapter.so
+          python tools/verify_bootstrap.py build/native/x360_bootstrap_probe --lzx build/lzx_adapter.so
           python tools/fetch_originals.py --only shared_resources
           python tools/verify_textures.py build/native/x360_texture_probe --lzx build/lzx_adapter.so
           python tools/verify_xui_mounts.py build/native/x360_uri_probe

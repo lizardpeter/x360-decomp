@@ -1,0 +1,31 @@
+{
+  "reference": "independent Python instruction-subset trace on original loaded images; synthetic call state",
+  "modules": {
+    "dash_17559": {
+      "kind": "value",
+      "retired": 31,
+      "attempted": 32,
+      "address": 2449477472,
+      "pc": 2451147076,
+      "library": "xboxkrnl.exe",
+      "ordinal": 403,
+      "trace": "ad2ec78cc15d0986b0c1404c0864ccfaf1bb399ff22826220aa1c70bcae1fb19",
+      "state": "182e52aa683ab45e9ee15a3ccf62915c0de25a8a904850ead9944e2fe4a23ec9",
+      "stack": "527b111c8ab7902d5f72e4bfefdefc01415a75b048af60f8f52e6c20b577429d",
+      "image_after": "b4596516b527a01ef8e2d663b7207cfb10df7000b114a84ecf9cf22d8da1943f"
+    },
+    "xam_17559": {
+      "kind": "thunk",
+      "retired": 58,
+      "attempted": 58,
+      "address": 2175216020,
+      "pc": 2175216020,
+      "library": "xboxkrnl.exe",
+      "ordinal": 21,
+      "trace": "8c385339351aa11313172c5bce4a55c785c5a286586ddc2cb61e35b7e4ee7402",
+      "state": "7e93a0f3c5b7d5d8ab5e2cb8af9c146e6e40ae1a22e49e1428fe58a22e68b683",
+      "stack": "5c86db79c760775d5b2efcd77ae8a36f29090517614043ac5dad09d702a23429",
+      "image_after": "90a958df7350d4ed1c160f0f19fb41927da205423c495ad70a92fcbe67b18fe9"
+    }
+  }
+}
