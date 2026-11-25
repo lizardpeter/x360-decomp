@@ -12,9 +12,13 @@ on:
       - 'tools/patch_metro_import_slots.py'
       - 'tools/native/metro_aot_boot.hpp'
       - 'tools/capture_metro_boot.sh'
+      - 'tools/stage_dashboard_runtime.py'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
       - '.github/workflows/aot-fixed-imports.yml'
+concurrency:
+  group: metro-native-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -35,7 +39,7 @@ jobs:
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
           python tools/stage_metro_preflight.py build/fixed-imports/dash_17559
           mkdir -p build/receipts
-          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json
+          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json --flash-tree
       - uses: actions/checkout@v4
         with:
           repository: rexglue/rexglue-sdk
@@ -54,12 +58,22 @@ jobs:
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
           platform: linux-amd64
+      - name: Restore exact patched SDK installation
+        id: sdk_cache
+        uses: actions/cache@v4
+        with:
+          path: build/sdk-source/out/install/linux-amd64
+          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py') }}
       - name: Build corrected SDK
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
         run: |
           cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=OFF -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
           cmake --build out/build/linux-amd64 --target install --parallel 4
-          echo "SDK=$(realpath out/install/linux-amd64)" >> "$GITHUB_ENV"
+      - name: Select verified patched SDK installation
+        run: |
+          test -x build/sdk-source/out/install/linux-amd64/bin/rexglue
+          echo "SDK=$(realpath build/sdk-source/out/install/linux-amd64)" >> "$GITHUB_ENV"
       - name: Strict dashboard and XAM generation
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
@@ -101,7 +115,7 @@ jobs:
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load xam_load five_export_mappings clean_unload; do
+          for gate in dashboard_load flash_mount xam_load five_export_mappings clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame
