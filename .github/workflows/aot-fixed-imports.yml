@@ -15,6 +15,7 @@ on:
       - 'tools/stage_dashboard_runtime.py'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
+      - 'tests/test_metro_sdk_patches.py'
       - '.github/workflows/aot-fixed-imports.yml'
 concurrency:
   group: metro-native-${{ github.ref }}
@@ -34,6 +35,7 @@ jobs:
           python -m unittest discover -s tests -p test_rexglue_import_patch.py
           python -m unittest discover -s tests -p test_metro_xam_aot.py
           python -m unittest discover -s tests -p test_metro_preflight.py
+          python -m unittest discover -s tests -p test_metro_sdk_patches.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports

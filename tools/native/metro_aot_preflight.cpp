@@ -12,6 +12,7 @@
 #include <rex/kernel/object/object_table.h>
 #include <rex/setting.h>
 #include <iostream>
+#include <iomanip>
 #include <cstdlib>
 #include <string_view>
 #include "generated/dash_17559_init.h"
@@ -53,11 +54,47 @@ public:
             return fail("dashboard_handle");
         auto dash = title_.GetObjectTable().Get<ModuleObject>(*exe);
         const auto* dash_xex = dash ? dash->GetXEX() : nullptr;
-        if (!dash_xex || dash_xex->GetBaseAddress() != kDashBase ||
-            dash_xex->GetImageSize() != kDashSize ||
-            dash_xex->GetEntryPoint() != kDashEntry ||
-            !title_.FindFunction(kDashEntry))
-            return fail("dashboard_identity");
+        if (!dash_xex)
+            return fail("dashboard_xex_missing");
+
+        std::size_t mapping_count = 0;
+        bool entry_mapping = false;
+        for (const PPCFuncMapping* mapping = kPPCImageConfig.func_mappings;
+             mapping && mapping->address; ++mapping) {
+            ++mapping_count;
+            if (static_cast<rex::u32>(mapping->address) == kDashEntry && mapping->host)
+                entry_mapping = true;
+        }
+        const auto entry_function = title_.FindFunction(kDashEntry);
+        const bool entry_in_code_range =
+            kDashEntry >= kPPCImageConfig.code_base &&
+            static_cast<std::uint64_t>(kDashEntry) <
+                static_cast<std::uint64_t>(kPPCImageConfig.code_base) +
+                    kPPCImageConfig.code_size;
+        std::cout << "METRO_PREFLIGHT identity base=0x" << std::hex
+                  << dash_xex->GetBaseAddress() << " expected_base=0x" << kDashBase
+                  << " size=0x" << dash_xex->GetImageSize() << " expected_size=0x" << kDashSize
+                  << " entry=0x" << dash_xex->GetEntryPoint() << " expected_entry=0x" << kDashEntry
+                  << " module_entry=0x" << dash->user.entry_point
+                  << " code_base=0x" << kPPCImageConfig.code_base
+                  << " code_size=0x" << kPPCImageConfig.code_size
+                  << " image_base=0x" << kPPCImageConfig.image_base
+                  << " image_size=0x" << kPPCImageConfig.image_size
+                  << std::dec << " mappings=" << mapping_count
+                  << " entry_mapping=" << entry_mapping
+                  << " entry_in_code_range=" << entry_in_code_range
+                  << " entry_registered=" << static_cast<bool>(entry_function)
+                  << std::endl;
+        if (dash_xex->GetBaseAddress() != kDashBase)
+            return fail("dashboard_base");
+        if (dash_xex->GetImageSize() != kDashSize)
+            return fail("dashboard_size");
+        if (dash_xex->GetEntryPoint() != kDashEntry ||
+            dash->user.entry_point != kDashEntry)
+            return fail("dashboard_entry");
+        if (!entry_function)
+            return fail("dashboard_entry_function");
+        std::cout << "METRO_PREFLIGHT pass dashboard_identity" << std::endl;
 
         // The SDK's built-in hosted XAM is not the retail XAM user module.
         // Map the separately generated native library through the existing loader.
