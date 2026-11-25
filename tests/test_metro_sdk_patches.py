@@ -53,14 +53,15 @@ class MetroSDKPatchTests(unittest.TestCase):
             corrected_imports(IMPORT_OLD.replace("Patched function import", "Patched function imports", 1))
 
     def test_pdata_begin_rvas_are_rebased_to_absolute_guest_addresses(self):
-        patched = corrected_pdata(PDATA_OLD)
-        self.assertEqual(patched, PDATA_NEW)
+        source = "u32 pdata_addr = binary.GetExceptionDirectoryAddress();\\n" + PDATA_OLD
+        patched = corrected_pdata(source)
+        self.assertEqual(patched, "u32 pdata_addr = binary.GetExceptionDirectoryAddress();\\n" + PDATA_NEW)
         self.assertIn("binary.GetBaseAddress() + entries[i].begin", patched)
         self.assertEqual(0x92000000 + 0x0017E040, 0x9217E040)
         with self.assertRaises(ValueError):
             corrected_pdata(patched)
         with self.assertRaises(ValueError):
-            corrected_pdata(PDATA_OLD.replace("entries[i].begin", "entries[i].end", 1))
+            corrected_pdata(source.replace("entries[i].begin", "entries[i].end", 1))
 
     def test_function_table_patch_selects_heap_from_guest_address(self):
         source = ALLOC + """
