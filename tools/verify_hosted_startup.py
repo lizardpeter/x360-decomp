@@ -8,8 +8,8 @@ from verify_xui_resources import source
 from pirs import parse as parse_pirs
 
 REFERENCE={
- "dash_17559":dict(retired=128,attempted=129,pc=0x9219a204,services=[403,299],notifications=[],trace="5719e29d5649f170c24756a1c44ca40762d44d5317651cf54a6b5cb4ff66a97f",state="0c649d6c1df013666e2f3f8fb750014a720898989980ad41db3be07553e3317d",stack="309aafb7182a8cb53f748cb33bca706fd0aaa7248710e873f1b389179ef14045",image_after="b4596516b527a01ef8e2d663b7207cfb10df7000b114a84ecf9cf22d8da1943f"),
- "xam_17559":dict(retired=110,attempted=111,pc=0x816e6558,services=[21],notifications=[0x817399f0,0x6c000000],trace="716b22355461eddc152e3e219d8b85dfe648ac35d760ed7077c7e1abf2a9f519",state="8ee567bc607848db463b44df07cde223a28b5503fb470b37017bbde4492ff0da",stack="58c91f4917579c2e13586e1e42a6206020f3027298ec25fe75db9dadc6ec3d10",image_after="57e9783c7fe7f38cb2e2e7da1b001b20023719b1d46ff85dceccc194442fd40f"),
+ "dash_17559":dict(retired=258,attempted=258,pc=0x9293a71c,services=[403,299],notifications=[],trace="f005e5a978d6c97c8bb636c9a50d3b610121706213ec505b23177bd6dda84de5",state="8e4fa664b6b7c7011e577926f5c71164a26202bc60699487adc7d201b7fd0e37",stack="474e2c4629c507d3cdcdcd1ca8b220c9bb52fad25d8ca80d1d32c454700fa7c8",image_after="b4596516b527a01ef8e2d663b7207cfb10df7000b114a84ecf9cf22d8da1943f"),
+ "xam_17559":dict(retired=172,attempted=172,pc=0x81a72fa4,services=[21],notifications=[0x817399f0,0x6c000000],trace="68a237cd1abe9d6a0da7b3aedd6a6906f74a5a5823e371250e8fb6387db10656",state="69d5397ce6cf428b8fcd3099ac254c597203959169b4fdc1fd5624c8a44adf74",stack="cf9718d40be4bdce6209edc7911cf44c86bedf3f950d778c082c4c81452c97d7",image_after="747b60db59d8a25b2f3d12f103ac64075b84d8b35c52b45bccf9f5bc3ae5138e"),
 }
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument("probe",type=Path);p.add_argument("--lzx",type=Path,required=True);a=p.parse_args()
@@ -21,11 +21,11 @@ def main():
             inputs=write_module(run,name,ident,raw,lzx,summary)
             header=run/"header";header.write_bytes(raw[:int.from_bytes(raw[8:12],"big")])
             result=subprocess.check_output([str(a.probe.resolve()),*inputs,str(run),str(header)],text=True).split()
-            assert result[0]=="unsupported"
+            assert result[0]=="allocation"
             retired,attempted,pc,n,callbacks=map(int,result[1:6]);rest=list(map(int,result[6:]))
             assert len(rest)==n+callbacks*2
             observed=dict(retired=retired,attempted=attempted,pc=pc,services=rest[:n],notifications=rest[n:])
             for k in ("trace","state","stack","image_after"):observed[k]=hashlib.sha256((run/k).read_bytes()).hexdigest()
             assert observed==REFERENCE[ident],(ident,observed,REFERENCE[ident])
-            print(f"{ident}: {retired} retired original instructions, {n} hosted imports; next opcode at 0x{pc:08X}; all snapshot hashes match")
+            print(f"{ident}: {retired} retired original instructions, {n} hosted imports; NtAllocateVirtualMemory thunk at 0x{pc:08X}; all snapshot hashes match")
 if __name__=="__main__":main()

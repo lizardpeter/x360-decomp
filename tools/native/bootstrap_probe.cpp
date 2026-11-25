@@ -72,8 +72,8 @@ int main(int argc,char** argv){
         trace.close();state.close();stack_out.close();image_out.close();
         require(trace&&state&&stack_out&&image_out,"snapshot output failed");
         if(argc==5){
-            require(r.stop==BootstrapStop::unsupported_instruction,"unexpected hosted startup boundary");
-            std::cout<<"unsupported "<<r.retired<<" "<<r.trace.size()<<" "<<s.pc<<" "<<r.services.size()<<" "<<hosted.notifications().size();
+            require(r.stop==BootstrapStop::import_thunk&&r.ordinal==204&&r.library=="xboxkrnl.exe","unexpected hosted startup boundary");
+            std::cout<<"allocation "<<r.retired<<" "<<r.trace.size()<<" "<<s.pc<<" "<<r.services.size()<<" "<<hosted.notifications().size();
             for(auto& service:r.services)std::cout<<" "<<service.ordinal;
             for(auto& [routine,record]:hosted.notifications())std::cout<<" "<<routine<<" "<<record.priority;
             std::cout<<"\n";return 0;
