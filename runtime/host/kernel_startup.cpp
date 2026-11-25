@@ -1,4 +1,5 @@
 #include "host/kernel_startup.hpp"
+#include "host/critical_sections.hpp"
 #include <algorithm>
 #include <set>
 namespace x360::host {
@@ -46,17 +47,12 @@ ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::G
         s.gpr[3]=static_cast<std::uint32_t>(*process_type_);
         return ImportCallResult::completed;
     }
-    if(process_type_&&o==302){
-        const auto address=static_cast<abi::Address>(s.gpr[3]);
-        std::array<std::uint8_t,28> record{};
-        if(!address||(address&3u)||!memory.read(address,record))return ImportCallResult::fault;
-        // Only the observed initialization contract. Preserve opaque bytes,
-        // including the wait-list fields. No scheduling or waiters yet.
-        record[0]=1;record[1]=0;
-        put(record,4,0);put(record,16,0xffffffffu);put(record,20,0);put(record,24,0);
-        if(!memory.write(address,record))return ImportCallResult::fault;
-        return ImportCallResult::completed;
-    }
+    if(process_type_&&(o==302||o==303))
+        return CriticalSections::initialize(s,memory,o==303);
+    if(diagnostic_thread_&&(o==293||o==321))
+        return CriticalSections::enter(s,memory,diagnostic_thread_,o==321);
+    if(diagnostic_thread_&&o==304)
+        return CriticalSections::leave(s,memory,diagnostic_thread_);
     if(o==299){
         if(static_cast<abi::Address>(s.gpr[3])!=header_address)return ImportCallResult::unsupported;
         const auto key=static_cast<std::uint32_t>(s.gpr[4]);

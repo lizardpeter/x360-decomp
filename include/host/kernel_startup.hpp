@@ -16,10 +16,13 @@ public:
     void enable_virtual_memory(machine::AddressSpace& memory){virtual_memory_.emplace(memory);}
     enum class ProcessType:std::uint32_t {idle=0,user=1,system=2};
     void enable_heap_startup(ProcessType type){process_type_=type;}
+    // Opt-in diagnostic identity; no guest scheduler is installed.
+    void set_diagnostic_thread(abi::Address owner) noexcept{diagnostic_thread_=owner;}
     const std::map<abi::Address,Notification>& notifications() const noexcept{return notifications_;}
 private:
     std::optional<VirtualMemory> virtual_memory_;
     std::optional<ProcessType> process_type_;
+    abi::Address diagnostic_thread_{};
     bool ready_{};
     std::uint32_t header_bytes_{},header_count_{};
     abi::Address callback_begin_{},callback_end_{};
