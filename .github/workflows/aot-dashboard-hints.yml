@@ -34,10 +34,11 @@ jobs:
           SDK="$PWD/build/sdk/linux-amd64"
           cd "$folder"
           set +e
-          "$SDK/bin/rexglue" codegen dash_17559_manifest.toml > codegen.log 2>&1
+          "$SDK/bin/rexglue" --log-file "$folder/codegen-detail.log" codegen dash_17559_manifest.toml > codegen.log 2>&1
           status=$?
           set -e
           cd "$GITHUB_WORKSPACE"
+          if test -s "$folder/codegen-detail.log"; then cat "$folder/codegen-detail.log" >> "$folder/codegen.log"; fi
           python tools/aot_diagnostics.py "$folder/codegen.log" --output build/receipts/dashboard-diagnostics.json
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
       - name: Upload metadata only
