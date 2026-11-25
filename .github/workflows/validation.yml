@@ -34,6 +34,16 @@ jobs:
       - run: python tools/fetch_originals.py --only dash_basic
       - run: python tools/verify_native_leaf.py
       - run: python tools/verify_xui_resources.py build/native/x360_resource_probe
+      - name: Build pinned original LZX source adapter and audit system resources
+        run: |
+          mkdir -p build/reference
+          curl --fail --location --retry 3 -o build/reference/release.tar.gz https://github.com/fabegalo/x360-native/releases/download/v1.34.6/x360-native-1.34.6-linux-x64.tar.gz
+          echo "df30bd537923a3f2c78637699c2d9f97fd50c78a6cc28a435e922c54512f2fb3  build/reference/release.tar.gz" | sha256sum -c
+          tar -xzf build/reference/release.tar.gz -C build/reference x360-native-1.34.6-linux-x64/app/workspace/licenses/sources/libmspack
+          SOURCE="$PWD/build/reference/x360-native-1.34.6-linux-x64/app/workspace/licenses/sources/libmspack"
+          cc -shared -fPIC -O2 -I"$SOURCE" tools/lzx_adapter.c "$SOURCE/lzxd.c" -o build/lzx_adapter.so
+          python tools/fetch_originals.py --only pirs
+          python tools/verify_xui_resources.py build/native/x360_resource_probe --system --lzx build/lzx_adapter.so
   original-audit:
     if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.original_audit) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[original-audit]')))
     needs: formats

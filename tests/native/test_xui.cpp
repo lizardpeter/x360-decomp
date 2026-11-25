@@ -35,7 +35,23 @@ static V strings(unsigned mode){
         b.insert(b.end(),{0xc3,0xa9,0});if(mode==1)b.insert(b.end(),{3,0,0,8});}
     put32(b,6,b.size());return b;
 }
+static void legacy_tests(){
+    V a;append(a,"XUIZ");w32(a,1);w32(a,0);w32(a,0);w32(a,13);w16(a,1);
+    w32(a,1);w32(a,0);a.push_back(2);w16(a,0xd83d);w16(a,0xde00);a.push_back(7);put32(a,8,a.size());
+    auto av=Archive::parse(a);check(av.version()==1&&av.entries()[0].name=="\xf0\x9f\x98\x80","wide archive name");
+    auto malformed=a;malformed[33]=0;malformed[34]=0x61;rejects([&]{Archive::parse(malformed);},"invalid UTF16 name");
+    V s;append(s,"XUIB");w32(s,5);w32(s,0);w16(s,12);w32(s,0);w16(s,1);
+    append(s,"STRN");w32(s,32);w32(s,6);w16(s,2);w16(s,0xd83d);w16(s,0xde00);put32(s,14,s.size());
+    auto sv=Scene::parse(s);check(sv.version()==5&&sv.strings()[0]=="\xf0\x9f\x98\x80"&&sv.string_units()==2,"legacy scene strings");
+    V x;append(x,"XUIS");x.push_back(1);x.push_back(0);w32(x,0);w16(x,1);
+    w16(x,1);w16(x,0xe9);w16(x,1);w16(x,'K');put32(x,6,x.size());
+    auto xv=StringTable::parse(x);check(xv.version()==1&&xv.entries()[0].text=="\xc3\xa9"&&xv.entries()[0].identifier=="K","legacy named localization");
+    V y;append(y,"XUIS");y.push_back(2);y.push_back(0);w32(y,0);w16(y,1);
+    append(y,"Value");y.push_back(0);append(y,"Identifier");y.push_back(0);put32(y,6,y.size());
+    auto yv=StringTable::parse(y);check(yv.entries()[0].identifier=="Identifier"&&yv.entries()[0].text=="Value","mode zero pair");
+}
 int main(){
+    legacy_tests();
     auto a=archive();auto av=Archive::parse(a);
     check(av.entries().size()==2&&av.find("same")->size()==2,"identical duplicate");
     check(!av.find("SAME"),"exact case lookup");

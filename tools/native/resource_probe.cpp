@@ -40,7 +40,7 @@ int main(int argc,char** argv){
                 if(!seen.insert(e.name).second){++duplicates;(void)archive.find(e.name);}
                 if(magic(e.data,"XUIB")){
                     auto s=Scene::parse(e.data);++scenes;sections+=s.sections().size();scene_strings+=s.strings().size();
-                    auto str=*s.section("STRN");if(str.size()-6!=s.string_units())++unicode_delta;
+                    auto str=*s.section("STRN");if(s.version()==8&&str.size()-6!=s.string_units())++unicode_delta;
                     auto v=SceneValues::parse(s);floats+=v.floats.size();vectors+=v.vectors.size();quaternions+=v.quaternions.size();colors+=v.colors.size();shapes+=v.custom.size();
                     for(auto& shape:v.custom){segments+=shape.segments.size();auto contour=x360::os::xam::xui::flatten_closed_shape(shape);if(!contour.empty()&&contour.front()!=contour.back())throw FormatError("open contour");++paths;path_points+=contour.size();}
                 }else if(magic(e.data,"XUIS")){

@@ -48,6 +48,31 @@ std::string_view cstring(Bytes b,std::size_t& p){
     auto n=static_cast<std::size_t>(end-tail.begin());
     auto value=tail.first(n);utf16_units(value);p+=n+1;return string(value);
 }
+void append_utf8(std::string& out,std::uint32_t cp){
+    if(cp<=0x7f)out.push_back(static_cast<char>(cp));
+    else if(cp<=0x7ff){out.push_back(static_cast<char>(0xc0|(cp>>6)));out.push_back(static_cast<char>(0x80|(cp&63)));}
+    else if(cp<=0xffff){out.push_back(static_cast<char>(0xe0|(cp>>12)));out.push_back(static_cast<char>(0x80|((cp>>6)&63)));out.push_back(static_cast<char>(0x80|(cp&63)));}
+    else {out.push_back(static_cast<char>(0xf0|(cp>>18)));out.push_back(static_cast<char>(0x80|((cp>>12)&63)));out.push_back(static_cast<char>(0x80|((cp>>6)&63)));out.push_back(static_cast<char>(0x80|(cp&63)));}
+}
+std::string wide(Bytes b){
+    if(b.size()%2)fail("misaligned UTF-16BE");
+    std::string out;out.reserve(b.size());
+    for(std::size_t i=0;i<b.size();i+=2){
+        std::uint32_t cp=be16(b,i);
+        if(cp>=0xd800&&cp<=0xdbff){
+            if(b.size()-i<4)fail("truncated UTF-16 surrogate");
+            auto low=be16(b,i+2);if(low<0xdc00||low>0xdfff)fail("invalid UTF-16 surrogate pair");
+            cp=0x10000+((cp-0xd800)<<10)+(low-0xdc00);i+=2;
+        }else if(cp>=0xdc00&&cp<=0xdfff)fail("unpaired UTF-16 low surrogate");
+        if(!cp)fail("embedded NUL in length-prefixed UTF-16");
+        append_utf8(out,cp);
+    }
+    return out;
+}
+std::string wide_string(Bytes b,std::size_t& p){
+    auto n=be16(b,p);p+=2;
+    auto text=wide(part(b,p,std::size_t(n)*2));p+=std::size_t(n)*2;return text;
+}
 bool valid_tag(Bytes bytes){
     return bytes.size()==4&&std::all_of(bytes.begin(),bytes.end(),[](auto c){return c>='A'&&c<='Z';});
 }
@@ -66,21 +91,24 @@ bool directory_at(Bytes input,std::size_t p,std::size_t count){
 }
 }
 Archive Archive::parse(Bytes b){
-    if(b.size()<22||!magic(b,"XUIZ")||be32(b,4)!=3||be32(b,8)!=b.size()||be32(b,12)!=0)
+    if(b.size()<22||!magic(b,"XUIZ")||be32(b,8)!=b.size()||be32(b,12)!=0)
         fail("unsupported XUIZ header");
+    auto version=be32(b,4);if(version!=1&&version!=3)fail("unsupported XUIZ version");
     auto table_size=be32(b,16);auto count=be16(b,20);
     auto table=part(b,22,table_size);auto payload=b.subspan(22+std::size_t(table_size));
     if(count>table.size()/9)fail("impossible XUIZ member count");
-    Archive a;std::size_t p=0;a.entries_.reserve(count);
+    Archive a;a.version_=version;std::size_t p=0;a.entries_.reserve(count);
     for(unsigned i=0;i<count;++i){
         auto n=be32(table,p),off=be32(table,p+4);auto length=u8(table,p+8);p+=9;
         if(!length)fail("empty XUIZ member name");
-        auto raw=part(table,p,length);p+=length;
-        utf16_units(raw);
-        if(std::find(raw.begin(),raw.end(),std::uint8_t{0})!=raw.end())fail("NUL in XUIZ member name");
+        auto bytes=std::size_t(length)*(version==1?2:1);
+        auto raw=part(table,p,bytes);p+=bytes;
+        std::string name;
+        if(version==1)name=wide(raw);
+        else {utf16_units(raw);if(std::find(raw.begin(),raw.end(),std::uint8_t{0})!=raw.end())fail("NUL in XUIZ member name");name=string(raw);}
         // The original archives include ../handles virtual names. Do not
         // normalize them into filesystem paths, and never write member data.
-        a.entries_.push_back({string(raw),off,part(payload,off,n)});
+        a.entries_.push_back({std::move(name),off,part(payload,off,n)});
     }
     if(p!=table.size())fail("XUIZ directory size mismatch");
     std::vector<const ArchiveEntry*> sorted;
@@ -105,8 +133,10 @@ std::optional<Bytes> Archive::find(std::string_view name) const{
     return result;
 }
 Scene Scene::parse(Bytes b){
-    if(b.size()<20||!magic(b,"XUIB")||be32(b,4)!=8||be32(b,8)!=0||be16(b,12)!=14||be32(b,14)!=b.size())
+    if(b.size()<20||!magic(b,"XUIB")||be32(b,8)!=0||be32(b,14)!=b.size())
         fail("unsupported XUIB header");
+    auto version=be32(b,4);auto subtype=be16(b,12);
+    if(!((version==8&&subtype==14)||(version==5&&subtype==12)))fail("unsupported XUIB version/subtype");
     std::size_t count=be16(b,18);
     if(!count||count>64||count>(b.size()-20)/12)fail("invalid XUIB section count");
     // The variable prefix has not been semantically reconstructed. The
@@ -114,13 +144,14 @@ Scene Scene::parse(Bytes b){
     // its exact, contiguous section extents. No arbitrary magic-only match.
     std::optional<std::size_t> directory;
     auto last=std::min<std::size_t>(512,b.size()-count*12);
+    if(version==5)last=20; // original version 5 directory follows the fixed header
     for(std::size_t p=20;p<=last;++p){
         if(!magic(b.subspan(p),"STRN")||!directory_at(b,p,count))continue;
         if(directory)fail("ambiguous XUIB directory");
         directory=p;
     }
     if(!directory)fail("XUIB section directory not found");
-    Scene s;s.prefix_=b.subspan(20,*directory-20);s.sections_.reserve(count);
+    Scene s;s.version_=version;s.prefix_=b.subspan(20,*directory-20);s.sections_.reserve(count);
     for(std::size_t i=0;i<count;++i){
         auto p=*directory+i*12;Section section{};
         std::copy_n(b.begin()+p,4,section.tag.begin());
@@ -128,10 +159,17 @@ Scene Scene::parse(Bytes b){
         s.sections_.push_back(section);
     }
     auto str=s.sections_.front().data;
+    if(version==5){
+        std::size_t p=0;
+        while(p<str.size()){
+            auto n=be16(str,p);s.units_+=n;s.strings_.push_back(wide_string(str,p));
+        }
+        return s;
+    }
     s.units_=be32(str,0);auto n=be16(str,4);std::size_t p=6;
     if(n>str.size()-6)fail("invalid STRN count");
     s.strings_.reserve(n);
-    for(unsigned i=0;i<n;++i)s.strings_.push_back(cstring(str,p));
+    for(unsigned i=0;i<n;++i)s.strings_.emplace_back(cstring(str,p));
     if(p!=str.size())fail("STRN trailing data");
     // This is UTF-16 code-unit count, including NULs, not UTF-8 byte count.
     // The difference is observable in two original multilingual scenes.
@@ -143,12 +181,17 @@ std::optional<Bytes> Scene::section(std::string_view tag) const noexcept{
     return {};
 }
 StringTable StringTable::parse(Bytes b){
-    if(b.size()<12||!magic(b,"XUIS")||u8(b,4)!=2||be32(b,6)!=b.size())fail("unsupported XUIS header");
-    StringTable t;t.mode_=u8(b,5);auto n=be16(b,10);
-    if(t.mode_>2||(t.mode_==0&&n)||n>(b.size()-12)/(t.mode_==1?5:1))fail("unsupported XUIS mode/count");
+    if(b.size()<12||!magic(b,"XUIS")||be32(b,6)!=b.size())fail("unsupported XUIS header");
+    StringTable t;t.version_=u8(b,4);t.mode_=u8(b,5);auto n=be16(b,10);
+    if((t.version_!=1&&t.version_!=2)||t.mode_>2)fail("unsupported XUIS version/mode");
+    auto min_string=t.version_==1?2u:1u;
+    auto minimum=t.mode_==0?2*min_string:t.mode_==1?min_string+4:min_string;
+    if(n>(b.size()-12)/minimum)fail("invalid XUIS count");
     std::size_t p=12;t.entries_.reserve(n);
     for(unsigned i=0;i<n;++i){
-        LocalizedString entry{};entry.text=cstring(b,p);
+        auto read_text=[&](){return t.version_==1?wide_string(b,p):std::string(cstring(b,p));};
+        LocalizedString entry{};entry.text=read_text();
+        if(t.mode_==0)entry.identifier=read_text();
         if(t.mode_==1){auto raw=part(b,p,4);std::copy(raw.begin(),raw.end(),entry.metadata.begin());p+=4;}
         t.entries_.push_back(entry);
     }
