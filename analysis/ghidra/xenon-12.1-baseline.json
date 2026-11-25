@@ -1,0 +1,143 @@
+{
+  "run": 45522385575,
+  "commit": "926fe2b3867f0fb3903b4795c2bf4df9b7eb6a38",
+  "language": "PowerPC:BE:64:Xenon",
+  "seed_count": 49542,
+  "seeds_found": 49542,
+  "functions": 51114,
+  "decompile_success": 51086,
+  "decompile_failed": 28,
+  "unresolved_candidates": 10064,
+  "errors": {
+    "unique_varnode_hash": 27,
+    "decompiler_process_died": 1
+  },
+  "modules": {
+    "dash_17559": {
+      "seed_count": 28350,
+      "seeds_found": 28350,
+      "functions": 28845,
+      "decompile_success": 28835,
+      "decompile_failed": 10,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 4442
+    },
+    "xam_17559": {
+      "seed_count": 13799,
+      "seeds_found": 13799,
+      "functions": 14717,
+      "decompile_success": 14705,
+      "decompile_failed": 12,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 2725
+    },
+    "bootanim_17559": {
+      "seed_count": 661,
+      "seeds_found": 661,
+      "functions": 681,
+      "decompile_success": 679,
+      "decompile_failed": 2,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 290
+    },
+    "systemupdate2pre_17559": {
+      "seed_count": 1833,
+      "seeds_found": 1833,
+      "functions": 1881,
+      "decompile_success": 1879,
+      "decompile_failed": 2,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 515
+    },
+    "systemupdate_17559": {
+      "seed_count": 1778,
+      "seeds_found": 1778,
+      "functions": 1828,
+      "decompile_success": 1826,
+      "decompile_failed": 2,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 514
+    },
+    "hud_17559": {
+      "seed_count": 595,
+      "seeds_found": 595,
+      "functions": 599,
+      "decompile_success": 599,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 321
+    },
+    "gamerprofile_17559": {
+      "seed_count": 715,
+      "seeds_found": 715,
+      "functions": 721,
+      "decompile_success": 721,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 296
+    },
+    "signin_17559": {
+      "seed_count": 456,
+      "seeds_found": 456,
+      "functions": 459,
+      "decompile_success": 459,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 167
+    },
+    "ximecore_17559": {
+      "seed_count": 386,
+      "seeds_found": 386,
+      "functions": 395,
+      "decompile_success": 395,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 163
+    },
+    "minimediaplayer_17559": {
+      "seed_count": 330,
+      "seeds_found": 330,
+      "functions": 339,
+      "decompile_success": 339,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 122
+    },
+    "createprofile_17559": {
+      "seed_count": 222,
+      "seeds_found": 222,
+      "functions": 230,
+      "decompile_success": 230,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 143
+    },
+    "vk_17559": {
+      "seed_count": 177,
+      "seeds_found": 177,
+      "functions": 177,
+      "decompile_success": 177,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 126
+    },
+    "deviceselector_17559": {
+      "seed_count": 129,
+      "seeds_found": 129,
+      "functions": 129,
+      "decompile_success": 129,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 111
+    },
+    "updater_17559": {
+      "seed_count": 111,
+      "seeds_found": 111,
+      "functions": 113,
+      "decompile_success": 113,
+      "decompile_failed": 0,
+      "empty_disassembly": 0,
+      "unresolved_candidates": 129
+    }
+  }
+}

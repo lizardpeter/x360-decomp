@@ -25,7 +25,7 @@ public class ExportX360 extends HeadlessScript {
             String[] r=line.split("\t"); if(r[0].equals("FUNCTION")) expected.add(r[1].toUpperCase());
         }
         Set<String> found=new HashSet<>();
-        int total=0,success=0,failed=0,emptyAsm=0,withoutEntryInsn=0,rejected=0;
+        int total=0,success=0,failed=0,emptyAsm=0,withoutEntryInsn=0,rejected=0,recovered=0;
         long instructions=0;
         boolean timedOut=analysisTimeoutOccurred();
         DecompInterface decomp=new DecompInterface();
@@ -33,10 +33,12 @@ public class ExportX360 extends HeadlessScript {
         if(!decomp.openProgram(currentProgram)) throw new IllegalStateException("decompiler initialization failed");
         try(BufferedWriter inventory=writer(out.resolve("functions.tsv"));
             BufferedWriter errors=writer(out.resolve("decompile_errors.tsv"));
-            BufferedWriter unresolved=writer(out.resolve("unresolved_candidates.tsv"))) {
+            BufferedWriter unresolved=writer(out.resolve("unresolved_candidates.tsv"));
+            BufferedWriter retries=writer(out.resolve("decompile_retries.tsv"))) {
             inventory.write("address\tname\tbody_bytes\tinstructions\tseeded\tdecompile_status\n");
             errors.write("address\terror\n");
             unresolved.write("address\tname\treason\n");
+            retries.write("address\tinitial_error\tretry_strategy\tresult\n");
             FunctionIterator functions=currentProgram.getFunctionManager().getFunctions(true);
             BufferedWriter pw=null,aw=null;
             try {
@@ -66,6 +68,33 @@ public class ExportX360 extends HeadlessScript {
                     String state="ok";
                     try {
                         DecompileResults r=decomp.decompileFunction(f,20,monitor);
+                        if(!r.decompileCompleted() || r.getDecompiledFunction()==null) {
+                            String initial=clean(String.valueOf(r.getErrorMessage()));
+                            // A fresh process isolates a failed native decompiler instance.
+                            // Keep full C decompilation mode; do not count raw p-code as C.
+                            String[] modes={"fresh_process","retain_unreachable","conservative"};
+                            for(String mode:modes) {
+                                monitor.checkCancelled();
+                                DecompInterface retry=new DecompInterface();
+                                try {
+                                    DecompileOptions options=new DecompileOptions();
+                                    if(!mode.equals("fresh_process")) options.setEliminateUnreachable(false);
+                                    if(mode.equals("conservative")) {
+                                        options.setRespectReadOnly(false);
+                                        options.setSimplifyDoublePrecision(false);
+                                    }
+                                    retry.setOptions(options);
+                                    retry.toggleCCode(true);retry.toggleSyntaxTree(false);
+                                    if(!retry.openProgram(currentProgram)) {
+                                        retries.write(addr+"\t"+initial+"\t"+mode+"\topen_failed\n");continue;
+                                    }
+                                    DecompileResults rr=retry.decompileFunction(f,60,monitor);
+                                    boolean ok=rr.decompileCompleted()&&rr.getDecompiledFunction()!=null;
+                                    retries.write(addr+"\t"+initial+"\t"+mode+"\t"+(ok?"ok":clean(String.valueOf(rr.getErrorMessage())))+"\n");
+                                    if(ok){r=rr;recovered++;break;}
+                                } finally {retry.dispose();}
+                            }
+                        }
                         if(ins>0 && currentProgram.getListing().getInstructionAt(f.getEntryPoint())!=null && r.decompileCompleted() && r.getDecompiledFunction()!=null) {
                             pw.write(r.getDecompiledFunction().getC());pw.write("\n");success++;
                         } else {
@@ -97,6 +126,7 @@ public class ExportX360 extends HeadlessScript {
             "  \"decompile_failed\": "+failed+",\n"+
             "  \"empty_disassembly\": "+emptyAsm+",\n"+
             "  \"missing_entry_instruction\": "+withoutEntryInsn+",\n"+
+            "  \"recovered_by_retry\": "+recovered+",\n"+
             "  \"unresolved_candidates\": "+rejected+",\n"+
             "  \"instructions\": "+instructions+"\n}\n";
         Files.writeString(out.resolve("summary.json"),report);

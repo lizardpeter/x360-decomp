@@ -27,9 +27,12 @@ jobs:
       - name: Obtain pinned Ghidra and LZX decoder
         run: |
           mkdir -p build/reference
-          curl --fail --location --retry 3 -o build/reference/ghidra.zip https://github.com/freeqaz/ghidra/releases/download/v12.1-vmx128/ghidra_12.1_DEV_20260211_linux_x86_64.zip
-          echo "bcee9c40f1161c91335b10f2b563f455ae2dc4563fda28d66d735d0bde02bf41  build/reference/ghidra.zip" | sha256sum -c
+          curl --fail --location --retry 3 -o build/reference/ghidra.zip https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.2_build/ghidra_12.2_PUBLIC_20261016.zip
+          echo "2c2cd776db3c1f6a097ba418922378ac3649cadd5e844a6f5f088ae628a7be67  build/reference/ghidra.zip" | sha256sum -c
           unzip -q build/reference/ghidra.zip -d build/reference
+          curl --fail --location --retry 3 -o build/reference/xenon.zip https://github.com/freeqaz/ghidra-xenon-extension/releases/download/v12.1/ghidra_12.1_PUBLIC_20260212_GhidraXenon.zip
+          echo "cdbdddf60f23f4a53d6e7f9bc020720a3c35401ca6989085190fbf77e59604d8  build/reference/xenon.zip" | sha256sum -c
+          bash tools/ghidra/install-xenon-12.2.sh build/reference/ghidra_12.2_PUBLIC build/reference/xenon.zip
           curl --fail --location --retry 3 -o build/reference/release.tar.gz https://github.com/fabegalo/x360-native/releases/download/v1.34.6/x360-native-1.34.6-linux-x64.tar.gz
           echo "df30bd537923a3f2c78637699c2d9f97fd50c78a6cc28a435e922c54512f2fb3  build/reference/release.tar.gz" | sha256sum -c
           tar -xzf build/reference/release.tar.gz -C build/reference
@@ -41,12 +44,12 @@ jobs:
           python tools/analyze_decoded.py --lzx build/lzx_adapter.so
       - name: Verify Xenon opcode decoding
         run: |
-          GHIDRA="$(find "$PWD/build/reference" -maxdepth 2 -type d -name 'ghidra_12.1*' | head -1)"
+          GHIDRA="$(find "$PWD/build/reference" -maxdepth 2 -type d -name 'ghidra_12.2*' | head -1)"
           test -x "$GHIDRA/support/analyzeHeadless"
           bash tools/ghidra/verify-xenon.sh "$GHIDRA"
       - name: Analyze all discovered functions
         run: |
-          GHIDRA="$(find "$PWD/build/reference" -maxdepth 2 -type d -name 'ghidra_12.1*' | head -1)"
+          GHIDRA="$(find "$PWD/build/reference" -maxdepth 2 -type d -name 'ghidra_12.2*' | head -1)"
           bash tools/ghidra/run.sh "$GHIDRA" ${{ matrix.module }}
       - name: Upload analysis census and diagnostics only
         if: always()
@@ -57,6 +60,7 @@ jobs:
             build/ghidra/${{ matrix.module }}/export/summary.json
             build/ghidra/${{ matrix.module }}/export/functions.tsv
             build/ghidra/${{ matrix.module }}/export/decompile_errors.tsv
+            build/ghidra/${{ matrix.module }}/export/decompile_retries.tsv
             build/ghidra/${{ matrix.module }}/export/missing_seeds.tsv
             build/ghidra/${{ matrix.module }}/export/*candidates.tsv
             build/ghidra/${{ matrix.module }}/export/seed_reconciliation.tsv
