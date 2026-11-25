@@ -23,22 +23,22 @@ VALUE_SLOTS = {
 VARIABLE_ORDINAL = 0x03DB
 VARIABLE_SLOT = 0x92000550
 VARIABLE_TARGET = 0x81A87F20
-VARIABLE_OLD = '''            } else {
-              *record_slot = 0xD000BEEF | (kernel_export->ordinal & 0xFFF) << 16;
-              REXSYS_WARN("Variable import {}:{:#x} ({}) not implemented", base_name,
-                          ordinal, kernel_export->name);
-            }'''
-VARIABLE_NEW = '''            } else if (base_address_ == 0x92000000 && base_name == "xam" &&
-                       ordinal == 0x03DB && record_addr == 0x92000550 &&
-                       kernel_export->name == "g_XuiAutomation") {
-              *record_slot = 0x81A87F20;
-              REXSYS_DEBUG("Patched verified Metro XAM variable import {}:{:#x} ({}) -> {:#x}",
-                           base_name, ordinal, kernel_export->name, 0x81A87F20);
-            } else {
-              *record_slot = 0xD000BEEF | (kernel_export->ordinal & 0xFFF) << 16;
-              REXSYS_WARN("Variable import {}:{:#x} ({}) not implemented", base_name,
-                          ordinal, kernel_export->name);
-            }'''
+VARIABLE_OLD = '''          } else {
+            *record_slot = 0xD000BEEF | (kernel_export->ordinal & 0xFFF) << 16;
+            REXSYS_WARN("Variable import {}:{:#x} ({}) not implemented", base_name,
+                        ordinal, kernel_export->name);
+          }'''
+VARIABLE_NEW = '''          } else if (base_address_ == 0x92000000 && base_name == "xam" &&
+                     ordinal == 0x03DB && record_addr == 0x92000550 &&
+                     kernel_export->name == "g_XuiAutomation") {
+            *record_slot = 0x81A87F20;
+            REXSYS_DEBUG("Patched verified Metro XAM variable import {}:{:#x} ({}) -> {:#x}",
+                         base_name, ordinal, kernel_export->name, 0x81A87F20);
+          } else {
+            *record_slot = 0xD000BEEF | (kernel_export->ordinal & 0xFFF) << 16;
+            REXSYS_WARN("Variable import {}:{:#x} ({}) not implemented", base_name,
+                        ordinal, kernel_export->name);
+          }'''
 
 OLD = '''      REXSYS_DEBUG("Patched function import {}:{:#x} ({}) -> {:#x}", base_name, ordinal,
                    kernel_export->name, import_info.thunk_address);
