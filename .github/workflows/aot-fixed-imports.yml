@@ -126,12 +126,13 @@ jobs:
           set -e
           cd "$GITHUB_WORKSPACE"
           grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+$' "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
-          cat build/receipts/metro-preflight.txt
+          grep -E '^METRO_BINDING ' "$folder/preflight.log" > build/receipts/metro-binding-values.txt || true
+          cat build/receipts/metro-preflight.txt build/receipts/metro-binding-values.txt
           if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount xam_load five_export_mappings clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping five_export_mappings clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame
@@ -140,15 +141,15 @@ jobs:
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/fixed-imports/dash_17559"
           timeout --kill-after=15s 120s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
-      - name: Upload actual frame candidate (not menu verification)
-        if: success()
+      - name: Upload actual frame candidates (not menu verification)
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: metro-native-frame-candidate
           path: |
-            build/fixed-imports/dash_17559/native/metro-capture/candidate.png
+            build/fixed-imports/dash_17559/native/metro-capture/candidate-*.png
             build/fixed-imports/dash_17559/native/metro-capture/receipt.txt
-          if-no-files-found: error
+          if-no-files-found: ignore
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4

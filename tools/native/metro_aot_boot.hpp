@@ -119,7 +119,9 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
     std::cout << "METRO_BOOT pass guest_thread" << std::endl;
     // Use the real process-attach ABI and preserve the result.
     rex::u64 args[] = {entry.xam_handle, 1, 0};
+    std::cout << "METRO_BOOT xam_attach_begin" << std::endl;
     const auto result = entry.dispatcher->Execute(thread->GetThreadState(), kXamEntry, args, 3);
+    std::cout << "METRO_BOOT xam_attach_result=0x" << std::hex << result << std::dec << std::endl;
     if (static_cast<std::uint32_t>(result) == 0 || result == 0xDEADBABE) {
         std::cout << "METRO_BOOT fail xam_attach" << std::endl;
         thread->Exit(1);
