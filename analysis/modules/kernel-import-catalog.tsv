@@ -14,7 +14,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 0010	ExGetXConfigSetting	function	1	1	1	1	missing
 0011	ExInitializeReadWriteLock	function	1	1	1	1	missing
 0012	ExMutantObjectType	variable	0	0	1	0	missing
-0015	ExRegisterTitleTerminateNotification	function	1	1	1	1	missing
+0015	ExRegisterTitleTerminateNotification	function	1	1	1	1	host_adapter
 0016	ExReleaseReadWriteLock	function	1	1	1	1	missing
 0018	ExSetXConfigSetting	function	1	1	1	1	missing
 0019	ExTerminateThread	function	1	1	1	1	missing
@@ -172,7 +172,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 0125	RtlEnterCriticalSection	function	1	1	1	1	missing
 0126	RtlFillMemoryUlong	function	1	1	1	1	missing
 0127	RtlFreeAnsiString	function	1	1	1	1	missing
-012B	RtlImageXexHeaderField	function	1	1	1	1	missing
+012B	RtlImageXexHeaderField	function	1	1	1	1	host_adapter
 012C	RtlInitAnsiString	function	1	1	1	1	missing
 012D	RtlInitUnicodeString	function	1	1	1	1	missing
 012E	RtlInitializeCriticalSection	function	1	1	1	1	missing
@@ -247,7 +247,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 0190	XeCryptShaUpdate	function	1	1	1	1	missing
 0191	XeCryptShaFinal	function	1	1	1	1	missing
 0192	XeCryptSha	function	1	1	1	1	missing
-0193	XexExecutableModuleHandle	variable	1	0	1	0	missing
+0193	XexExecutableModuleHandle	variable	1	0	1	0	host_adapter
 0194	XexCheckExecutablePrivilege	function	1	1	1	1	missing
 0195	XexGetModuleHandle	function	1	1	1	1	missing
 0196	XexGetModuleSection	function	1	1	1	1	missing

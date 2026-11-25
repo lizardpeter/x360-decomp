@@ -1,0 +1,77 @@
+#include "host/kernel_startup.hpp"
+#include <algorithm>
+#include <set>
+namespace x360::host {
+using abi::ImportCallResult;
+namespace {
+std::uint32_t word(std::span<const std::uint8_t> b,std::size_t p){
+    return (std::uint32_t(b[p])<<24)|(std::uint32_t(b[p+1])<<16)|(std::uint32_t(b[p+2])<<8)|b[p+3];
+}
+void put(std::span<std::uint8_t> b,std::size_t p,std::uint32_t value){
+    for(unsigned i=0;i<4;++i)b[p+i]=static_cast<std::uint8_t>(value>>(24-8*i));
+}
+}
+bool KernelStartup::install(machine::AddressSpace& memory,std::span<const std::uint8_t> header,
+                           abi::Address begin,abi::Address end){
+    if(ready_||header.size()<24||header.size()>0xe000||word(header,0)!=0x58455832||
+       word(header,8)!=header.size()||begin>=end||(begin&3u))return false;
+    const auto n=word(header,20);
+    if(n>(header.size()-24)/8)return false;
+    std::set<std::uint32_t> keys;
+    for(std::size_t i=0;i<n;++i){
+        auto key=word(header,24+8*i),offset=word(header,28+8*i);
+        if(!keys.insert(key).second)return false;
+        if((key&255)>1){
+            if(offset>header.size()||header.size()-offset<4)return false;
+            auto size=(key&255)==255?word(header,offset):4*(key&255);
+            if(!size||size>header.size()-offset)return false;
+        }
+    }
+    std::array<std::uint8_t,4> cell{};put(cell,0,loader_object);
+    std::array<std::uint8_t,0x5c> object{};put(object,0x58,header_address);
+    const std::array<machine::RegionMapping,3> mappings{{
+        {handle_cell,cell,false},{loader_object,object,false},{header_address,header,false}}};
+    if(!memory.map_batch(mappings))return false;
+    header_bytes_=static_cast<std::uint32_t>(header.size());header_count_=n;
+    callback_begin_=begin;callback_end_=end;ready_=true;return true;
+}
+std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint16_t o) const{
+    if(ready_&&lib=="xboxkrnl.exe"&&o==403)return handle_cell;
+    return {};
+}
+ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){
+    if(!ready_||lib!="xboxkrnl.exe")return ImportCallResult::unsupported;
+    if(o==299){
+        if(static_cast<abi::Address>(s.gpr[3])!=header_address)return ImportCallResult::unsupported;
+        const auto key=static_cast<std::uint32_t>(s.gpr[4]);
+        std::uint32_t result=0;
+        for(std::uint32_t i=0;i<header_count_;++i){
+            const auto at=header_address+24+8*i;std::uint32_t k{},v{};
+            if(!memory.load_be32(at,k)||!memory.load_be32(at+4,v))return ImportCallResult::fault;
+            if(k!=key)continue;
+            if((k&255)==0)result=v;
+            else if((k&255)==1)result=at+4;
+            else{
+                if(v>=header_bytes_)return ImportCallResult::fault;
+                result=header_address+v;
+            }
+            break;
+        }
+        s.gpr[3]=result;return ImportCallResult::completed;
+    }
+    if(o==21){
+        auto address=static_cast<abi::Address>(s.gpr[3]);
+        std::array<std::uint8_t,16> record{};
+        if((address&3u)||!memory.read(address,record))return ImportCallResult::fault;
+        auto routine=word(record,0),priority=word(record,4);
+        if((routine&3u)||routine<callback_begin_||routine>=callback_end_)return ImportCallResult::unsupported;
+        if(static_cast<std::uint32_t>(s.gpr[4])){
+            // Hosted registration is keyed by the original callback; repeated
+            // registration updates the record. No callback execution yet.
+            notifications_.insert_or_assign(routine,Notification{routine,priority});
+        }else notifications_.erase(routine);
+        return ImportCallResult::completed;
+    }
+    return ImportCallResult::unsupported;
+}
+}

@@ -25,17 +25,29 @@ void compare_field(abi::GuestCall& s,unsigned field,unsigned value){
 template<class T>unsigned compare(T a,T b){return a<b?8:a>b?4:2;}
 }
 BootstrapResult bootstrap_ppc(const ModuleManifest& m,abi::GuestMemory& memory,
-                              abi::GuestCall& s,abi::Address return_address,std::size_t budget){
+                              abi::GuestCall& s,abi::Address return_address,std::size_t budget,abi::ImportProvider* provider){
     BootstrapResult result;
     auto stop=[&](BootstrapStop reason,abi::Address address,const ImportSlot* slot=nullptr){
         result.stop=reason;result.address=address;
         if(slot){result.ordinal=slot->ordinal;result.library=slot->library;}
         return std::move(result);
     };
-    while(result.retired<budget){
+    std::size_t transitions=0;
+    while(transitions++<budget){
         auto pc=s.pc;
         if(pc==return_address)return stop(BootstrapStop::return_address,pc);
-        if(auto i=import_at(m,pc,ImportKind::thunk,4))return stop(BootstrapStop::import_thunk,i->address,i);
+        if(auto i=import_at(m,pc,ImportKind::thunk,4)){
+            if(provider&&pc==i->address){
+                const auto returned=static_cast<abi::Address>(s.lr)&0xfffffffcu;
+                auto outcome=provider->call(i->library,i->ordinal,s,memory);
+                if(outcome==abi::ImportCallResult::fault)return stop(BootstrapStop::access_fault,i->address,i);
+                if(outcome==abi::ImportCallResult::completed){
+                    result.services.push_back({i->address,i->ordinal,i->kind});
+                    s.pc=returned;continue;
+                }
+            }
+            return stop(BootstrapStop::import_thunk,i->address,i);
+        }
         if(!ModuleRegistry::executable(m,pc))return stop(BootstrapStop::non_executable,pc);
         std::uint32_t w{};
         if(!memory.load_be32(pc,w))return stop(BootstrapStop::access_fault,pc);
@@ -48,6 +60,15 @@ BootstrapResult bootstrap_ppc(const ModuleManifest& m,abi::GuestMemory& memory,
         // checked provider contract; any unhandled instruction stops.
         if(op==14||op==15){
             s.gpr[d]=reg_base(s,a)+static_cast<std::uint64_t>(imm*(op==15?65536:1));
+        }else if(op==7){
+            s.gpr[d]=s.gpr[a]*static_cast<std::uint64_t>(imm);
+        }else if(op==31&&xo==266&&!(w&1)){
+            s.gpr[d]=s.gpr[a]+s.gpr[b];
+        }else if(op==31&&(xo==0||xo==32)&&!(w&1)){
+            unsigned field=(w>>23)&7;bool wide=(w>>21)&1;unsigned condition;
+            if(xo==0)condition=compare(wide?std::bit_cast<std::int64_t>(s.gpr[a]):sign_extend(static_cast<std::uint32_t>(s.gpr[a]),32),wide?std::bit_cast<std::int64_t>(s.gpr[b]):sign_extend(static_cast<std::uint32_t>(s.gpr[b]),32));
+            else condition=compare(wide?s.gpr[a]:std::uint64_t(static_cast<std::uint32_t>(s.gpr[a])),wide?s.gpr[b]:std::uint64_t(static_cast<std::uint32_t>(s.gpr[b])));
+            compare_field(s,field,condition);
         }else if(op==24||op==25){
             s.gpr[a]=s.gpr[d]|(std::uint64_t(w&65535)<<(op==25?16:0));
         }else if(op==31&&xo==444&&!(w&1)){
@@ -66,20 +87,25 @@ BootstrapResult bootstrap_ppc(const ModuleManifest& m,abi::GuestMemory& memory,
             if(op==58&&(w&3))return unsupported();
             unsigned n=op==32?4:op==34?1:op==58?8:2;
             auto ea=static_cast<abi::Address>(reg_base(s,a)+static_cast<std::uint64_t>(op==58?sign_extend(w&65532,16):imm));
-            if(auto i=import_at(m,ea,ImportKind::value,n))return stop(BootstrapStop::import_value,i->address,i);
+            if(auto i=import_at(m,ea,ImportKind::value,n)){
+                auto v=provider&&ea==i->address&&n==4&&op==32?provider->value(i->library,i->ordinal):std::nullopt;
+                if(!v)return stop(BootstrapStop::import_value,i->address,i);
+                s.gpr[d]=*v;result.services.push_back({i->address,i->ordinal,i->kind});s.pc=next;++result.retired;continue;
+            }
             std::array<std::uint8_t,8> bytes{};
             if(!memory.read(ea,std::span(bytes).first(n)))return stop(BootstrapStop::access_fault,ea);
             std::uint64_t value=0;for(unsigned i=0;i<n;++i)value=(value<<8)|bytes[i];
             s.gpr[d]=op==42?static_cast<std::uint64_t>(sign_extend(static_cast<std::uint32_t>(value),16)):value;
         }else if(op==36||op==37||op==38||op==44||op==62){
-            if((op==62&&(w&3))||(op==37&&!a))return unsupported();
+            bool update=op==37||(op==62&&(w&3)==1);
+            if((op==62&&(w&3)>1)||(update&&!a))return unsupported();
             unsigned n=op==36||op==37?4:op==38?1:op==44?2:8;
             auto ea=static_cast<abi::Address>(reg_base(s,a)+static_cast<std::uint64_t>(op==62?sign_extend(w&65532,16):imm));
             if(auto i=import_at(m,ea,ImportKind::value,n))return stop(BootstrapStop::import_value,i->address,i);
             std::array<std::uint8_t,8> bytes{};
             for(unsigned i=0;i<n;++i)bytes[n-i-1]=static_cast<std::uint8_t>(s.gpr[d]>>(8*i));
             if(!memory.write(ea,std::span(bytes).first(n)))return stop(BootstrapStop::access_fault,ea);
-            if(op==37)s.gpr[a]=ea;
+            if(update)s.gpr[a]=ea;
         }else if(op==10||op==11){
             unsigned field=(w>>23)&7;
             bool wide=(w>>21)&1;
@@ -92,8 +118,9 @@ BootstrapResult bootstrap_ppc(const ModuleManifest& m,abi::GuestMemory& memory,
             next=static_cast<abi::Address>((w&2)?disp:std::int64_t(pc)+disp);
             if(w&1)s.lr=pc+4;
         }else if(op==16){
-            if(d!=4&&d!=12&&d!=20)return unsupported();
+            if(d!=4&&d!=12&&d!=16&&d!=20)return unsupported();
             bool take=d==20||bool(s.cr&(1u<<(31-a)))==(d==12);
+            if(d==16){--s.ctr;take=static_cast<std::uint32_t>(s.ctr)!=0;}
             if(take){
                 auto disp=sign_extend(w&65532,16);
                 next=static_cast<abi::Address>((w&2)?disp:std::int64_t(pc)+disp);

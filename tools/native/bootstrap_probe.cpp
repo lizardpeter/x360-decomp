@@ -1,5 +1,6 @@
 #include "launcher/module_loader.hpp"
 #include "execution/bootstrap_ppc.hpp"
+#include "host/kernel_startup.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -37,7 +38,7 @@ static void dump(std::ostream& out,const abi::GuestMemory& memory,abi::Address a
     out.write(reinterpret_cast<const char*>(bytes.data()),bytes.size());
 }
 int main(int argc,char** argv){
-    if(argc!=4){std::cerr<<"usage: bootstrap_probe MANIFEST IMAGE OUTPUT_DIRECTORY\n";return 2;}
+    if(argc!=4&&argc!=5){std::cerr<<"usage: bootstrap_probe MANIFEST IMAGE OUTPUT_DIRECTORY\n";return 2;}
     try{
         auto manifest=parse(argv[1]);auto image=read(argv[2]);
         machine::AddressSpace memory;ModuleRegistry registry;
@@ -48,7 +49,13 @@ int main(int argc,char** argv){
         abi::GuestCall s;s.gpr[1]=sp;s.lr=sentinel;s.pc=manifest.entry;
         if(manifest.name=="xam.xex"){s.gpr[3]=manifest.base;s.gpr[4]=1;}
         const auto& m=*registry.module(manifest.name);
-        auto r=bootstrap_ppc(m,memory,s,sentinel,10000);
+        host::KernelStartup hosted;
+        if(argc==5){
+            auto header=read(argv[4]);abi::Address begin=0,end=0;
+            for(auto& section:m.sections)if(section.executable()){begin=section.address;end=section.address+section.size;break;}
+            require(hosted.install(memory,header,begin,end),"hosted header install failed");
+        }
+        auto r=bootstrap_ppc(m,memory,s,sentinel,10000,argc==5?&hosted:nullptr);
         const auto path=std::filesystem::path(argv[3]);
         std::ofstream trace(path/"trace",std::ios::binary),state(path/"state",std::ios::binary),stack_out(path/"stack",std::ios::binary),image_out(path/"image_after",std::ios::binary);
         require(trace&&state&&stack_out&&image_out,"snapshot output open failed");
@@ -64,6 +71,13 @@ int main(int argc,char** argv){
         if(pos<m.size)dump(image_out,memory,static_cast<abi::Address>(m.base+pos),m.size-pos);
         trace.close();state.close();stack_out.close();image_out.close();
         require(trace&&state&&stack_out&&image_out,"snapshot output failed");
+        if(argc==5){
+            require(r.stop==BootstrapStop::unsupported_instruction,"unexpected hosted startup boundary");
+            std::cout<<"unsupported "<<r.retired<<" "<<r.trace.size()<<" "<<s.pc<<" "<<r.services.size()<<" "<<hosted.notifications().size();
+            for(auto& service:r.services)std::cout<<" "<<service.ordinal;
+            for(auto& [routine,record]:hosted.notifications())std::cout<<" "<<routine<<" "<<record.priority;
+            std::cout<<"\n";return 0;
+        }
         require(r.stop==BootstrapStop::import_value||r.stop==BootstrapStop::import_thunk,"unexpected startup boundary");
         std::cout<<(r.stop==BootstrapStop::import_value?"value":"thunk")<<" "<<r.retired<<" "<<r.trace.size()<<" "
                  <<r.address<<" "<<s.pc<<" "<<r.library<<" "<<r.ordinal<<"\n";

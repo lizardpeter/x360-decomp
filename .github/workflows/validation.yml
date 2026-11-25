@@ -47,6 +47,7 @@ jobs:
           python tools/verify_xui_resources.py build/native/x360_resource_probe --system --lzx build/lzx_adapter.so
           python tools/verify_module_loading.py build/native/x360_module_probe --lzx build/lzx_adapter.so
           python tools/verify_bootstrap.py build/native/x360_bootstrap_probe --lzx build/lzx_adapter.so
+          python tools/verify_hosted_startup.py build/native/x360_bootstrap_probe --lzx build/lzx_adapter.so
           curl --fail --location --retry 3 -o build/reference/xboxkrnl_table.inc https://raw.githubusercontent.com/xenia-project/xenia/95a5c3ee250f80c3b9d139658649d9ffb6db3eec/src/xenia/kernel/xboxkrnl/xboxkrnl_table.inc
           python tools/verify_kernel_catalog.py --lzx build/lzx_adapter.so --reference-table build/reference/xboxkrnl_table.inc --report build/kernel-priority.json
           python tools/fetch_originals.py --only shared_resources
