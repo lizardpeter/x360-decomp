@@ -21,4 +21,13 @@ class MetroUIProbes(unittest.TestCase):
         source="// METRO_GUEST_PC 12345678\noriginal();\n"
         self.assertEqual(insert(source,probes("generated"))[0],source)
 
+    def test_original_font_call_sites_and_adjacent_returns(self):
+        dash=probes("generated")
+        xam=probes("generated_xam")
+        for pc in (0x922655FC,0x92265604,0x92265754,0x92265778,0x922657B8):
+            self.assertEqual(dash[pc][1],"call")
+            self.assertEqual(dash[pc+4],(dash[pc][0],"return"))
+        self.assertEqual(xam[0x81699190],("xam_font_patch_resolver","entry"))
+        self.assertEqual(xam[0x81699810],("xam_font_typeface_resolver","entry"))
+        self.assertEqual(xam[0x816998FC],("xam_font_typeface_result","entry"))
 if __name__=="__main__":unittest.main()

@@ -14,10 +14,22 @@ CALLS = {
         0x922198D0:"dash_section_lookup",0x927C6200:"dash_xui_section",
         0x927CDDE4:"dash_xui_section2",0x92181B10:"dash_shared_locator",
         0x927492DC:"dash_locator",0x927DB6C0:"dash_locator2",
+        # Original font setup and resolver calls from 45978542649.
+        0x922186D0:"dash_file_open",
+        0x922655FC:"dash_font_typeface_1",0x92265604:"dash_font_patch_1",
+        0x92265624:"dash_font_typeface_2",0x9226562C:"dash_font_patch_2",
+        0x92265654:"dash_font_typeface_3",0x9226565C:"dash_font_patch_3",
+        0x92265690:"dash_font_typeface_4",0x92265698:"dash_font_patch_4",
+        0x922656AC:"dash_font_typeface_5",0x922656B4:"dash_font_patch_5",
+        0x922656EC:"dash_font_enumerate",0x9226570C:"dash_font_release",
+        0x92265754:"dash_font_register_1",0x92265778:"dash_font_register_2",
+        0x922657B8:"dash_font_register_3",
     },
     "generated_xam": {
         0x817DD348:"xam_section_lookup",0x81903F94:"xam_section_lookup2",
         0x8190CD60:"xam_section_lookup3",0x81945474:"xam_section_lookup4",
+        0x81699858:"xam_font_probe_path",0x81699890:"xam_font_copy_path_1",
+        0x816998A8:"xam_font_append_path",0x816998F8:"xam_font_copy_path_2",
     },
     "generated_hud": {
         0x913E9960:"hud_xui_init",0x913E827C:"hud_scene_create",
@@ -31,13 +43,17 @@ CALLS = {
 ENTRIES = {
     "generated": {0x92285890:"dash_common_setup",0x922FDFA0:"dash_user_path",
                   0x92775048:"dash_controlpack_setup",0x927A4AC0:"dash_controlpack_uri",
-                  0x927A65B8:"dash_controlpack_uri2"},
+                  0x927A65B8:"dash_controlpack_uri2",0x922655D8:"dash_font_setup",
+                  0x92202490:"dash_font_register",0x929115D0:"dash_string_table_load",
+                  0x92911670:"dash_string_table_load2",0x92911870:"dash_string_table_lookup"},
     "generated_xam": {0x816C8A48:"retail_resource_locator",
                       0x816C8BF0:"retail_shared_locator",0x817BC088:"retail_xui_init",
                       0x817C4A58:"retail_scene_create",0x817C5390:"retail_scene_first",
                       0x817C54D0:"retail_scene_forward",0x8177DA10:"retail_render_begin",
                       0x8177DAA0:"retail_render_present",0x817FE5C0:"xam_controlpack_setup",
-                      0x81807DB8:"xam_controlpack_uri"},
+                      0x81807DB8:"xam_controlpack_uri",0x81699190:"xam_font_patch_resolver",
+                      0x81699810:"xam_font_typeface_resolver",0x81699238:"xam_font_patch_result",
+                      0x816998FC:"xam_font_typeface_result"},
     "generated_hud": {0x913E98F8:"hud_initialize",0x913E9B88:"hud_render_loop"},
 }
 MARK="/* METRO_UI_PROBES_INSERTED */"

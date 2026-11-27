@@ -33,11 +33,22 @@ class IoRuntime(unittest.TestCase):
     def test_file_cursor(self):
         source="\n".join(['#include <rex/kernel/title_runtime.h>',READ_CURSOR_OLD,
                           WRITE_CURSOR_OLD,VIRTUAL_READ_OLD])
-        result=patch_file(source)
+        result=patch_file_cursor(source)
         self.assertIn(READ_CURSOR_NEW,result)
         self.assertIn(WRITE_CURSOR_NEW,result)
         self.assertIn("GetWritableSpan",result)
-        with self.assertRaises(ValueError):patch_file(result)
+        with self.assertRaises(ValueError):patch_file_cursor(result)
+    def test_metadata_patch_is_scoped_to_file_query(self):
+        source="\n".join([IO_HEADER,"u32 NtQueryInformationFile_entry(",
+            "  info_ptr.Zero(info_length);","    case XFileNetworkOpenInformation: {",
+            "u32 GetSetFileMinimumLength(","  info_ptr.Zero(info_length);"])
+        result=patch_file_information(source)
+        self.assertIn("case XFileBasicInformation: {",result)
+        self.assertIn("case XFileAllocationInformation: {",result)
+        self.assertIn("info_ptr.Zero(minimum_length)",result)
+        self.assertEqual(result.count("info_ptr.Zero(info_length)"),1)
+        self.assertIn("GetWritableSpan(output,info_length)",result)
+        with self.assertRaises(ValueError):patch_file_information(result)
     def test_storage_notification_contract(self):
         result=patch_storage_notifications(NOTIFICATION_STUB)
         self.assertIn(NOTIFICATION_ENTRY,result)

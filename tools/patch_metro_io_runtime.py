@@ -347,12 +347,15 @@ def patch_scatter(source):
         "    read_total += bytes_read;\n    if (bytes_read < read_length) break; // stop at a short read/EOF\n    read_remain -= read_length;")
     return source
 
-def patch_file(source):
+def patch_file_cursor(source):
     source=replace(source,'#include <rex/kernel/title_runtime.h>',
                    '#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>')
     source=replace(source,READ_CURSOR_OLD,READ_CURSOR_NEW)
     source=replace(source,WRITE_CURSOR_OLD,WRITE_CURSOR_NEW)
-    source=replace(source,VIRTUAL_READ_OLD,VIRTUAL_READ_NEW)
+    return replace(source,VIRTUAL_READ_OLD,VIRTUAL_READ_NEW)
+
+def patch_file(source):
+    source=patch_file_cursor(source)
     source=replace(source,"#include <span>","#include <span>\n#include <algorithm>\n#include <atomic>\n#include <cstdlib>\n#include <string_view>")
     source=replace(source,"namespace {\n\nvoid NotifyIOCompletionPorts","namespace {\n"+RESOURCE_TRACE+"\nvoid NotifyIOCompletionPorts")
     source=replace(source,"  if (out_bytes_read) {\n    *out_bytes_read = static_cast<u32>(bytes_read);",
