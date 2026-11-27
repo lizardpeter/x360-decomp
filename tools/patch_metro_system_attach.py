@@ -63,7 +63,7 @@ Result<TitleRuntime::HostedSystemAttach> TitleRuntime::AttachHostedSystemModule(
   // No retry and no fallback to the title process. A stalled attach is a
   // boot failure; the runtime's ordinary stop path owns worker teardown.
   u64 timeout=static_cast<u64>(-30LL*10000000LL);
-  const auto waited=GetThreadRegistry().WaitGuestObject(handle,0,0,0,&timeout);
+  const auto waited=GetThreadRegistry().GetObjectWaiter().WaitGuestObject(handle,0,0,0,&timeout);
   CloseOwned(GetObjectTable(),handle);
   if (waited!=X_STATUS_SUCCESS)
     return Err<HostedSystemAttach>(StatusError(waited));
