@@ -418,6 +418,74 @@ REX_EXPORT(__imp__DrvGetContentStorageNotification,
 def patch_storage_notifications(source):
     return replace(source, NOTIFICATION_STUB, NOTIFICATION_ENTRY)
 
+# Preserve explicit writable child aliases for absolute and directory-relative opens.
+RELATIVE_OPEN_OLD = """  return OpenFrom(&file->GetNode(), path, options);"""
+RELATIVE_OPEN_NEW = """  // Explicit child aliases (such as the Metro Content and Cache mounts)
+  // must work from an existing partition directory handle as well as from
+  // absolute paths. Keep ordinary same-provider relative opens unchanged.
+  std::lock_guard lock(mutex_);
+  auto& root_node = file->GetNode();
+  const auto absolute = string::utf8_canonicalize_guest_path(
+      string::utf8_join_guest_paths(root_node.GetAbsolutePath(), path));
+  if (root_node.IsDirectory() && StartsWithComponents(absolute, root_node.GetAbsolutePath()) &&
+      FindLink(absolute)) {
+    auto resolved = ResolveMount(absolute, false);
+    if (resolved && resolved->provider != &root_node.GetProvider())
+      return OpenFrom(nullptr, absolute, options);
+  }
+  return OpenFrom(&root_node, path, options);"""
+CROSS_PROVIDER_CHILD_OLD = """    if (parent && parent->HasChildVanished(*node)) {"""
+CROSS_PROVIDER_CHILD_NEW = """    // A linked mount root is not a child of the underlying provider.
+    // Never ask the firmware provider to detach a node owned elsewhere.
+    if (parent && &parent->GetProvider() == &node->GetProvider() &&
+        parent->HasChildVanished(*node)) {"""
+CROSS_PROVIDER_READONLY_OLD = """  if (wants_write && ((parent && parent->IsReadOnly()) || (node && node->IsReadOnly()))) {"""
+CROSS_PROVIDER_READONLY_NEW = """  if (wants_write && ((parent && (!node || &parent->GetProvider() == &node->GetProvider()) &&
+                       parent->IsReadOnly()) || (node && node->IsReadOnly()))) {"""
+
+def patch_filesystem(source):
+    source=replace(source,RELATIVE_OPEN_OLD,RELATIVE_OPEN_NEW)
+    source=replace(source,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_CHILD_NEW)
+    return replace(source,CROSS_PROVIDER_READONLY_OLD,CROSS_PROVIDER_READONLY_NEW)
+
+PROFILE_MOUNT_TEST = r'''
+REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative opens",
+                     "[metro_profile_mount]") {
+  const auto firmware = GetTemp() / "firmware";
+  const auto storage = GetTemp() / "storage";
+  WriteHost(firmware / "dash.xex", "original");
+  WriteHost(storage / "profile" / "fixture.bin", "local");
+  auto& fs = GetFileSystem();
+  REQUIRE(fs.Mount({"\\Device\\Harddisk0\\Partition1", ProviderType::kHostDirectory,
+                    firmware, MountFlags::kNone, {}}));
+  REQUIRE(fs.Mount({"\\Device\\MetroProfileContent", ProviderType::kHostDirectory,
+                    storage, MountFlags::kWritable, {}}));
+  REQUIRE(fs.Link("game:", "\\Device\\Harddisk0\\Partition1"));
+  REQUIRE(fs.Link("\\Device\\Harddisk0\\Partition1\\Content",
+                  "\\Device\\MetroProfileContent"));
+  auto partition = Open("game:");
+  auto absolute = Open("game:\\Content");
+  CHECK(absolute.file->GetInfo().absolute_path == "\\Device\\MetroProfileContent");
+  auto content = fs.OpenRelative(*partition.file, "Content", {});
+  REQUIRE(content);
+  auto file = fs.OpenRelative(*content->file, "profile\\fixture.bin", {});
+  REQUIRE(file);
+  CHECK(ReadText(*file->file) == "local");
+  auto nested = fs.OpenRelative(*partition.file, "Content\\profile\\fixture.bin", {});
+  REQUIRE(nested);
+  CHECK(ReadText(*nested->file) == "local");
+  auto created = fs.OpenRelative(*partition.file, "Content\\profile\\new.bin",
+      {.disposition = Disposition::kCreate, .access = Access::kWriteAccess});
+  REQUIRE(created);
+  CHECK(std::filesystem::exists(storage / "profile" / "new.bin"));
+  CHECK_FALSE(std::filesystem::exists(firmware / "Content"));
+  CHECK_FALSE(fs.OpenRelative(*partition.file, "forbidden.bin",
+      {.disposition = Disposition::kCreate, .access = Access::kWriteAccess}));
+  CHECK(ReadText(*Open("game:\\dash.xex").file) == "original");
+  CHECK_FALSE(fs.OpenRelative(*partition.file, "ContentOther\\fixture.bin", {}));
+}
+'''
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -432,7 +500,11 @@ def main():
     tests=a.tests.read_text()
     if "metro_io_runtime" in test.read_text():raise ValueError("test already installed")
     info=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_io_info.cpp"
-    outputs={io:patch_io(io.read_text()),file:patch_file(file.read_text()),
+    filesystem=a.sdk/"src/filesystem/file_system.cpp"
+    filesystem_test=a.sdk/"tests/unit/filesystem/file_system_test.cpp"
+    outputs={filesystem:patch_filesystem(filesystem.read_text()),
+             filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
+             io:patch_io(io.read_text()),file:patch_file(file.read_text()),
              info:patch_file_information(info.read_text()),
              hid:patch_storage_notifications(hid.read_text()),
              test:test.read_text()+"\n"+tests}

@@ -52,3 +52,7 @@ At this stage only staging is implemented; original enumeration and sign-in
 remain unverified. Test fixtures use synthetic package headers, not real accounts.
 
 The experimental mount is now opt-in via `X360_METRO_LOCAL_PROFILES=1`. It maps the staged `Content` directory at `\\Device\\Harddisk0\\Partition1\\Content` before original XAM attach. The usual SDK user-root default is the application root's `user` directory. It does not model a physical partition/device enumeration or establish signed-in state; actual guest discovery is still required. The launch package includes the staging tool. No profile input is staged by CI.
+
+### Explicit Content alias and directory handles
+
+The pinned SDK originally checked the underlying firmware provider for an absolute linked mount root and resolved directory-relative paths entirely inside the original provider. Both behaviors are corrected by the hosted I/O patch: cross-provider roots retain their own ownership and write policy; directory-relative opens follow an explicit link only when the canonical path stays inside the opened directory and resolves to another provider. The synthetic regression exercises absolute and relative opens, nested reads and writes, component boundaries and read-only firmware. It does not merge directory listings across mounts or implement physical storage notifications. Native compilation, actual original XAM enumeration and local sign-in remain separate validation gates.

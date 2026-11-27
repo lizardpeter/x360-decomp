@@ -62,4 +62,13 @@ class IoRuntime(unittest.TestCase):
         self.assertIn("X_STATUS_NOT_SUPPORTED",result)
         self.assertNotIn("X_STATUS_SUCCESS",result)
         with self.assertRaises(ValueError):patch_storage_notifications(result)
+    def test_profile_mount_routes_explicit_alias_and_respects_provider_ownership(self):
+        source="\n".join([RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD])
+        result=patch_filesystem(source)
+        self.assertIn("FindLink(absolute)",result)
+        self.assertIn("resolved->provider != &root_node.GetProvider()",result)
+        self.assertIn("parent->GetProvider() == &node->GetProvider()",result)
+        self.assertIn("root_node.IsDirectory()",result)
+        self.assertIn("OpenFrom(nullptr, absolute, options)",result)
+        with self.assertRaises(ValueError):patch_filesystem(result)
 if __name__=="__main__":unittest.main()
