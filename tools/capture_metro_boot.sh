@@ -20,6 +20,7 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   # Synthetic input only: never mount a real local profile in CI.
   unset X360_METRO_LOCAL_PROFILES
   export X360_METRO_PROFILE_TRACE=1
+  export X360_METRO_GUIDE_TRACE=1
   profile_args=(--hid.guide_button=true --hid.keybind_guide=F9)
 fi
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
@@ -220,7 +221,7 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
     import -window "$win" "$out/input-profile-guide-$n.png"
   done
   change="$(difference "$out/input-profile-before.png" "$out/input-profile-guide-4.png")" || exit 1
-  tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=' > "$out/profile-guide.log" || true
+  tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=|METRO_GUIDE_TRACE|METRO_SYSREQ' > "$out/profile-guide.log" || true
   # B is a cancel request. Never send A/confirm at an unknown account dialog.
   xdotool keydown BackSpace
   sleep 0.25
@@ -231,7 +232,7 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
     import -window "$win" "$out/input-profile-cancel-$n.png"
   done
   restore="$(difference "$out/input-profile-before.png" "$out/input-profile-cancel-3.png")" || exit 1
-  tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=' > "$out/profile-guide.log" || true
+  tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=|METRO_GUIDE_TRACE|METRO_SYSREQ' > "$out/profile-guide.log" || true
   cat "$out/profile-guide.log" >> "$out/receipt.txt"
   guide=0
   cancel=0

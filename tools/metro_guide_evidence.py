@@ -164,7 +164,7 @@ def scan(label,raw,image,meta,catalog,stubs):
                 w=struct.unpack_from(">I",image,off)[0]
                 b=branch(base+off,w)
                 if not b or b[0] not in targets:continue
-                owners=[a for a,n in pe["functions"] if a<=base+off<a+n]
+                owners=[a for a,n,_ in pe["functions"] if a<=base+off<a+n]
                 if len(owners)==1:
                     roots.add(owners[0])
                     lifecycle_refs.append({"owner":hx(owners[0]),"pc":hx(base+off),

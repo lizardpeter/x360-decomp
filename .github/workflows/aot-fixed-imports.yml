@@ -237,6 +237,12 @@ jobs:
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           python tools/verify_metro_profile_generated.py "$folder" --receipt build/receipts/profile-generated.json
+      - name: Recover and instrument original Guide initialization and request path
+        if: inputs.profile_modules == true
+        run: |
+          folder=build/fixed-imports/dash_17559
+          python tools/metro_guide_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-guide-evidence.json
+          python tools/instrument_metro_guide.py "$folder" --evidence build/receipts/metro-guide-evidence.json --receipt build/receipts/metro-guide-trace.json
       - name: Instrument original offline profile and storage trace
         if: inputs.profile_modules == true
         run: |
