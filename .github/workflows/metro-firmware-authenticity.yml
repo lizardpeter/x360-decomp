@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'tools/verify_retail_firmware.py'
+      - 'tools/verify_individual_firmware.py'
+      - 'tests/test_individual_firmware.py'
       - 'tests/test_retail_firmware.py'
       - '.github/workflows/metro-firmware-authenticity.yml'
       - 'target.toml'
@@ -13,20 +15,39 @@ permissions:
 jobs:
   authenticate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Test verifier
-        run: python -m unittest discover -s tests -p test_retail_firmware.py
+        run: |
+          python -m unittest discover -s tests -p test_retail_firmware.py
+          python -m unittest discover -s tests -p test_individual_firmware.py
       - name: Fetch pinned source bytes without executing them
         run: python tools/fetch_originals.py --only pirs --only dash --only shared_resources
       - name: Verify retail RSA signature and complete STFS hash tree
         run: python tools/verify_retail_firmware.py --receipt build/firmware-authenticity.json
+      - name: Fetch separately sourced archives for exact-byte comparison
+        run: python tools/fetch_originals.py --only dash_basic --only system_update --only jrunner --only xebuild
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          submodules: recursive
+          persist-credentials: false
+      - name: Compile read-only LZX decoder
+        run: |
+          source=build/sdk-source/thirdparty/libmspack/libmspack/mspack
+          cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+      - name: Verify each original XEX and detached runtime resource
+        run: python tools/verify_individual_firmware.py --lzx build/lzx_adapter.so --receipt build/individual-firmware-authenticity.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: metro-firmware-authenticity
-          path: build/firmware-authenticity.json
+          path: |
+            build/firmware-authenticity.json
+            build/individual-firmware-authenticity.json
           if-no-files-found: ignore
