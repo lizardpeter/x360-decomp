@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bounded original Guide graphics notification and HUD load evidence."""
 import argparse
+import bisect
 import collections
 import json
 import struct
@@ -35,6 +36,10 @@ def scan(label,raw,image,meta,catalog,stubs):
         for a in row["value_slots"]:
             if not row["thunk_slots"]:variables[a]=d
     calls=[];refs=[];edges=collections.defaultdict(set)
+    starts=sorted(funcs);interior_edges=collections.defaultdict(list)
+    def containing(pc):
+        i=bisect.bisect_right(starts,pc)-1
+        return starts[i] if i>=0 and pc<starts[i]+funcs[starts[i]] else None
     roots=set()
     if label=="xam":
         roots|={0x816CE8B0,CALLBACK,0x816CA748,0x816C9EA0}
@@ -91,6 +96,10 @@ def scan(label,raw,image,meta,catalog,stubs):
             if b:
                 dest,linked=b
                 if dest in funcs and dest!=a:edges[a].add(dest)
+                elif label=="xam" and dest not in thunks:
+                    owner=containing(dest)
+                    if owner is not None and owner!=a:
+                        interior_edges[a].append((owner,pc,dest,linked))
                 d=thunks.get(dest)
                 if d and d["name"] in INTEREST:
                     calls.append({"owner":hx(a),"site":hx(pc),"target":hx(dest),"linked":linked,"import":d,**context(words,i,linked)})
@@ -134,6 +143,38 @@ def scan(label,raw,image,meta,catalog,stubs):
                 path.append(nxt)
             selected.update(path)
             paths.append({"worker_call":hx(pc),"path":[hx(a) for a in path]})
+        # Some original PPC routines share interior labels and tail-call
+        # through another PDATA extent. Keep these weaker owner edges apart
+        # from exact-entry paths: entering a suffix is not evidence that
+        # instructions preceding its actual destination execute.
+        expanded=collections.defaultdict(set,{a:set(ds) for a,ds in edges.items()})
+        for a,rows in interior_edges.items():
+            expanded[a].update(row[0] for row in rows)
+        parent=collections.defaultdict(set)
+        for a,ds in expanded.items():
+            for d in ds:parent[d].add(a)
+        distance={owner:0};queue=collections.deque([owner])
+        while queue:
+            d=queue.popleft()
+            for a in sorted(parent[d]):
+                if a not in distance:distance[a]=distance[d]+1;queue.append(a)
+        interior_candidates=[]
+        for pc in range(worker,worker+funcs[worker],4):
+            b=branch(pc,struct.unpack_from(">I",image,pc-base)[0])
+            if not b or not b[1]:continue
+            d=containing(b[0])
+            if d is None or d==worker or d not in distance:continue
+            route=[d];weak=[]
+            if b[0]!=d:weak.append({"site":hx(pc),"target":hx(b[0]),"owner":hx(d)})
+            while route[-1]!=owner:
+                a=route[-1];nxt=min(v for v in expanded[a] if distance.get(v)==distance[a]-1)
+                if nxt not in edges[a]:
+                    _,site2,target2,linked2=min(v for v in interior_edges[a] if v[0]==nxt)
+                    weak.append({"site":hx(site2),"target":hx(target2),"owner":hx(nxt),"linked":linked2})
+                route.append(nxt)
+            if weak:interior_candidates.append({"worker_call":hx(pc),"owner_path":[hx(a) for a in route],
+                                                "interior_entries":weak,"proof":"owner reachability only"})
+        print("DEFERRED_INTERIOR_CANDIDATES",json.dumps(interior_candidates,sort_keys=True))
         # An empty direct path is not an absent runtime call. Find exact
         # references to the observed entry and its immediate PDATA callers.
         # PDATA unwind pointers are identified separately from data refs.
@@ -159,7 +200,7 @@ def scan(label,raw,image,meta,catalog,stubs):
         # along the shortest candidates; not cryptographic key material.
         startup={"worker":hx(worker),"last_observed_import_site":hx(site),
             "import_owner":hx(owner),"import":"XeKeysExGetKey",
-            "direct_path_candidates":paths,"immediate_direct_callers":[hx(a) for a in sorted(reverse[owner])],
+            "direct_path_candidates":paths,"interior_path_candidates":interior_candidates,"immediate_direct_callers":[hx(a) for a in sorted(reverse[owner])],
             "data_pointer_candidates":data_refs,"code_pointer_candidates":code_refs,
             "bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,min(funcs[a],4096))
                       for a in sorted(selected)}}
