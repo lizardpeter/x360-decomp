@@ -1,5 +1,6 @@
 #include "host/kernel_startup.hpp"
 #include "host/critical_sections.hpp"
+#include "host/rtl_memory.hpp"
 #include <algorithm>
 #include <set>
 namespace x360::host {
@@ -61,6 +62,7 @@ ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::G
         return CriticalSections::enter(s,memory,diagnostic_thread_,o==321);
     if(diagnostic_thread_&&o==304)
         return CriticalSections::leave(s,memory,diagnostic_thread_);
+    if(o==0x11a||o==0x11b||o==0x126||o==0x12c||o==0x12d)return RtlMemory::call(o,s,memory);
     if(o==299){
         if(static_cast<abi::Address>(s.gpr[3])!=header_address)return ImportCallResult::unsupported;
         const auto key=static_cast<std::uint32_t>(s.gpr[4]);
