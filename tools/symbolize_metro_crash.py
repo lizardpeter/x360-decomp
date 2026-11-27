@@ -2,6 +2,7 @@
 """Resolve Linux crash-report file offsets against the exact native ELF segments."""
 import argparse
 import functools
+import hashlib
 import re
 import struct
 import subprocess
@@ -50,7 +51,7 @@ def guest_pc(location,expected):
     if not m:return None
     path,line=Path(m[1]),int(m[2])
     if not path.is_file() or path.suffix!=".cpp":return None
-    if not any(x in path.parts for x in ("generated","generated_xam")):return None
+    if not any(x in path.parts for x in ("generated","generated_xam","generated_hud")):return None
     lines=source_lines(path)
     if not 1<=line<=len(lines):return None
     candidate=None
@@ -71,9 +72,15 @@ def choose_file(name,roots):
         direct=root/name
         if direct.is_file():files.add(direct.resolve())
         else:files.update(x.resolve() for x in root.rglob(name) if x.is_file())
-    if len(files)!=1:
-        raise ValueError(f"expected unique matching file, found {len(files)}")
-    return files.pop()
+    if not files:
+        raise ValueError("no matching file")
+    if len(files)>1:
+        digests=set()
+        for path in files:
+            with path.open("rb") as f:digests.add(hashlib.file_digest(f,"sha256").hexdigest())
+        if len(digests)!=1:
+            raise ValueError(f"ambiguous nonidentical matching files ({len(files)})")
+    return sorted(files)[0]
 
 def resolve(path,offset):
     va=virtual_address(executable_segments(path),offset)

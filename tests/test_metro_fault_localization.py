@@ -6,7 +6,7 @@ import subprocess
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/"tools"))
-from symbolize_metro_crash import executable_segments,virtual_address,guest_pc
+from symbolize_metro_crash import executable_segments,virtual_address,guest_pc,choose_file
 from patch_metro_guest_pc import OLD,NEW,corrected
 
 class FaultLocalization(unittest.TestCase):
@@ -40,6 +40,15 @@ class FaultLocalization(unittest.TestCase):
             self.assertEqual(guest_pc(f"{p}:5","sub_81671250"),0x81671250)
             self.assertIsNone(guest_pc(f"{p}:5","sub_816712C4"))
             self.assertIsNone(guest_pc(f"{p}:8","sub_816712C4"))
+    def test_identical_install_and_build_copies(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            a=root/"build"/"libtest.so"; b=root/"install"/"libtest.so"
+            for p in (a,b):
+                p.parent.mkdir();p.write_bytes(b"same")
+            self.assertEqual(choose_file("libtest.so",[a.parent,b.parent]),a)
+            b.write_bytes(b"different")
+            with self.assertRaises(ValueError):choose_file("libtest.so",[a.parent,b.parent])
     def test_codegen_marker(self):
         self.assertEqual(corrected(OLD),NEW)
         with self.assertRaises(ValueError):corrected(NEW)

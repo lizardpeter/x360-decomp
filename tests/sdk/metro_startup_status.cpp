@@ -30,3 +30,20 @@ REX_TEST_CASE("metro_startup_status: unavailable raw dump and empty recorded har
     CHECK(c.Kernel("HalGetNotedArgonErrors",{7})==0);
   });
 }
+
+REX_TEST_CASE("metro_startup_status: unsupported custom object exports preserve outputs",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 descriptor=c.Alloc(28), object=c.Alloc(48), out=c.Alloc(4);
+    c.Store32(out,0xbebebebe);
+    CHECK(c.Kernel("ObCreateObject",{descriptor,0,48,out})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(out)==0xbebebebe);
+    CHECK(c.Kernel("ObInsertObject",{object,0,0,out})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(out)==0xbebebebe);
+    CHECK(c.Kernel("ObOpenObjectByPointer",{object,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ObLookupThreadByThreadId",{0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ObReferenceObjectByHandle",{0,0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+  });
+}

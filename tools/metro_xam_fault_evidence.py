@@ -532,6 +532,8 @@ def background_dependencies(label,image,base,pe,rows,catalog,stubs):
             elif kind in ("compare_register","compare_immediate"):pass
             else:known.clear()
     groups.update(int(row["function"],16) for row in observations)
+    if label=="xam":
+        groups.update((0x816E05D0,0x818612D0,0x816AEAC0,0x816AF458))
     incoming=[]
     for start,size,_ in pe["functions"]:
         for pc in range(start,start+size,4):
@@ -544,6 +546,7 @@ def background_dependencies(label,image,base,pe,rows,catalog,stubs):
             "literal_pointer_slots":[{"address":hx(k),"names":sorted(v)} for k,v in sorted(data_refs.items())],
             "literal_references":refs,"focused_import_calls":calls,"incoming_calls":incoming,
             "function_groups":functions,
+            "custom_type_words":[hx(read_word(image,base,0x81A821E0+i)) for i in range(0,28,4)] if label=="xam" else [],
             "scope":"direct original operand and literal-reference evidence; no inferred device or object ABI"}
 
 def main():
