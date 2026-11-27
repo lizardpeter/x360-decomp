@@ -296,3 +296,45 @@ REX_TEST_CASE("metro_startup_status: typed missing optical device follows origin
     CHECK(c.Load32(out)==0x12345678);
   });
 }
+
+REX_TEST_CASE("metro_startup_status: native display identity and offline raw NIC",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    for (const u32 residue : {0u,1u,5u,0xFFFFFFFFu,0x81B5B5E4u}) {
+      CHECK(c.Kernel("HalGetCurrentAVPack",{residue})==8);
+      CHECK(c.Kernel("NicGetLinkState",{residue})==0);
+    }
+    const u32 out=c.Alloc(16), size=c.Alloc(4);
+    c.Store32(out,0xAABBCCDD);c.Store32(out+4,0x11223344);
+    c.Store32(size,4);
+    CHECK(c.Kernel("NicGetOpt",{0,10035,out,size})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(out)==0xAABBCCDD);
+    CHECK(c.Load32(out+4)==0x11223344);
+    CHECK(c.Load32(size)==4);
+    CHECK(c.Kernel("NicSetOpt",{0,10035,out,4})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Kernel("NicGetOpt",{0,10035,0xFFFFFFFFu,0xFFFFFFFFu})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(out)==0xAABBCCDD);
+  });
+}
+REX_TEST_CASE("metro_startup_status: empty hosted failed-device queue initializes exactly one DWORD",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 buffer=c.Alloc(16);
+    c.Store32(buffer,0xCAFEBABE);c.Store32(buffer+4,0xFFFFFFFF);
+    c.Store32(buffer+8,0xDEADBEEF);c.Store32(buffer+12,0x11223344);
+    REQUIRE(c.Kernel("XInputdGetFailedConnectionOrBind",{buffer+4})==0);
+    CHECK(c.Load32(buffer+4)==0);
+    CHECK(c.Load32(buffer)==0xCAFEBABE);
+    CHECK(c.Load32(buffer+8)==0xDEADBEEF);
+    CHECK(c.Load32(buffer+12)==0x11223344);
+    CHECK(c.Kernel("XInputdGetFailedConnectionOrBind",{0})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("XInputdGetFailedConnectionOrBind",{0xFFFFFFFFu})==X_STATUS_ACCESS_VIOLATION);
+    c.Store32(buffer+4,0x12345678);
+    REQUIRE(c.Kernel("XInputdGetFailedConnectionOrBind",{buffer+4})==0);
+    CHECK(c.Load32(buffer+4)==0);
+  });
+}

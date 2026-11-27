@@ -260,6 +260,72 @@ def patch_io_trace(source):
         source=trace_export(source,name)
     return source
 
+def implement_export(source,name,body):
+    anchor=f"REX_EXPORT_STUB(__imp__{name});"
+    if source.count(anchor)!=1:raise ValueError("hardware export anchor "+name)
+    return source.replace(anchor,body,1)
+
+def patch_native_hardware(stub,hal,hid):
+    # The host provides a virtual digital RGB display, not a physical AV
+    # cable detector. Xenia's documented HDMI AV-pack value is 8.
+    # The original dashboard consumes this scalar at 9217FF50 and 14
+    # direct call sites; the original XAM consumes it at 816FB150.
+    hal=implement_export(hal,"HalGetCurrentAVPack",r'''
+namespace rex::kernel::xboxkrnl {
+u32 HalGetCurrentAVPack_entry() {
+  constexpr u32 kHostedDigitalDisplayAVPack=8;
+  return kHostedDigitalDisplayAVPack;
+}
+}
+REX_EXPORT(__imp__HalGetCurrentAVPack, rex::kernel::xboxkrnl::HalGetCurrentAVPack_entry)''')
+    # Match the SDK's existing NetDll_XNetGetEthernetLinkStatus: the hosted
+    # title has no raw console NIC provider. This is distinct from whether
+    # the user's Windows/Linux computer has internet access.
+    stub=implement_export(stub,"NicGetLinkState",r'''
+namespace rex::kernel::xboxkrnl {
+u32 NicGetLinkState_entry() {
+  return 0; // no attached guest Ethernet link, no speed/duplex flags
+}
+}
+REX_EXPORT(__imp__NicGetLinkState, rex::kernel::xboxkrnl::NicGetLinkState_entry)''')
+    # All 15 original direct callers of GetOpt consume status. 81749B1C
+    # selects its original default when the option request fails. SetOpt
+    # also consumes status (817495C4). A nonexistent provider cannot accept
+    # a physical option or claim to have populated its output.
+    stub=implement_export(stub,"NicGetOpt",r'''
+namespace rex::kernel::xboxkrnl {
+u32 NicGetOpt_entry(u32, u32, u32, u32) { return X_STATUS_NOT_SUPPORTED; }
+}
+REX_EXPORT(__imp__NicGetOpt, rex::kernel::xboxkrnl::NicGetOpt_entry)''')
+    stub=implement_export(stub,"NicSetOpt",r'''
+namespace rex::kernel::xboxkrnl {
+u32 NicSetOpt_entry(u32, u32, u32, u32) { return X_STATUS_NOT_SUPPORTED; }
+}
+REX_EXPORT(__imp__NicSetOpt, rex::kernel::xboxkrnl::NicSetOpt_entry)''')
+    # Original 816F438C passes the address of stack+84, then reads the
+    # DWORD regardless of status. 816F199C separately consumes the sign
+    # of the returned NTSTATUS. A hosted pad provider has no physical
+    # failed-device notification queue. Its empty queue is a real output,
+    # not an uninitialized stack word or a fabricated device failure.
+    hid=implement_export(hid,"XInputdGetFailedConnectionOrBind",r'''
+namespace rex::kernel::xboxkrnl {
+u32 XInputdGetFailedConnectionOrBind_entry(u32 output) {
+  auto& memory=kernel::GetCurrent().GetGuestMemory();
+  if (!output || !memory.GetWritableSpan(output,sizeof(be_u32)))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (!memory.Store(output,be_u32{0}))return X_STATUS_ACCESS_VIOLATION;
+  return X_STATUS_SUCCESS;
+}
+}
+REX_EXPORT(__imp__XInputdGetFailedConnectionOrBind, rex::kernel::xboxkrnl::XInputdGetFailedConnectionOrBind_entry)''')
+    # Input bridge may already have installed these headers; avoid depending
+    # on the order of the two independently applied SDK patches.
+    for header in ("<rex/kernel/guest_memory.h>","<rex/kernel/types/status.h>"):
+        directive="#include "+header
+        if directive not in hid:
+            hid=directive+"\n"+hid
+    return stub,hal,hid
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -286,6 +352,10 @@ def main():
         anchor=f"REX_EXPORT_STUB(__imp__{symbol});"
         if original.count(anchor)!=1:raise ValueError(f"unexpected {symbol} stub")
         replacements[path]=original.replace(anchor,f"REX_EXPORT_STUB_RETURN(__imp__{symbol}, 0);")
+    hal=source.parent/"xboxkrnl_hal.cpp"
+    hid=source.parent/"xboxkrnl_hid.cpp"
+    replacements[source],replacements[hal],replacements[hid]=patch_native_hardware(
+        replacements[source],replacements[hal],hid.read_text())
     ob=source.parent/"xboxkrnl_ob.cpp"
     io=source.parent/"xboxkrnl_io.cpp"
     replacements[ob]=patch_object_contracts(ob.read_text())
