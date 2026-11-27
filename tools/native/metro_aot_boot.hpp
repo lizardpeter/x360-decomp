@@ -31,7 +31,8 @@ inline auto find_retail_xam(rex::kernel::IModuleRegistry& registry) {
 // Keep the writable dashboard cache separate from the verified read-only
 // firmware tree. Use the SDK's existing symbolic-link routing rather than
 // changing mount precedence or enabling writes to the original title.
-inline bool mount_hdd_cache(rex::kernel::TitleRuntime& title) {
+inline bool mount_writable_area(rex::kernel::TitleRuntime& title, const char* folder,
+                                const char* device, const char* alias) {
     namespace fs = std::filesystem;
     namespace vfs = rex::filesystem;
     const auto user_root = REX_PATHS().user_root.Get();
@@ -39,7 +40,7 @@ inline bool mount_hdd_cache(rex::kernel::TitleRuntime& title) {
     std::error_code ec;
     const auto input = fs::weakly_canonical(title.GetTitlePaths().game_root.Get(), ec);
     if (ec || input.empty()) return false;
-    const auto cache = fs::weakly_canonical(user_root / "metro-17559" / "hdd-cache", ec);
+    const auto cache = fs::weakly_canonical(user_root / "metro-17559" / folder, ec);
     if (ec || cache.empty()) return false;
     auto contains = [](const fs::path& parent, const fs::path& child) {
         auto p=parent.begin(), c=child.begin();
@@ -51,12 +52,21 @@ inline bool mount_hdd_cache(rex::kernel::TitleRuntime& title) {
     fs::create_directories(cache,ec);
     if (ec || !fs::is_directory(cache,ec) || ec) return false;
     auto& mounts=title.GetFileSystem();
-    if (!mounts.Mount({"\\Device\\MetroHddCache", vfs::ProviderType::kHostDirectory,
+    if (!mounts.Mount({device, vfs::ProviderType::kHostDirectory,
                        cache, vfs::MountFlags::kWritable, {}})) return false;
-    if (!mounts.Link("\\Device\\Harddisk0\\Partition1\\Cache", "\\Device\\MetroHddCache"))
-        return false;
-    return bool(mounts.Stat("\\Device\\Harddisk0\\Partition1\\Cache")) &&
-           bool(mounts.Stat("game:\\Cache"));
+    if (!mounts.Link(alias,device)) return false;
+    return bool(mounts.Stat(alias));
+}
+
+inline bool mount_hdd_cache(rex::kernel::TitleRuntime& title) {
+    return mount_writable_area(title,"hdd-cache","\\Device\\MetroHddCache",
+                               "\\Device\\Harddisk0\\Partition1\\Cache") &&
+           bool(title.GetFileSystem().Stat("game:\\Cache"));
+}
+
+inline bool mount_dashboard_user(rex::kernel::TitleRuntime& title) {
+    // Per-installation dashboard state: no invented theme or vision files.
+    return mount_writable_area(title,"dashboard-user","\\Device\\MetroDashUser","DASHUSER:");
 }
 
 inline bool mount_flash(rex::kernel::TitleRuntime& title) {
@@ -292,6 +302,8 @@ protected:
         std::cout << "METRO_BOOT pass flash_mount" << std::endl;
         if (!mount_hdd_cache(title)) return fail("hdd_cache_mount");
         std::cout << "METRO_BOOT pass hdd_cache_mount" << std::endl;
+        if (!mount_dashboard_user(title)) return fail("dashboard_user_mount");
+        std::cout << "METRO_BOOT pass dashboard_user_mount" << std::endl;
         auto& registry = title.GetModuleRegistry();
         const auto executable = registry.GetExecutable();
         if (!executable) return fail("dashboard_handle");
@@ -336,7 +348,7 @@ protected:
         while (RunFrame()) {
             const auto frames = GetGraphics().GetFrameStats().frame_count;
             if (attached.load(std::memory_order_acquire) &&
-                frames > 0 && (reported == 0 || frames >= reported + 60)) {
+                frames > 0 && (reported == 0 || frames >= reported + 5)) {
                 reported = frames;
                 std::cout << "METRO_BOOT frames " << frames << std::endl;
             }

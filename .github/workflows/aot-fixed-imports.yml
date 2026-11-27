@@ -47,6 +47,8 @@ on:
       - 'tests/sdk/metro_xconfig.cpp'
       - 'tests/test_metro_fault_localization.py'
       - 'tools/stage_dashboard_runtime.py'
+      - 'target.toml'
+      - 'tests/test_dashboard_runtime.py'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
       - 'tests/test_metro_sdk_patches.py'
@@ -84,7 +86,8 @@ jobs:
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
           python tools/stage_metro_preflight.py build/fixed-imports/dash_17559
           mkdir -p build/receipts
-          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json --flash-tree
+          python -m unittest discover -s tests -p test_dashboard_runtime.py
+          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json --flash-tree --fetch-fonts --require-fonts
       - uses: actions/checkout@v4
         with:
           repository: rexglue/rexglue-sdk
@@ -227,7 +230,7 @@ jobs:
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/fixed-imports/dash_17559"
           set +e
-          timeout --kill-after=15s 120s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+          timeout --kill-after=15s 150s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
           status=$?
           set -e
           printf '%s\n' "$status" > build/receipts/metro-boot-exit-code.txt

@@ -98,6 +98,8 @@ read_frame() {
   grep -E '^METRO_BOOT frames [1-9][0-9]*$' "$out/boot.log" | tail -n 1 | awk '{print $3}' || true
 }
 pad_observed=0
+visual_changes=0
+previous_image="$out/input-01-idle.png"
 for key in Right Left; do
   kill -0 "$pid" 2>/dev/null || exit 1
   line_start="$(wc -l < "$out/boot.log")"
@@ -107,10 +109,25 @@ for key in Right Left; do
   sleep 0.25
   xdotool keyup "$key"
   xdotool keyup Shift_L
-  sleep 3
+  # The CI software Vulkan device may present much slower than 60 Hz.
+  # Wait for a measured counter advance, not an assumed three-second cadence.
   frame_after="$(read_frame)"
+  for _ in $(seq 1 15); do
+    kill -0 "$pid" 2>/dev/null || exit 1
+    if [[ "$frame_before" =~ ^[1-9][0-9]*$ && "$frame_after" =~ ^[1-9][0-9]*$ ]] &&
+       [ "$frame_after" -gt "$frame_before" ]; then break; fi
+    sleep 1
+    frame_after="$(read_frame)"
+  done
   kill -0 "$pid" 2>/dev/null || exit 1
   import -window "$win" "$out/input-$key.png"
+  # Identical pixels cannot prove menu navigation, even when input reaches XAM.
+  if ! compare -metric AE "$previous_image" "$out/input-$key.png" null: 2>"$out/input-$key-difference.txt"; then
+    if [[ "$(cat "$out/input-$key-difference.txt")" =~ ^[1-9][0-9]*$ ]]; then
+      visual_changes=$((visual_changes+1))
+    fi
+  fi
+  previous_image="$out/input-$key.png"
   printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
   if [[ "$frame_before" =~ ^[1-9][0-9]*$ && "$frame_after" =~ ^[1-9][0-9]*$ ]] && [ "$frame_after" -gt "$frame_before" ]; then
     # The keyboard bindings intentionally emit right/left D-pad bits.
@@ -138,6 +155,11 @@ printf 'input_probes_with_frame_progress_and_pad_transition=%s\n' "$pad_observed
 cat "$out/receipt.txt"
 if [ "$pad_observed" -ne 2 ]; then
   echo "Guest-consumed pad transitions and frame progress have not been established for both probes." >&2
+  exit 1
+fi
+printf 'input_probes_with_pixel_changes=%s\n' "$visual_changes" | tee -a "$out/receipt.txt"
+if [ "$visual_changes" -ne 2 ]; then
+  echo "Original guest consumed input, but the captured pixels did not change for both probes." >&2
   exit 1
 fi
 echo "Captured actual guest-frame and input candidates; visual menu inspection is still required."

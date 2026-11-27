@@ -4,7 +4,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-from fetch_originals import ROOT, config, check
+from fetch_originals import ROOT, config, check, acquire
 from prepare_recompilation import original, EXPECTED
 from pirs import parse as parse_pirs
 
@@ -50,6 +50,17 @@ def put(destination, relative, data):
         path.write_bytes(data)
     return {"path":relative,"bytes":len(data),"sha256":digest(data)}
 
+def acquire_font_complements(destination, cfg, downloader=acquire):
+    """Only retrieve existing pinned complements from the configured owner archive."""
+    destination.mkdir(parents=True, exist_ok=True)
+    for spec in cfg.get("local_resource", []):
+        if "key" not in spec:
+            raise ValueError("no configured source for "+spec["name"])
+        path=downloader(spec|{"id":spec["name"]}, ROOT/"originals", cfg["r2_public"])
+        check(path,spec|{"id":spec["name"]})
+        put(destination,spec["name"],path.read_bytes())
+    return destination
+
 def stage(destination, members, census, shared, font_dir=None, require_fonts=False, include_flash=False):
     verify_members(members,census)
     entries=[]
@@ -92,6 +103,7 @@ def main():
     p.add_argument("--output",type=Path,default=ROOT/"build/aot-host/dash_17559/inputs")
     p.add_argument("--receipt",type=Path,default=ROOT/"build/dashboard-runtime-receipt.json")
     p.add_argument("--font-dir",type=Path)
+    p.add_argument("--fetch-fonts",action="store_true",help="retrieve exact pinned complements from the configured owner archive")
     p.add_argument("--require-fonts",action="store_true")
     p.add_argument("--flash-tree",action="store_true",help="also stage read-only flash mount inputs")
     a=p.parse_args()
@@ -100,7 +112,10 @@ def main():
             p.error("runtime tree and receipt must remain under ignored build/")
     census=json.loads((ROOT/"analysis/pirs_17559/members.json").read_text())
     members=parse_pirs(original("pirs"))
-    result=stage(a.output.resolve(),members,census,original("shared_resources"),a.font_dir,a.require_fonts,a.flash_tree)
+    if a.fetch_fonts and a.font_dir:
+        p.error("--fetch-fonts and --font-dir are mutually exclusive")
+    fonts=acquire_font_complements(ROOT/"build/metro-font-complements",config()) if a.fetch_fonts else a.font_dir
+    result=stage(a.output.resolve(),members,census,original("shared_resources"),fonts,a.require_fonts,a.flash_tree)
     a.receipt.parent.mkdir(parents=True,exist_ok=True)
     a.receipt.write_text(json.dumps(result,indent=2)+"\n")
     print(json.dumps({k:v for k,v in result.items() if k!="files"}))

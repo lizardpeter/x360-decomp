@@ -9,3 +9,7 @@ python tools/stage_dashboard_runtime.py --font-dir /path/to/your/local/originals
 ```
 
 The default destination is the ignored AOT dashboard input directory. The SDK and our eventual hosted loader must still mount and register the system modules, configure the original UI services and render the dashboard. A receipt records guest_boot_verified=false.
+
+## First live background, not a usable menu
+
+Run 45949049905 initialized the original system object at 401E0900 and presented 241 frames. Both D-pad transitions were consumed by original XAM. Visual inspection of the actual captures shows only the gray gradient; candidates 02–04 and all navigation captures have identical pixels. The run also observed 22 missing XenonJKLatin opens, missing DASHUSER theme paths, a missing hud.xex lookup, and 298336 missing HdDvdRom mount lookups. No menu or navigation is claimed. The user-owned R2 inventory contains candidate original font complements with the exact pinned lengths; the new boot staging checks the already-pinned SHA-256 for each before use, and fails closed if either differs. The new writable DASHUSER area contains no synthetic theme or effect files. Input verification now samples more frequently, waits for actual frame progress, and separately rejects unchanged navigation pixels. HD-DVD polling and the dynamically loaded HUD remain unresolved; do not present the device as connected or substitute a non-original UI.
