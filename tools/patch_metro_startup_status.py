@@ -31,14 +31,106 @@ def trace_export(source,symbol):
   }}
 }}""",1)
 
+CUSTOM_OBJECT_EDITS = {
+  "include/rex/kernel/object/kernel_object.h": [
+    [
+      "#include <atomic>",
+      "#include <atomic>\n#include <functional>"
+    ],
+    [
+      "  bool owns_guest_block = false;",
+      "  u32 guest_object_type = 0;\n  bool guest_creation_pending = false;\n  bool guest_published = false;\n  std::function<void(bool)> guest_cleanup;\n  bool owns_guest_block = false;"
+    ]
+  ],
+  "include/rex/kernel/object/object_table.h": [
+    [
+      "  /** Pins every `KernelObject`, once per `KernelObject`. */",
+      "  // Register a body owned by an original guest allocator, initially without a handle.\n  [[nodiscard]] virtual Result<void> AddGuestObject(std::unique_ptr<KernelObject> object,\n                                                    u32 body_address) = 0;\n  [[nodiscard]] virtual Result<X_HANDLE> InsertGuestObject(const ObjectPin& object) = 0;\n\n  /** Pins every `KernelObject`, once per `KernelObject`. */"
+    ]
+  ],
+  "src/kernel/object_table.h": [
+    [
+      "  ObjectPin GetByAddress(u32 address) override;",
+      "  [[nodiscard]] Result<void> AddGuestObject(std::unique_ptr<KernelObject> object,\n                                            u32 body_address) override;\n  [[nodiscard]] Result<X_HANDLE> InsertGuestObject(const ObjectPin& object) override;\n  ObjectPin GetByAddress(u32 address) override;"
+    ],
+    [
+      "  X_HANDLE AddSlot(KernelObject* object);",
+      "  X_HANDLE AddSlot(KernelObject* object);\n  void SyncGuestCounts(KernelObject* object);"
+    ]
+  ],
+  "src/kernel/object_table.cpp": [
+    [
+      "KernelObject::~KernelObject() {\n  if (owns_guest_block",
+      "KernelObject::~KernelObject() {\n  if (guest_cleanup)\n    log::NoThrow(log::system, [this] { guest_cleanup(guest_published); });\n  if (owns_guest_block"
+    ],
+    [
+      "    for (auto& [raw, owned] : objects_) {\n      retired.push_back(owned.release());",
+      "    for (auto& [raw, owned] : objects_) {\n      raw->guest_published = false; // no delete callbacks during bulk teardown\n      retired.push_back(owned.release());"
+    ],
+    [
+      "X_HANDLE ObjectTable::AddSlot(KernelObject* object) {",
+      "void ObjectTable::SyncGuestCounts(KernelObject* object) {\n  if (!object->guest_object_type || !memory_) return;\n  auto* header = memory_->TranslateVirtual<X_OBJECT_HEADER*>(\n      object->guest_ptr - static_cast<u32>(sizeof(X_OBJECT_HEADER)));\n  header->pointer_count = object->pointer_refs + static_cast<u32>(object->handles.size());\n  header->handle_count = static_cast<u32>(object->handles.size());\n}\n\nX_HANDLE ObjectTable::AddSlot(KernelObject* object) {"
+    ],
+    [
+      "  object->handles.push_back(handle);\n  return handle;",
+      "  object->handles.push_back(handle);\n  SyncGuestCounts(object);\n  return handle;"
+    ],
+    [
+      "Result<X_HANDLE> ObjectTable::AddEvent(bool manual_reset, bool initial_state) {",
+      "Result<void> ObjectTable::AddGuestObject(std::unique_ptr<KernelObject> object,\n                                         u32 body_address) {\n  if (!object || !object->guest_object_type || !body_address || !object->guest_cleanup)\n    return Err(StatusError(X_STATUS_INVALID_PARAMETER));\n  std::unique_lock lock(mutex_);\n  if (block_objects_.contains(body_address))\n    return Err(StatusError(X_STATUS_OBJECT_NAME_COLLISION));\n  object->pointer_refs = 1;\n  object->guest_creation_pending = true;\n  KernelObject* raw = Register(std::move(object), AddOptions{{}, ObjectBlock{body_address}});\n  raw->guest_published = true;\n  SyncGuestCounts(raw);\n  return Ok();\n}\n\nResult<X_HANDLE> ObjectTable::InsertGuestObject(const ObjectPin& object) {\n  if (!object) return Err<X_HANDLE>(StatusError(X_STATUS_INVALID_HANDLE));\n  std::unique_lock lock(mutex_);\n  KernelObject* raw = &object.GetKernelObject();\n  if (!objects_.contains(raw) || !raw->guest_object_type ||\n      !raw->guest_creation_pending || !raw->pointer_refs)\n    return Err<X_HANDLE>(StatusError(X_STATUS_INVALID_HANDLE));\n  const auto handle = AddSlot(raw);\n  --raw->pointer_refs;\n  raw->guest_creation_pending = false;\n  SyncGuestCounts(raw);\n  return handle;\n}\n\nResult<X_HANDLE> ObjectTable::AddEvent(bool manual_reset, bool initial_state) {"
+    ],
+    [
+      "  std::erase(object->handles, handle);",
+      "  std::erase(object->handles, handle);\n  SyncGuestCounts(object);"
+    ],
+    [
+      "  ++raw->pointer_refs;\n  return Ok();",
+      "  ++raw->pointer_refs;\n  SyncGuestCounts(raw);\n  return Ok();"
+    ],
+    [
+      "    --raw->pointer_refs;\n    retired = Settle(raw);",
+      "    --raw->pointer_refs;\n    SyncGuestCounts(raw);\n    retired = Settle(raw);"
+    ]
+  ],
+  "src/kernel/xboxkrnl/xboxkrnl_ob.cpp": [
+    [
+      "#include <utility>",
+      "#include <utility>\n#include <cstring>\n#include <rex/kernel/function_dispatcher.h>"
+    ],
+    [
+      "u32 ObOpenObjectByPointer_entry(MappedVoid object_ptr, MappedU32 out_handle_ptr) {",
+      "u32 ObCreateObject_entry(u32 type_address, u32 attributes, u32 size, MappedU32 output) {\n  auto& runtime = kernel::GetCurrent();\n  auto& memory = runtime.GetGuestMemory();\n  const u32 out = output.GetGuestAddress();\n  if (!out || !memory.GetWritableSpan(out, sizeof(be_u32))) return X_STATUS_ACCESS_VIOLATION;\n  if (attributes) return X_STATUS_NOT_SUPPORTED;\n  if (!type_address || !size || size > 0xffffffffu - sizeof(X_OBJECT_HEADER))\n    return X_STATUS_INVALID_PARAMETER;\n  auto descriptor = memory.Load<X_OBJECT_TYPE>(type_address);\n  if (!descriptor) return X_STATUS_ACCESS_VIOLATION;\n  const u32 alloc = descriptor->constructor, release = descriptor->destructor;\n  const u32 cleanup = descriptor->unk_0c;\n  if (!alloc || !release || descriptor->unk_08 || descriptor->unk_10)\n    return X_STATUS_NOT_SUPPORTED;\n  auto* current = KernelThread::GetCallingThread();\n  auto* dispatcher = kernel::GetCurrentState().GetFunctionDispatcher();\n  if (!current || !dispatcher || !dispatcher->GetFunction(alloc) ||\n      !dispatcher->GetFunction(release) || (cleanup && !dispatcher->GetFunction(cleanup)))\n    return X_STATUS_PROCEDURE_NOT_FOUND;\n  const u32 total = size + static_cast<u32>(sizeof(X_OBJECT_HEADER));\n  u64 args[] = {total, static_cast<u32>(descriptor->pool_tag), 0};\n  const u32 block = static_cast<u32>(dispatcher->Execute(current->GetThreadState(), alloc, args, 3));\n  if (!block || block == 0xDEADBABEu) return X_STATUS_NO_MEMORY;\n  auto free_block = [&] {\n    u64 free_args[] = {block};\n    dispatcher->Execute(current->GetThreadState(), release, free_args, 1);\n  };\n  auto bytes = memory.GetWritableSpan(block, total);\n  if (!bytes || u64{block} + total > 0x100000000ull) {\n    free_block();\n    return X_STATUS_ACCESS_VIOLATION;\n  }\n  const u32 body = block + static_cast<u32>(sizeof(X_OBJECT_HEADER));\n  if (runtime.GetObjectTable().GetByAddress(body)) return X_STATUS_OBJECT_NAME_COLLISION;\n  std::memset(bytes->data(), 0, bytes->size());\n  X_OBJECT_HEADER header{};\n  header.pointer_count = 1;\n  header.object_type_ptr = type_address;\n  if (!memory.Store(block, header)) {\n    free_block();\n    return X_STATUS_ACCESS_VIOLATION;\n  }\n  auto object = std::make_unique<KernelObject>(std::in_place_type<XAMObject>,\n                                               std::unique_ptr<IXAMObject>{});\n  object->guest_object_type = type_address;\n  object->guest_cleanup = [owner=&runtime, block, body, cleanup, release](bool published) {\n    auto* caller = KernelThread::GetCallingThread();\n    if (!caller || &caller->GetRuntime() != owner) {\n      REXKRNL_WARN(\"Custom object {:08X} retired outside guest context\", body);\n      return;\n    }\n    auto* dispatch = kernel::GetCurrentState().GetFunctionDispatcher();\n    if (!dispatch || !dispatch->GetFunction(release)) return;\n    if (published && cleanup) {\n      if (!dispatch->GetFunction(cleanup)) return;\n      u64 delete_args[] = {body};\n      dispatch->Execute(caller->GetThreadState(), cleanup, delete_args, 1);\n    }\n    u64 release_args[] = {block};\n    dispatch->Execute(caller->GetThreadState(), release, release_args, 1);\n  };\n  auto& table = runtime.GetObjectTable();\n  auto added = table.AddGuestObject(std::move(object), body);\n  if (!added) return ToXStatus(added);\n  if (!memory.Store(out, be_u32{body})) {\n    auto pin = table.GetByAddress(body);\n    if (pin) (void)table.Dereference(pin);\n    return X_STATUS_ACCESS_VIOLATION;\n  }\n  REXKRNL_TRACE(\"Custom object type={:08X} body={:08X} size={}\", type_address, body, size);\n  return X_STATUS_SUCCESS;\n}\n\nu32 ObInsertObject_entry(u32 body, u32 attributes, u32 bias, MappedU32 output) {\n  auto& runtime = kernel::GetCurrent();\n  const u32 out = output.GetGuestAddress();\n  if (!out || !runtime.GetGuestMemory().GetWritableSpan(out, sizeof(be_u32)))\n    return X_STATUS_ACCESS_VIOLATION;\n  if (attributes || bias) return X_STATUS_NOT_SUPPORTED;\n  auto& table = runtime.GetObjectTable();\n  auto object = table.GetByAddress(body);\n  if (!object || !object.GetKernelObject().guest_object_type) return X_STATUS_INVALID_HANDLE;\n  auto inserted = table.InsertGuestObject(object);\n  if (!inserted) return ToXStatus(inserted);\n  *output = *inserted;\n  return X_STATUS_SUCCESS;\n}\n\nu32 ObOpenObjectByPointer_entry(MappedVoid object_ptr, MappedU32 out_handle_ptr) {"
+    ],
+    [
+      "  auto object = table.ResolveObject(object_ptr.GetGuestAddress(), -1);",
+      "  auto object = table.GetByAddress(object_ptr.GetGuestAddress());\n  if (!object) {\n    if (!object_ptr.GetGuestAddress() ||\n        !kernel::GetCurrent().GetGuestMemory().GetReadOnlySpan(\n            object_ptr.GetGuestAddress(), sizeof(X_DISPATCH_HEADER)))\n      return X_STATUS_ACCESS_VIOLATION;\n    object = table.ResolveObject(object_ptr.GetGuestAddress(), -1);\n  }"
+    ],
+    [
+      "    const u32 expected_type = kernel::GetCurrentState().GetObjectTypeAddress(object.GetType());",
+      "    const u32 expected_type = object.GetKernelObject().guest_object_type\n        ? object.GetKernelObject().guest_object_type\n        : kernel::GetCurrentState().GetObjectTypeAddress(object.GetType());"
+    ],
+    [
+      "REX_EXPORT_STUB(__imp__ObCreateObject);",
+      "REX_EXPORT(__imp__ObCreateObject, rex::kernel::xboxkrnl::ObCreateObject_entry)"
+    ],
+    [
+      "REX_EXPORT_STUB(__imp__ObInsertObject);",
+      "REX_EXPORT(__imp__ObInsertObject, rex::kernel::xboxkrnl::ObInsertObject_entry)"
+    ]
+  ]
+}
+
+def patch_guest_objects(path, source):
+    for old, new in CUSTOM_OBJECT_EDITS[path]:
+        if source.count(old)!=1:raise ValueError('guest object anchor: '+path+' '+old[:80])
+        source=source.replace(old,new,1)
+    return source
+
 def patch_object_contracts(source):
+    source=patch_guest_objects('src/kernel/xboxkrnl/xboxkrnl_ob.cpp',source)
     anchor="#include <rex/kernel/title_runtime.h>"
     if source.count(anchor)!=1:raise ValueError("object memory header")
     source=source.replace(anchor,anchor+"\n#include <rex/kernel/guest_memory.h>",1)
-    for symbol in ("ObCreateObject","ObInsertObject"):
-        anchor=f"REX_EXPORT_STUB(__imp__{symbol});"
-        if source.count(anchor)!=1:raise ValueError("object stub anchor "+symbol)
-        source=source.replace(anchor,f"REX_EXPORT_STUB_RETURN(__imp__{symbol}, rex::kernel::X_STATUS_NOT_SUPPORTED);",1)
     for signature,arg in (
         ("u32 ObLookupThreadByThreadId_entry(u32 thread_id, MappedU32 out_object_ptr) {","out_object_ptr"),
         ("u32 ObReferenceObjectByHandle_entry(u32 handle, u32 object_type_ptr, MappedU32 out_object_ptr) {","out_object_ptr"),
@@ -84,7 +176,7 @@ def patch_object_contracts(source):
     ):
         if source.count(old)!=1:raise ValueError("named reference ABI anchor")
         source=source.replace(old,new,1)
-    for name in ("ObDereferenceObject","ObReferenceObjectByHandle","ObReferenceObjectByName","ObOpenObjectByPointer","ObLookupThreadByThreadId"):
+    for name in ("ObCreateObject","ObInsertObject","ObDereferenceObject","ObReferenceObjectByHandle","ObReferenceObjectByName","ObOpenObjectByPointer","ObLookupThreadByThreadId"):
         source=trace_export(source,name)
     anchor='    REXKRNL_WARN("ObDereferenceObject: {:#x} is not a registered object", native_ptr);'
     if source.count(anchor)!=1:raise ValueError("invalid release trace")
@@ -140,6 +232,9 @@ def main():
     io=source.parent/"xboxkrnl_io.cpp"
     replacements[ob]=patch_object_contracts(ob.read_text())
     replacements[io]=patch_io_trace(io.read_text())
+    for rel in CUSTOM_OBJECT_EDITS:
+        path=a.sdk/rel
+        if path!=ob:replacements[path]=patch_guest_objects(rel,path.read_text())
     for path,updated in replacements.items():
         path.write_text(updated)
     tests.write_text(old+"\n"+a.tests.read_text())

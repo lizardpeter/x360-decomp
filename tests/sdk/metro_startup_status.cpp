@@ -40,7 +40,7 @@ REX_TEST_CASE("metro_startup_status: unsupported custom object exports preserve 
     c.Store32(out,0xbebebebe);
     CHECK(c.Kernel("ObCreateObject",{descriptor,0,48,out})==X_STATUS_NOT_SUPPORTED);
     CHECK(c.Load32(out)==0xbebebebe);
-    CHECK(c.Kernel("ObInsertObject",{object,0,0,out})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Kernel("ObInsertObject",{object,0,0,out})==X_STATUS_INVALID_HANDLE);
     CHECK(c.Load32(out)==0xbebebebe);
     CHECK(c.Kernel("ObOpenObjectByPointer",{object,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
     CHECK(c.Kernel("ObLookupThreadByThreadId",{0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
@@ -90,5 +90,78 @@ REX_TEST_CASE("metro_startup_status: original counted object names and missing d
     CHECK(c.Kernel("IoSynchronousDeviceIoControlRequest",{0x2d001c,0xbebebebe,0,0,data,16,returned,0})==X_STATUS_INVALID_HANDLE);
     CHECK(c.Load32(data)==0x11223344);
     CHECK(c.Load32(returned)==0x55667788);
+  });
+}
+
+#include <atomic>
+#include <rex/kernel/function_dispatcher.h>
+#include <rex/kernel/object/kernel_thread.h>
+#include <rex/kernel/title_runtime.h>
+#include "kernel/test_access.h"
+namespace {
+std::atomic<u32> metro_allocs{0}, metro_deletes{0}, metro_frees{0}, metro_size{0}, metro_tag{0}, metro_value{0};
+void MetroObjectAllocate(PPCContext& ctx,u8* base) {
+  rex::test::Caller c(ctx,base,rex::kernel::KernelThread::GetCallingThread()->GetRuntime());
+  ++metro_allocs; metro_size=ctx.r3.u32; metro_tag=ctx.r4.u32;
+  ctx.r3.u64=c.Kernel("ExAllocatePoolTypeWithTag",{ctx.r3.u32,ctx.r4.u32,ctx.r5.u32});
+}
+void MetroObjectDelete(PPCContext& ctx,u8* base) {
+  rex::test::Caller c(ctx,base,rex::kernel::KernelThread::GetCallingThread()->GetRuntime());
+  ++metro_deletes; metro_value=c.Load32(ctx.r3.u32);
+}
+void MetroObjectFree(PPCContext& ctx,u8* base) {
+  rex::test::Caller c(ctx,base,rex::kernel::KernelThread::GetCallingThread()->GetRuntime());
+  ++metro_frees; c.Kernel("ExFreePool",{ctx.r3.u32});
+}
+}
+REX_TEST_CASE("metro_startup_status: custom guest object callbacks and ownership",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    metro_allocs=0; metro_deletes=0; metro_frees=0;
+    auto& dispatch=GetFunctionDispatcher(c.GetRuntime());
+    const u32 alloc=dispatch.AllocateThunk(&MetroObjectAllocate,0);
+    const u32 release=dispatch.AllocateThunk(&MetroObjectFree,0);
+    const u32 cleanup=dispatch.AllocateThunk(&MetroObjectDelete,0);
+    REQUIRE(alloc); REQUIRE(release); REQUIRE(cleanup);
+    const u32 type=c.Alloc(28), other=c.Alloc(28), out=c.Alloc(4), h=c.Alloc(4), dup=c.Alloc(4);
+    c.Store32(type,alloc); c.Store32(type+4,release); c.Store32(type+12,cleanup);
+    c.Store32(type+20,12); c.Store32(type+24,0x66746f4e);
+    CHECK(c.Kernel("ObCreateObject",{type,0,48,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(metro_allocs.load()==0);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,48,out})==0);
+    const u32 body=c.Load32(out);
+    REQUIRE(body); CHECK(metro_allocs.load()==1);
+    CHECK(metro_size.load()==64); CHECK(metro_tag.load()==0x66746f4e);
+    CHECK(c.Load32(body-16)==1); CHECK(c.Load32(body-12)==0); CHECK(c.Load32(body-8)==type);
+    for(u32 i=0;i<48;i+=4)CHECK(c.Load32(body+i)==0);
+    c.Store32(body,0x10203040); c.Store32(h,0xbebebebe);
+    CHECK(c.Kernel("ObInsertObject",{body,0,0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ObInsertObject",{body,0,1,h})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(h)==0xbebebebe);
+    REQUIRE(c.Kernel("ObInsertObject",{body,0,0,h})==0);
+    const u32 handle=c.Load32(h);
+    CHECK(c.Load32(body-16)==1); CHECK(c.Load32(body-12)==1);
+    CHECK(c.Kernel("ObInsertObject",{body,0,0,dup})==X_STATUS_INVALID_HANDLE);
+    CHECK(c.Kernel("ObReferenceObjectByHandle",{handle,other,out})==X_STATUS_OBJECT_TYPE_MISMATCH);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{handle,type,out})==0);
+    CHECK(c.Load32(out)==body); CHECK(c.Load32(body-16)==2);
+    REQUIRE(c.Kernel("NtDuplicateObject",{handle,dup,0})==0);
+    CHECK(c.Load32(body-16)==3); CHECK(c.Load32(body-12)==2);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+    CHECK(c.Kernel("NtClose",{c.Load32(dup)})==0);
+    CHECK(c.Load32(body-16)==1); CHECK(c.Load32(body-12)==0);
+    CHECK(metro_deletes.load()==0); CHECK(metro_frees.load()==0);
+    CHECK(c.Kernel("ObDereferenceObject",{body})==0);
+    CHECK(metro_deletes.load()==1); CHECK(metro_frees.load()==1);
+    CHECK(metro_value.load()==0x10203040);
+    CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(body));
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
+    const u32 uninserted=c.Load32(out);
+    c.Store32(uninserted,0xaabbccdd);
+    CHECK(c.Kernel("ObDereferenceObject",{uninserted})==0);
+    CHECK(metro_allocs.load()==2); CHECK(metro_deletes.load()==2); CHECK(metro_frees.load()==2);
+    CHECK(metro_value.load()==0xaabbccdd);
   });
 }
