@@ -82,7 +82,8 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 base,u32 s
   // The live 394ea8ba run reached the original callback but the LR-gated
   // correction never selected direct mode. Use actual mapped module identity,
   // not an assumed LR value at a compiled host import.
-  for (const auto candidate : {registry.FindUserModule("xam.xex"),registry.GetExecutable()}) {
+  for (const auto candidate : {registry.FindUserModule("xam.xex"),registry.FindUserModule("bootanim.xex"),
+                               registry.GetExecutable()}) {
     if (!candidate)continue;
     auto module=runtime.GetObjectTable().Get<ModuleObject>(*candidate);
     const auto* xex=module?module->GetXEX():nullptr;

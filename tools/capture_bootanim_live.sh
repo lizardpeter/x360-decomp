@@ -7,7 +7,8 @@ inputs="$(realpath "$2")"
 out="$(realpath -m "$3")"
 mkdir -p "$out"
 cd "$native"
-export X360_BOOTANIM_FLAGS=0 X360_BOOTANIM_CONTROL=two_phase SDL_AUDIODRIVER=dummy
+export X360_BOOTANIM_FLAGS=0 X360_BOOTANIM_CONTROL=two_phase
+export SDL_AUDIODRIVER="${X360_BOOTANIM_AUDIO_DRIVER:-dummy}"
 ./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex > "$out/bootanim-live.log" 2>&1 &
 pid=$!
 trap 'kill -KILL "$pid" 2>/dev/null || true' EXIT
