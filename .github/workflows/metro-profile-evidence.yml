@@ -5,6 +5,8 @@ on:
     paths:
       - 'tools/stage_metro_profile_modules.py'
       - 'tools/metro_profile_evidence.py'
+      - 'tools/metro_storage_boundary.py'
+      - 'tests/test_metro_storage_boundary.py'
       - 'tests/test_metro_profile_evidence.py'
       - '.github/workflows/metro-profile-evidence.yml'
 permissions:
@@ -33,15 +35,18 @@ jobs:
       - name: Trace original local profile and storage ABI graph
         run: |
           python -m unittest discover -s tests -p test_metro_profile_evidence.py
+          python -m unittest discover -s tests -p test_metro_storage_boundary.py
           python tools/fetch_originals.py --only pirs --only dash_basic
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
           python tools/stage_metro_profile_modules.py --receipt build/receipts/profile-module-inventory.json
           python tools/metro_profile_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-profile-evidence.json
+          python tools/metro_storage_boundary.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-storage-boundary.json
       - uses: actions/upload-artifact@v4
         with:
           name: metro-profile-evidence
           path: |
             build/receipts/metro-profile-evidence.json
             build/receipts/profile-module-inventory.json
+            build/receipts/metro-storage-boundary.json
           if-no-files-found: error
