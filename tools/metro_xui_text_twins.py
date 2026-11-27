@@ -127,7 +127,7 @@ def main():
         modules[label]={"image":image,"base":base,"pe":pe,"funcs":funcs,
                         "rows":rows,"by_sig":by_sig,"by_len":by_len}
     x,d=modules["xam"],modules["dash"]
-    exports=dict(ordinal_exports(x["image"],x["base"],parse_xex(xam)))
+    exports=dict(ordinal_exports(x["image"],x["base"],xam))
     # The documented named functions are actual ordinal entries, not guessed
     # absolute addresses. Include their internal direct callees up to depth 3.
     roots={exports[o]:name for o,name in EXPORTS.items() if o in exports}
