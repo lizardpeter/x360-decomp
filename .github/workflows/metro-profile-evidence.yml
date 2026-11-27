@@ -41,5 +41,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: metro-profile-evidence
-          path: build/receipts/metro-profile-evidence.json
+          path: |
+            build/receipts/metro-profile-evidence.json
+            build/receipts/profile-module-inventory.json
           if-no-files-found: error

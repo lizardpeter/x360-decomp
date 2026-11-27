@@ -11,6 +11,9 @@ from verify_retail_firmware import KEY
 
 STUB="REX_EXPORT_STUB(__imp__XeKeysGetKey);"
 INCLUDE="#include <rex/kernel/title_runtime.h>"
+NAMESPACE="namespace rex::kernel::xboxkrnl {"
+CLOSE="}  // namespace rex::kernel::xboxkrnl"
+EXPORT="REX_EXPORT(__imp__XeKeysGetKey, rex::kernel::xboxkrnl::XeKeysGetKey_entry)"
 PUBLIC_SIZE=0x110
 PUBLIC_ID=0x39
 
@@ -41,8 +44,9 @@ def c_words(data):
 def corrected(source):
     if source.count(STUB)!=1 or source.count(INCLUDE)!=1 or "MetroPirsPublicKey" in source:
         raise ValueError("unexpected public verification provider anchor")
+    if source.count(NAMESPACE)!=1 or source.count(CLOSE)!=1 or not source.index(NAMESPACE)<source.index(STUB)<source.index(CLOSE):
+        raise ValueError("unexpected crypto export namespace")
     body=r"""
-namespace rex::kernel::xboxkrnl {
 namespace {
 // Only the independently authenticated Microsoft PIRS public verification key.
 // No private or per-console keys, no signing operation, no alternate trust root.
@@ -52,7 +56,7 @@ constexpr std::array<u8,0x110> MetroPirsPublicKey{{
 }
 u32 XeKeysGetKey_entry(u32 id, u32 key_address, u32 length_address) {
   if (id!=0x39u) return X_STATUS_NOT_SUPPORTED;
-  auto& memory=kernel::GetCurrent().GetGuestMemory();
+  auto& memory=::rex::kernel::GetCurrent().GetGuestMemory();
   if (!length_address || !memory.GetWritableSpan(length_address,sizeof(be_u32)))
     return X_STATUS_ACCESS_VIOLATION;
   const auto length=memory.Load<be_u32>(length_address);
@@ -72,10 +76,9 @@ u32 XeKeysGetKey_entry(u32 id, u32 key_address, u32 length_address) {
   // assert that any resource signature is valid; retail must verify it.
   return X_STATUS_SUCCESS;
 }
-}
-REX_EXPORT(__imp__XeKeysGetKey,rex::kernel::xboxkrnl::XeKeysGetKey_entry)
 """.replace("@PUBLIC_BYTES@",c_bytes(guest_public_blob()))
-    return source.replace(INCLUDE,INCLUDE+"\n#include <rex/kernel/guest_memory.h>",1).replace(STUB,body,1)
+    return (source.replace(INCLUDE,INCLUDE+"\n#include <rex/kernel/guest_memory.h>",1)
+            .replace(STUB,body,1).replace(CLOSE,CLOSE+"\n\n"+EXPORT,1))
 
 def vector():
     n=modulus()

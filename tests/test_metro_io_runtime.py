@@ -87,7 +87,7 @@ class IoRuntime(unittest.TestCase):
         self.assertIn("info_ptr.Zero(minimum_length)",volume)
         with self.assertRaises(ValueError):patch_storage_queries(patched)
     def test_pirs_public_provider_is_bounded_and_real(self):
-        from patch_metro_public_verification import STUB,INCLUDE,corrected,guest_public_blob,modulus,guest_number,vector
+        from patch_metro_public_verification import STUB,INCLUDE,NAMESPACE,CLOSE,EXPORT,corrected,guest_public_blob,modulus,guest_number,vector
         key=guest_public_blob()
         self.assertEqual(len(key),272)
         self.assertEqual(key[:8],bytes.fromhex("0000002000000003"))
@@ -95,7 +95,12 @@ class IoRuntime(unittest.TestCase):
         self.assertEqual(int.from_bytes(key[16:24],"big"),modulus()&((1<<64)-1))
         self.assertEqual(len(vector()[0]),256)
         self.assertEqual(len(vector()[1]),256)
-        out=corrected(INCLUDE+"\n"+STUB)
+        source=INCLUDE+"\n"+NAMESPACE+"\n"+STUB+"\n"+CLOSE
+        out=corrected(source)
+        self.assertEqual(out.count(NAMESPACE),1)
+        self.assertLess(out.index("XeKeysGetKey_entry(u32"),out.index(CLOSE))
+        self.assertLess(out.index(CLOSE),out.index(EXPORT))
+        with self.assertRaises(ValueError):corrected(INCLUDE+"\n"+STUB)
         self.assertNotIn(STUB,out)
         self.assertIn("id!=0x39u",out)
         self.assertIn("X_STATUS_NOT_SUPPORTED",out)
