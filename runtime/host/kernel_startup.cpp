@@ -1,6 +1,7 @@
 #include "host/kernel_startup.hpp"
 #include "host/critical_sections.hpp"
 #include "host/rtl_memory.hpp"
+#include "host/rtl_strings.hpp"
 #include "host/dispatcher_objects.hpp"
 #include <algorithm>
 #include <set>
@@ -49,6 +50,9 @@ std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint
 }
 ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){
     if(!ready_||lib!="xboxkrnl.exe")return ImportCallResult::unsupported;
+    if(tls_&&KernelTls::handles(o))return tls_->call(o,diagnostic_thread_,s);
+    if(time_&&KernelTime::handles(o))return time_->call(o,s,memory);
+    if(time_&&RtlStrings::handles(o))return RtlStrings::call(o,s,memory);
     if(files_&&(KernelFiles::handles(o)||((o==0xcf||o==0xda)&&KernelFiles::is_handle(static_cast<std::uint32_t>(s.gpr[3])))))
         return files_->call(o,s,memory);
     if(objects_&&KernelObjects::handles(o))return objects_->call(o,s,memory);

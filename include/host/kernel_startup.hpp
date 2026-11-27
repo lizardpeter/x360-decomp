@@ -5,6 +5,8 @@
 #include "host/kernel_objects.hpp"
 #include "host/kernel_pool.hpp"
 #include "host/kernel_files.hpp"
+#include "host/kernel_time.hpp"
+#include "host/kernel_tls.hpp"
 #include <map>
 namespace x360::host {
 struct Notification {abi::Address routine;std::uint32_t priority;};
@@ -22,20 +24,27 @@ public:
         if(!objects_)objects_.emplace(memory);
         if(!pool_)pool_.emplace(memory);
         if(!files_)files_.emplace(memory);
+        if(!time_)time_.emplace();
+        if(!tls_)tls_.emplace();
+        if(diagnostic_thread_)tls_->add_thread(diagnostic_thread_);
     }
+    KernelTime* time() noexcept{return time_?&*time_:nullptr;}
+    KernelTls* tls() noexcept{return tls_?&*tls_:nullptr;}
     KernelFiles* files() noexcept{return files_?&*files_:nullptr;}
     static constexpr abi::Address hardware_info_address=0x71000100;
     bool install_hardware_info(machine::AddressSpace& memory,const std::array<std::uint8_t,16>& bytes);
     enum class ProcessType:std::uint32_t {idle=0,user=1,system=2};
     void enable_heap_startup(ProcessType type){process_type_=type;}
     // Opt-in diagnostic identity; no guest scheduler is installed.
-    void set_diagnostic_thread(abi::Address owner) noexcept{diagnostic_thread_=owner;}
+    void set_diagnostic_thread(abi::Address owner){diagnostic_thread_=owner;if(tls_&&owner)tls_->add_thread(owner);}
     const std::map<abi::Address,Notification>& notifications() const noexcept{return notifications_;}
 private:
     std::optional<VirtualMemory> virtual_memory_;
     std::optional<KernelObjects> objects_;
     std::optional<KernelPool> pool_;
     std::optional<KernelFiles> files_;
+    std::optional<KernelTime> time_;
+    std::optional<KernelTls> tls_;
     std::optional<ProcessType> process_type_;
     abi::Address diagnostic_thread_{};
     bool hardware_ready_{};
