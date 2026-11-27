@@ -21,6 +21,10 @@ on:
       - 'tools/instrument_metro_heap.py'
       - 'tools/instrument_metro_ui.py'
       - 'tools/instrument_metro_audio.py'
+      - 'tools/stage_metro_intro.py'
+      - 'tools/native/metro_bootanim_mapping.hpp'
+      - 'tools/capture_metro_intro.sh'
+      - 'tests/test_metro_intro.py'
       - 'tests/test_metro_audio_probes.py'
       - 'tests/test_metro_ui_probes.py'
       - 'tests/test_metro_heap_probes.py'
@@ -85,6 +89,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_entries.py
           python -m unittest discover -s tests -p test_metro_ui_probes.py
           python -m unittest discover -s tests -p test_metro_audio_probes.py
+          python -m unittest discover -s tests -p test_metro_intro.py
           python -m unittest discover -s tests -p test_metro_kernel_variables.py
           python -m unittest discover -s tests -p test_metro_boot_evidence.py
           python -m unittest discover -s tests -p test_metro_fault_localization.py
@@ -136,6 +141,9 @@ jobs:
           source=build/sdk-source/thirdparty/libmspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
           python tools/verify_metro_entries.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.so --reference build/metro-reference/titles/dash_17559/analysis/dash_17559_pointer_targets.toml --receipt build/receipts/metro-entry-hints.json
+      - name: Stage the verified original boot animation as a fourth native module
+        run: |
+          python tools/stage_metro_intro.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.so --receipt build/receipts/metro-intro-input.json
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -192,6 +200,7 @@ jobs:
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
           python tools/aot_receipt.py "$folder/generated_xam" --status "$status" --output build/receipts/xam-generated.json
           python tools/aot_receipt.py "$folder/generated_hud" --status "$status" --output build/receipts/hud-generated.json
+          python tools/aot_receipt.py "$folder/generated_bootanim" --status "$status" --output build/receipts/bootanim-generated.json
       - name: Filter invalid zero-address mappings and refresh generated receipts
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
@@ -217,6 +226,7 @@ jobs:
           sha256sum "$folder/native/dash_17559" > build/receipts/dashboard-executable.sha256
           find "$folder/native" -type f -name "libdash_17559_xam.so" -print -quit | grep -q .
       - name: Verify native dashboard and XAM mapping without guest execution
+        id: preflight
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           cd "$folder/native"
@@ -234,7 +244,7 @@ jobs:
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity bootanim_native_mapping clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame
@@ -255,6 +265,29 @@ jobs:
             python tools/analyze_metro_boot.py "$log" --output build/receipts/metro-boot-analysis.json
           fi
           exit "$status"
+      - name: Attempt same-runtime original boot animation to Metro transition
+        if: always() && steps.preflight.outcome == 'success'
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          set +e
+          timeout --kill-after=10s 80s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_intro.sh "$folder/native" "$folder/inputs" "$PWD/build/integrated-intro"
+          status=$?
+          set -e
+          if [ -f build/integrated-intro/integrated.log ]; then
+            cp build/integrated-intro/integrated.log build/receipts/metro-integrated-intro.log
+            python tools/symbolize_metro_crash.py build/integrated-intro/integrated.log "$folder/native" "$SDK" > build/receipts/metro-integrated-symbolized.txt
+          fi
+          exit "$status"
+      - name: Upload isolated intro and post-handoff frame candidates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-original-intro-handoff-candidates
+          path: |
+            build/integrated-intro/intro-*.png
+            build/integrated-intro/dashboard-*.png
+            build/integrated-intro/receipt.txt
+          if-no-files-found: ignore
       - name: Upload actual frame candidates (not menu verification)
         if: always()
         uses: actions/upload-artifact@v4

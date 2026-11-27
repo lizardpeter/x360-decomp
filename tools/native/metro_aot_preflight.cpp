@@ -226,6 +226,11 @@ public:
             !verify_resources(title_,*module,"xam",kXamResources) ||
             !verify_resources(title_,*hud,"hud",kHudResources)) return fail("original_resource_integrity");
         std::cout<<"METRO_PREFLIGHT pass original_resource_integrity"<<std::endl;
+        rex::u32 intro_hmodule=0;
+        if (!metro_intro::load(title_,&intro_hmodule))return fail("bootanim_native_mapping");
+        if (!intro_hmodule || !title_.FindFunction(metro_intro::kStart) ||
+            !title_.FindFunction(metro_intro::kControl))return fail("bootanim_native_mapping");
+        std::cout<<"METRO_PREFLIGHT pass bootanim_native_mapping"<<std::endl;
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
 

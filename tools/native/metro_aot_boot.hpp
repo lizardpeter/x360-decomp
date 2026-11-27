@@ -16,6 +16,11 @@
 #include "metro_preflight_bindings.hpp"
 #include "metro_retail_bindings.hpp"
 #include "metro_kernel_variables.hpp"
+#include "metro_bootanim_mapping.hpp"
+#include <rex/kernel/thread_registry.h>
+#include <chrono>
+#include <cstdlib>
+#include <string_view>
 
 namespace metro_boot {
 inline constexpr char kXamPath[] = "game:\\xam.xex";
@@ -247,9 +252,35 @@ struct EntryBinding {
     PPCFunc* dashboard{};
     rex::kernel::FunctionDispatcher* dispatcher{};
     std::uint32_t xam_handle{};
+    std::uint32_t intro_handle{};
+    PPCFunc* intro_control{};
 };
 inline EntryBinding entry;
 inline std::atomic<bool> attached{false};
+inline std::atomic<bool> intro_entered{false},intro_returned{false},intro_control_done{false};
+
+// The isolated native test proved argument 1 to export 2 requests a clean
+// original return. Execute that original function, never write its flag.
+inline void intro_control(PPCContext& ctx,rex::u8* base) {
+    auto* thread=rex::kernel::KernelThread::GetCallingThread();
+    if (!thread || !entry.intro_control || ctx.r3.u32!=1) {
+        std::cout<<"METRO_INTRO fail control_binding"<<std::endl;
+        if (thread)thread->Exit(1);
+        return;
+    }
+    auto& mem=thread->GetRuntime().GetGuestMemory();
+    const auto before=mem.Load<rex::u8>(metro_intro::kControlFlagA);
+    entry.intro_control(ctx,base);
+    const auto after=mem.Load<rex::u8>(metro_intro::kControlFlagA);
+    if (!before || !after || *after!=1) {
+        std::cout<<"METRO_INTRO fail original_control_flag"<<std::endl;
+        thread->Exit(1);
+    }
+    std::cout<<"METRO_INTRO pass control_return argument=1 flag_a="
+             <<unsigned(*after)<<std::endl;
+    intro_control_done.store(true,std::memory_order_release);
+    ctx.r3.u64=0;
+}
 
 inline void startup(PPCContext& ctx, rex::u8* base) {
     auto* thread = rex::kernel::KernelThread::GetCallingThread();
@@ -257,6 +288,25 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
         !entry.dispatcher || !entry.xam_handle)
         throw std::runtime_error("missing Metro guest startup binding");
     std::cout << "METRO_BOOT pass guest_thread" << std::endl;
+    if (entry.intro_handle) {
+        // Execute saves and restores the caller's full guest register context.
+        // Original animation and dashboard use the SAME runtime and graphics
+        // device. Keep the entryless module mapped until normal runtime unload.
+        rex::u64 args[]={entry.intro_handle,0};
+        intro_entered.store(true,std::memory_order_release);
+        std::cout<<"METRO_INTRO original_entry flags=0"<<std::endl;
+        const auto result=entry.dispatcher->Execute(thread->GetThreadState(),
+            metro_intro::kStart,args,2);
+        intro_returned.store(true,std::memory_order_release);
+        std::cout<<"METRO_INTRO original_return result=0x"<<std::hex<<result<<std::dec<<std::endl;
+        for (int i=0;i<100 && !intro_control_done.load(std::memory_order_acquire);++i)
+            thread->GetRuntime().GetThreadRegistry().SleepCurrentThread(std::chrono::milliseconds(5));
+        if (result!=0 || !intro_control_done.load(std::memory_order_acquire)) {
+            std::cout<<"METRO_INTRO fail original_completion"<<std::endl;
+            thread->Exit(1);
+        }
+        std::cout<<"METRO_INTRO pass original_completion"<<std::endl;
+    }
     // XAM is a system DLL. Its original initializer explicitly chooses
     // a different heap for system and title threads. Run attach with the
     // actual system KPROCESS/TLS, not a forced return from a kernel export.
@@ -295,6 +345,10 @@ protected:
         };
         entry = {};
         attached.store(false, std::memory_order_relaxed);
+        intro_entered=false;intro_returned=false;intro_control_done=false;
+        intro_issued_=false;
+        const char* option=std::getenv("X360_METRO_INTRO");
+        const bool with_intro=option && std::string_view(option)=="1";
         auto& paths = title.GetTitlePaths();
         if (paths.game_root.Get().empty() || paths.entry.Get() != "dash.xex" ||
             paths.game_writable.Get()) return fail("input_settings");
@@ -339,14 +393,56 @@ protected:
         auto* dispatcher = dx->GetFunctionDispatcher();
         if (!original || !dispatcher || *original == &startup) return fail("entry_binding");
         entry = {*original, dispatcher, xam->hmodule_ptr};
+        if (with_intro) {
+            if (!metro_intro::load(title,&entry.intro_handle))return fail("intro_mapping");
+            auto control=title.FindFunction(metro_intro::kControl);
+            if (!control || *control==&intro_control ||
+                !title.GetGuestMemory().GetWritableSpan(metro_intro::kControlFlagA,2))
+                return fail("intro_control_mapping");
+            entry.intro_control=*control;
+            if (!dispatcher->SetFunction(metro_intro::kControl,&intro_control))
+                return fail("intro_control_install");
+            // Hosted diagnostic reserves the minimum tested intro stack.
+            // Never alter the on-disk dashboard XEX or its actual entry.
+            if (dash->user.stack_size<256u*1024u)dash->user.stack_size=256u*1024u;
+            std::cout<<"METRO_INTRO pass prepared diagnostic_flags=0"<<std::endl;
+        }
         if (!dispatcher->SetFunction(kDashEntry, &startup)) return fail("entry_install");
         std::cout << "METRO_BOOT pass mapped" << std::endl;
         return rex::Ok();
     }
     void OnRun() override {
-        std::uint64_t reported = 0;
+        std::uint64_t reported = 0, intro_baseline=0, intro_reported=0, dash_baseline=0;
+        bool intro_seen=false, dash_seen=false;
         while (RunFrame()) {
             const auto frames = GetGraphics().GetFrameStats().frame_count;
+            if (intro_entered.load(std::memory_order_acquire) &&
+                !intro_returned.load(std::memory_order_acquire)) {
+                if (!intro_seen) {intro_seen=true;intro_baseline=frames;}
+                const auto intro_frames=frames>=intro_baseline?frames-intro_baseline:0;
+                if (intro_frames>intro_reported) {
+                    intro_reported=intro_frames;
+                    std::cout<<"METRO_INTRO frames "<<intro_frames<<std::endl;
+                }
+                // 110 actual presented frames was the successful isolated
+                // diagnostic policy; exact retail cold-boot timing is unknown.
+                if (!intro_issued_ && intro_frames>=110) {
+                    intro_issued_=true;
+                    auto& runtime=GetTitleRuntime();
+                    auto control=runtime.GetThreadRegistry().CreateTaskThread(metro_intro::kControl,1);
+                    if (!control) {
+                        std::cout<<"METRO_INTRO fail control_thread_launch"<<std::endl;
+                        rex::app::RequestShutdown(1);
+                    } else rex::kernel::CloseOwned(runtime.GetObjectTable(),*control);
+                }
+            }
+            if (attached.load(std::memory_order_acquire) && !dash_seen) {
+                dash_seen=true;dash_baseline=frames;
+            }
+            if (entry.intro_handle && dash_seen && frames>dash_baseline &&
+                (reported==0 || frames>=reported+5)) {
+                std::cout<<"METRO_INTRO post_handoff_frames "<<frames-dash_baseline<<std::endl;
+            }
             if (attached.load(std::memory_order_acquire) &&
                 frames > 0 && (reported == 0 || frames >= reported + 5)) {
                 reported = frames;
@@ -358,6 +454,8 @@ protected:
         std::cout << "METRO_BOOT guest_exit" << std::endl;
         rex::app::RequestShutdown(1);
     }
+private:
+    bool intro_issued_=false;
 };
 
 inline int run(const rex::CLIArgList& args) {
