@@ -127,8 +127,9 @@ def patched(source,bindings,hud=()):
         if (exp->type == kernel::ExportType::kFunction) {"""
     if hud:
         hud_cases="".join(f"            case 0x{x['ordinal']:04X}: return sym.address == 0x{x['thunk']:08X};\n" for x in hud)
+        replacement=replacement.replace('binary.GetBaseAddress() == 0x92000000 && lib_name == "xam" && [&]() {','(binary.GetBaseAddress() == 0x92000000 && lib_name == "xam" && [&]() {',1)
         replacement=replacement.replace("        }();\n      if (metro_retail_function_import)",
-          "        }() || (binary.GetBaseAddress() == 0x913E0000 && lib_name == \"xam\" && [&]() {\n"
+          "        }()) || (binary.GetBaseAddress() == 0x913E0000 && lib_name == \"xam\" && [&]() {\n"
           "          switch (ordinal) {\n"+hud_cases+"            default: return false;\n"
           "          }\n        }());\n      if (metro_retail_function_import)")
     return source.replace(OLD,replacement,1)
