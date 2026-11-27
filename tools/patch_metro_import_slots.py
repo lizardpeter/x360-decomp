@@ -117,9 +117,12 @@ inline bool IsMetroHudSkinResource(const IXEXImage& xex, std::span<const u8> byt
       xex.GetOptHeaderValue(kXEXHeaderImageBaseAddress).value_or(base) != base ||
       xex.GetOptHeader<XEXOptDataDirectory>(kXEXHeaderExportsByName))
     return false;
-  if (sec.pages.empty()) return false;
-  for (const auto& page : sec.pages)
-    if (page.type != kXEXSectionReadOnlyData && page.type != kXEXSectionData) return false;
+  // The original image audit recovered four read-only 4 KiB page runs.
+  constexpr u32 page_counts[] = {16,16,16,9};
+  if (sec.pages.size()!=4 || !(sec.image_flags & kXEXImagePageSize4KB)) return false;
+  for (size_t i=0;i<4;++i)
+    if (sec.pages[i].type != kXEXSectionReadOnlyData ||
+        sec.pages[i].page_count != page_counts[i]) return false;
   const auto* format = xex.GetOptHeader<XEXOptFileFormatInfo>(kXEXHeaderFileFormatInfo);
   const auto* info = xex.GetOptHeader<XEXOptResourceInfo>(kXEXHeaderResourceInfo);
   if (!format || reinterpret_cast<const u8*>(format) != header.data()+704 ||
