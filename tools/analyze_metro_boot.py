@@ -16,6 +16,10 @@ HEAP=re.compile(r"METRO_HEAP pc=([0-9A-Fa-f]+) stage=(\w+) r3=([0-9A-Fa-f]+) r4=
 VM=re.compile(r"METRO_VM (\w+) lr=([0-9a-fA-F]+) region=(\d+) base=([0-9a-fA-F]+) size=([0-9a-fA-F]+) flags=([0-9a-fA-F]+) protect=([0-9a-fA-F]+) status=([0-9a-fA-F]+)")
 UI=re.compile(r"METRO_UI pc=([0-9A-Fa-f]+) label=(\w+) phase=(\w+) count=(\d+) r3=([0-9A-Fa-f]+) r4=([0-9A-Fa-f]+) r5=([0-9A-Fa-f]+) r6=([0-9A-Fa-f]+) r7=([0-9A-Fa-f]+) r8=([0-9A-Fa-f]+)")
 FRAME=re.compile(r"^METRO_BOOT frames (\d+)$")
+BASELINE=re.compile(r"^METRO_BOOT dashboard_frame_baseline (\d+)$")
+RESET=re.compile(r"^METRO_BOOT dashboard_frame_reset (\d+)$")
+INTRO_FRAME=re.compile(r"^METRO_INTRO frames (\d+)$")
+HANDOFF_FRAME=re.compile(r"^METRO_INTRO post_handoff_frames (\d+)$")
 VAR=re.compile(r"METRO_KERNEL_VAR module=(\w+) ordinal=0x([0-9a-fA-F]+).* state=(\w+)")
 
 def functions(module):
@@ -32,7 +36,7 @@ def summarize(lines, inventories):
                 if a<=pc<a+size:return module,f"{a:08X}"
         return "unclassified",None
     gates=[];stubs=collections.Counter();sites={};pad=[];guest_pad=[];frames=[];variables=[];errors=[];heap=[];vm=[];failed_paths=collections.Counter()
-    ui={}
+    ui={};baseline=None;counter_resets=[];intro_frames=[];handoff_frames=[]
     for line in lines:
         if m:=UI.search(line):
             key=(m[1].upper(),m[2],m[3])
@@ -56,6 +60,10 @@ def summarize(lines, inventories):
         if m:=VM.search(line):
             vm.append({"name":m[1],"lr":m[2].upper(),"region":int(m[3]),
                        **{key:m[i].upper() for i,key in enumerate(("base","size","flags","protect","status"),4)}})
+        if m:=BASELINE.fullmatch(line):baseline=int(m[1])
+        if m:=RESET.fullmatch(line):counter_resets.append(int(m[1]))
+        if m:=INTRO_FRAME.fullmatch(line):intro_frames.append(int(m[1]))
+        if m:=HANDOFF_FRAME.fullmatch(line):handoff_frames.append(int(m[1]))
         if m:=FRAME.fullmatch(line):frames.append(int(m[1]))
         if m:=VAR.search(line):
             variables.append({"module":m[1],"ordinal":m[2].upper(),"state":m[3]})
@@ -67,6 +75,9 @@ def summarize(lines, inventories):
     return {"boot_markers":gates,"observed_stub_counts":dict(stubs),"stub_call_sites":list(sites.values()),
             "pad_transitions":pad,"guest_pad_transitions":guest_pad,"frame_counts":frames,"kernel_variables":variables,
             "missing_mount_paths":dict(failed_paths),"errors":errors,
+            "frame_counter_baseline":baseline,"frame_counter_resets":counter_resets,
+            "intro_frame_counts":intro_frames,"post_handoff_frame_counts":handoff_frames,
+            "frame_count_excludes_intro":baseline is not None,
             "heap_probes":heap,"ui_probes":list(ui.values()),"virtual_memory_calls":vm,
             "virtual_memory_failures":[v for v in vm if int(v["status"],16)&0x80000000],
             "menu_visually_verified":False,"navigation_visually_verified":False}

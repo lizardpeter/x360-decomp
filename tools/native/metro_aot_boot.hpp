@@ -412,7 +412,7 @@ protected:
         return rex::Ok();
     }
     void OnRun() override {
-        std::uint64_t reported = 0, intro_baseline=0, intro_reported=0, dash_baseline=0;
+        std::uint64_t dash_reported=0, intro_baseline=0, intro_reported=0, dash_baseline=0;
         bool intro_seen=false, dash_seen=false;
         while (RunFrame()) {
             const auto frames = GetGraphics().GetFrameStats().frame_count;
@@ -438,15 +438,22 @@ protected:
             }
             if (attached.load(std::memory_order_acquire) && !dash_seen) {
                 dash_seen=true;dash_baseline=frames;
+                std::cout<<"METRO_BOOT dashboard_frame_baseline "<<dash_baseline<<std::endl;
             }
-            if (entry.intro_handle && dash_seen && frames>dash_baseline &&
-                (reported==0 || frames>=reported+5)) {
-                std::cout<<"METRO_INTRO post_handoff_frames "<<frames-dash_baseline<<std::endl;
+            if (dash_seen && frames<dash_baseline) {
+                // A driver reset creates a new counter generation. Do not
+                // subtract across generations or recycle the intro count.
+                dash_baseline=frames;dash_reported=0;
+                std::cout<<"METRO_BOOT dashboard_frame_reset "<<frames<<std::endl;
             }
-            if (attached.load(std::memory_order_acquire) &&
-                frames > 0 && (reported == 0 || frames >= reported + 5)) {
-                reported = frames;
-                std::cout << "METRO_BOOT frames " << frames << std::endl;
+            if (dash_seen) {
+                const auto dash_frames=frames-dash_baseline;
+                if (dash_frames>0 && (dash_reported==0 || dash_frames>=dash_reported+5)) {
+                    dash_reported=dash_frames;
+                    if(entry.intro_handle)
+                        std::cout<<"METRO_INTRO post_handoff_frames "<<dash_frames<<std::endl;
+                    std::cout<<"METRO_BOOT frames "<<dash_frames<<std::endl;
+                }
             }
         }
     }

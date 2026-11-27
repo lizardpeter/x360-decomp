@@ -27,4 +27,24 @@ class BootEvidence(unittest.TestCase):
         self.assertFalse(result["stub_call_sites"])
         self.assertFalse(result["frame_counts"])
         self.assertFalse(result["navigation_visually_verified"])
+    def test_original_intro_cannot_count_as_dashboard(self):
+        result=summarize(["METRO_INTRO frames 113",
+                          "METRO_BOOT dashboard_frame_baseline 113",
+                          "METRO_BOOT pass dashboard_entry"],{"xam":[]})
+        self.assertEqual(result["intro_frame_counts"],[113])
+        self.assertEqual(result["frame_counter_baseline"],113)
+        self.assertEqual(result["frame_counts"],[])
+        self.assertTrue(result["frame_count_excludes_intro"])
+        self.assertFalse(result["menu_visually_verified"])
+    def test_post_attach_frame_counts_and_reset_are_separate(self):
+        result=summarize(["METRO_INTRO frames 113",
+                          "METRO_BOOT dashboard_frame_baseline 113",
+                          "METRO_INTRO post_handoff_frames 5",
+                          "METRO_BOOT frames 5",
+                          "METRO_BOOT dashboard_frame_reset 0",
+                          "METRO_BOOT frames 1"],{"xam":[]})
+        self.assertEqual(result["frame_counts"],[5,1])
+        self.assertEqual(result["post_handoff_frame_counts"],[5])
+        self.assertEqual(result["frame_counter_resets"],[0])
+        self.assertFalse(result["menu_visually_verified"])
 if __name__=="__main__":unittest.main()

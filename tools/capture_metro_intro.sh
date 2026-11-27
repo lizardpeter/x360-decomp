@@ -18,6 +18,7 @@ cd "$native"
 pid=$!
 trap 'kill -KILL "$pid" 2>/dev/null || true' EXIT
 intro=0;dash=0;last_intro=0;last_dash=0
+: > "$out/dashboard-samples.txt"
 deadline=$((SECONDS+55))
 while ((SECONDS<deadline)); do
     kill -0 "$pid" 2>/dev/null || break
@@ -33,8 +34,22 @@ while ((SECONDS<deadline)); do
         frame="$(grep -E '^METRO_INTRO post_handoff_frames [0-9]+$' "$out/integrated.log" | tail -1 | awk '{print $3}' || true)"
         if [[ "$frame" =~ ^[0-9]+$ ]] && ((frame>=last_dash+5 && dash<4)) &&
            grep -Fxq 'METRO_BOOT pass dashboard_entry' "$out/integrated.log"; then
-            if import -window "$win" "$out/dashboard-$(printf '%03d' "$dash").png" 2>/dev/null; then
-                dash=$((dash+1));last_dash="$frame"
+            # A surface with only the previous intro or blank pixels cannot
+            # be counted as a successful dashboard capture. Keep authentic
+            # candidates only with actual post-attach counter advancement.
+            if import -window "$win" "$out/dashboard-next.png" 2>/dev/null; then
+                info="$(identify -format '%w %h %k' "$out/dashboard-next.png" 2>/dev/null || true)"
+                if read -r width height colors <<< "$info" &&
+                   [[ "$width" =~ ^[0-9]+$ && "$height" =~ ^[0-9]+$ && "$colors" =~ ^[0-9]+$ ]] &&
+                   ((width>=640 && height>=360 && colors>=32)); then
+                    name="dashboard-$(printf '%03d' "$dash").png"
+                    mv "$out/dashboard-next.png" "$out/$name"
+                    printf 'sample=%s post_attach_frames=%s width=%s height=%s colors=%s\n' \
+                        "$name" "$frame" "$width" "$height" "$colors" >> "$out/dashboard-samples.txt"
+                    dash=$((dash+1));last_dash="$frame"
+                else
+                    rm -f "$out/dashboard-next.png"
+                fi
             fi
         fi
     fi
@@ -54,6 +69,7 @@ trap - EXIT
 printf 'intro_frames=%s\npost_handoff_frames=%s\nalive_at_capture_end=%s\nexit_code=%s\nmenu_visually_verified=false\naudio_audibly_verified=false\n' \
   "$intro" "$dash" "$alive" "$status" > "$out/receipt.txt"
 grep -E '^METRO_(INTRO|BOOT) (pass|fail|original_entry|original_return|post_handoff_frames|guest_exit)' "$out/integrated.log" >> "$out/receipt.txt" || true
+cat "$out/dashboard-samples.txt" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
 for gate in "METRO_INTRO pass loaded_as_user_module" "METRO_INTRO pass original_completion" "METRO_BOOT pass xam_attach" "METRO_BOOT pass dashboard_entry"; do
     grep -Fxq "$gate" "$out/integrated.log"
