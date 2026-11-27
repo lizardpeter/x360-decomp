@@ -447,7 +447,125 @@ CROSS_PROVIDER_READONLY_NEW = """  if (wants_write && ((parent && (!node || &par
 def patch_filesystem(source):
     source=replace(source,RELATIVE_OPEN_OLD,RELATIVE_OPEN_NEW)
     source=replace(source,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_CHILD_NEW)
-    return replace(source,CROSS_PROVIDER_READONLY_OLD,CROSS_PROVIDER_READONLY_NEW)
+    source=replace(source,CROSS_PROVIDER_READONLY_OLD,CROSS_PROVIDER_READONLY_NEW)
+    # Directly nested provider roots are already resolved by absolute opens;
+    # relative opens must not lose them just because they are not links.
+    source=replace(source,"StartsWithComponents(absolute, root_node.GetAbsolutePath()) &&\n      FindLink(absolute))","StartsWithComponents(absolute, root_node.GetAbsolutePath()))")
+    source=replace(source,"  return Opened{std::make_unique<NodeFile>(*node, access, std::move(stream)), action};",
+        "  return Opened{std::make_unique<NodeFile>(*node, access, std::move(stream), ChildMountEntries(*node)), action};")
+    source=replace(source,"  return std::unique_ptr<IDirectory>(std::make_unique<NodeDirectory>(*node, pattern));",
+        "  return std::unique_ptr<IDirectory>(std::make_unique<NodeDirectory>(*node, pattern, ChildMountEntries(*node)));")
+    return replace(source,"Result<void> FileSystem::Mount(const MountEntry& entry) {",r"""std::vector<FileStat> FileSystem::ChildMountEntries(Node& directory) const {
+  std::vector<FileStat> result;
+  if (!directory.IsDirectory()) return result;
+  // Called under the mount-table lock. Snapshot only direct child names
+  // whose current resolution really leads to a different provider.
+  const auto parent = directory.GetAbsolutePath();
+  auto add = [&](std::string_view candidate) {
+    if (candidate.size() <= parent.size() ||
+        !StartsWithComponents(candidate, parent)) return;
+    const auto base = string::utf8_find_base_guest_path(candidate);
+    if (!string::utf8_equal_case(base, parent)) return;
+    auto resolved = ResolveMount(candidate, false);
+    if (!resolved || resolved->provider == &directory.GetProvider()) return;
+    std::lock_guard target_lock(resolved->provider->GetMutex());
+    Node* node = resolved->provider->Resolve(resolved->relative);
+    if (!node || !node->IsDirectory()) return;
+    auto entry = node->GetInfo();
+    entry.name = std::string(string::utf8_find_name_from_guest_path(candidate));
+    if (entry.name.empty() || std::ranges::any_of(result, [&](const auto& previous) {
+          return string::utf8_equal_case(previous.name, entry.name);
+        })) return;
+    entry.path = string::utf8_join_guest_paths(directory.GetPath(), entry.name);
+    entry.absolute_path = std::string(candidate);
+    result.push_back(std::move(entry));
+  };
+  for (const auto& link : links_) add(link.first);
+  for (const auto& provider : providers_) add(provider->GetMountPath());
+  return result;
+}
+
+Result<void> FileSystem::Mount(const MountEntry& entry) {""")
+
+def patch_filesystem_header(source):
+    return replace(source,"  [[nodiscard]] Result<Node*> ResolveNode(std::string_view path) const;",
+                   "  [[nodiscard]] Result<Node*> ResolveNode(std::string_view path) const;\n  [[nodiscard]] std::vector<FileStat> ChildMountEntries(Node& directory) const;")
+
+def patch_node_file_header(source):
+    source=replace(source,"#include <string_view>","#include <string_view>\n#include <vector>")
+    source=replace(source,"NodeFile(Node& node, Access access, std::unique_ptr<NodeStream> stream);",
+        "NodeFile(Node& node, Access access, std::unique_ptr<NodeStream> stream,\n           std::vector<FileStat> child_mounts = {});")
+    source=replace(source,"  std::unique_ptr<NodeStream> stream_;",
+        "  std::unique_ptr<NodeStream> stream_;\n  // Mount namespace snapshot taken when this handle was opened.\n  std::vector<FileStat> child_mounts_;")
+    source=replace(source,"NodeDirectory(Node& node, std::string_view pattern);",
+        "NodeDirectory(Node& node, std::string_view pattern, std::vector<FileStat> child_mounts = {});")
+    source=replace(source,"  void Restart() override { index_ = 0; }\n  [[nodiscard]] u64 GetPosition() const override { return index_; }",
+        "  void Restart() override { index_ = mount_index_ = 0; }\n  [[nodiscard]] u64 GetPosition() const override { return index_ + mount_index_; }")
+    return replace(source,"  size_t index_ = 0;",
+        "  size_t index_ = 0;\n  std::vector<FileStat> child_mounts_;\n  size_t mount_index_ = 0;")
+
+def patch_node_file(source):
+    source=replace(source,"#include <format>","#include <format>\n#include <algorithm>\n#include <utility>\n#include <rex/string/text.h>")
+    source=replace(source,"NodeFile::NodeFile(Node& node, Access access, std::unique_ptr<NodeStream> stream)",
+        "NodeFile::NodeFile(Node& node, Access access, std::unique_ptr<NodeStream> stream,\n                   std::vector<FileStat> child_mounts)")
+    source=replace(source,"      stream_(std::move(stream)) {",
+        "      stream_(std::move(stream)), child_mounts_(std::move(child_mounts)) {")
+    source=replace(source,"std::make_unique<NodeDirectory>(*node_, pattern)",
+        "std::make_unique<NodeDirectory>(*node_, pattern, child_mounts_)")
+    source=replace(source,"NodeDirectory::NodeDirectory(Node& node, std::string_view pattern)\n    : provider_(node.GetProvider().shared_from_this()), node_(&node), matcher_(pattern) {",
+        "NodeDirectory::NodeDirectory(Node& node, std::string_view pattern, std::vector<FileStat> child_mounts)\n    : provider_(node.GetProvider().shared_from_this()), node_(&node), matcher_(pattern),\n      child_mounts_(std::move(child_mounts)) {")
+    return replace(source, r"""  Node* child = node_->IterateChildren(matcher_, &index_);
+  if (!child) {
+    return std::nullopt;
+  }
+  return child->GetInfo();""",r"""  while (Node* child = node_->IterateChildren(matcher_, &index_)) {
+    auto info = child->GetInfo();
+    // A physical name hidden by a mount alias is never returned twice.
+    if (!std::ranges::any_of(child_mounts_, [&](const auto& mount) {
+          return string::utf8_equal_case(mount.name, info.name);
+        })) return info;
+  }
+  while (mount_index_ < child_mounts_.size()) {
+    const auto& entry = child_mounts_[mount_index_++];
+    if (matcher_.Match(entry.name)) return entry;
+  }
+  return std::nullopt;""")
+
+STFS_OLD = r"""u32 StfsCreateDevice_entry([[maybe_unused]] MappedVoid device_object, [[maybe_unused]] u32 flags,
+                           [[maybe_unused]] MappedU32 out_device) {
+  REX_KERNEL_STUB("StfsCreateDevice");
+  return X_STATUS_SUCCESS;
+}
+
+u32 StfsControlDevice_entry([[maybe_unused]] MappedVoid device_object, u32 ioctl,
+                            [[maybe_unused]] MappedVoid input_buffer,
+                            [[maybe_unused]] u32 input_length,
+                            [[maybe_unused]] MappedVoid output_buffer,
+                            [[maybe_unused]] u32 output_length) {
+  REX_KERNEL_STUB("StfsControlDevice({:#x})", static_cast<u32>(ioctl));
+  return X_STATUS_SUCCESS;
+}"""
+STFS_NEW = r"""u32 StfsCreateDevice_entry(u32 request, u32 request_bytes) {
+  // Three original 17559 XAM callers pass the same 88-byte in/out request.
+  // +72 and +76 are outputs consumed immediately after nonnegative status.
+  // Until their exact device-object ownership is reconstructed, do not
+  // return success with untouched outputs or invent a host device pointer.
+  if (!request || request_bytes != 88) return X_STATUS_INVALID_PARAMETER;
+  auto& memory = kernel::GetCurrent().GetGuestMemory();
+  if (!memory.GetReadOnlySpan(request, request_bytes) ||
+      !memory.GetWritableSpan(request, request_bytes)) return X_STATUS_ACCESS_VIOLATION;
+  return X_STATUS_NOT_SUPPORTED;
+}
+
+u32 StfsControlDevice_entry(u32 device_object, u32 ioctl) {
+  // Original command values 0..5 are verified, but their buffer/device
+  // lifetime contracts are incomplete. Do not dereference unknown state.
+  if (!device_object || ioctl > 5) return X_STATUS_INVALID_PARAMETER;
+  return X_STATUS_NOT_SUPPORTED;
+}"""
+
+def patch_stfs_contract(source):
+    return replace(source, STFS_OLD, STFS_NEW)
 
 PROFILE_MOUNT_TEST = r'''
 REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative opens",
@@ -484,6 +602,52 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
       {.disposition = Disposition::kCreate, .access = Access::kWriteAccess}));
   CHECK(ReadText(*Open("game:\\dash.xex").file) == "original");
   CHECK_FALSE(fs.OpenRelative(*partition.file, "ContentOther\\fixture.bin", {}));
+  // Directory enumeration must expose the actual Content alias, not just
+  // make explicit opens work. Both the VFS and open-handle APIs are tested.
+  auto check_listing = [](auto& listing) {
+    REQUIRE(listing);
+    auto entry = (*listing)->Next();
+    REQUIRE(entry);
+    CHECK(entry->name == "Content");
+    CHECK(entry->absolute_path == "\\Device\\Harddisk0\\Partition1\\Content");
+    CHECK(rex::HasFlags(entry->attributes, rex::filesystem::FileAttributes::kDirectory));
+    CHECK_FALSE((*listing)->Next());
+    (*listing)->Restart();
+    CHECK((*listing)->GetPosition() == 0);
+    REQUIRE((*listing)->Next());
+    CHECK_FALSE((*listing)->Next());
+  };
+  auto handle_listing = partition.file->List("cOnT*");
+  check_listing(handle_listing);
+  auto path_listing = fs.List("game:", "Content");
+  check_listing(path_listing);
+  auto no_match = partition.file->List("ContentOther");
+  REQUIRE(no_match);
+  CHECK_FALSE((*no_match)->Next());
+  // Shadowed physical directory must not duplicate the writable alias.
+  WriteHost(firmware / "Content" / "shadowed.bin", "never exposed");
+  auto fresh = Open("game:");
+  auto all = fresh.file->List("");
+  REQUIRE(all);
+  unsigned count = 0;
+  while (auto item = (*all)->Next()) if (item->name == "Content") ++count;
+  CHECK(count == 1);
+  CHECK_FALSE(fs.Open("game:\\Content\\shadowed.bin", {}));
+  CHECK(ReadText(*Open("game:\\Content\\profile\\fixture.bin").file) == "local");
+  // A real nested mount (not a symbolic link) must be discoverable from
+  // its physical parent while preserving registration precedence.
+  REQUIRE(fs.Mount({"\\Device\\Harddisk0", ProviderType::kNull, {},
+                    MountFlags::kWritable, {"\\Partition0"}}));
+  auto disk=Open("\\Device\\Harddisk0");
+  auto parts=disk.file->List("Partition1");
+  REQUIRE(parts);
+  auto partition_entry=(*parts)->Next();
+  REQUIRE(partition_entry);
+  CHECK(partition_entry->name=="Partition1");
+  CHECK_FALSE((*parts)->Next());
+  auto relative_partition=fs.OpenRelative(*disk.file,"Partition1",{});
+  REQUIRE(relative_partition);
+  CHECK(relative_partition->file->GetInfo().absolute_path=="\\Device\\Harddisk0\\Partition1");
 }
 '''
 
@@ -670,13 +834,19 @@ def main():
     info=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_io_info.cpp"
     filesystem=a.sdk/"src/filesystem/file_system.cpp"
     filesystem_test=a.sdk/"tests/unit/filesystem/file_system_test.cpp"
+    filesystem_header=a.sdk/"src/filesystem/file_system.h"
+    node_file=a.sdk/"src/filesystem/node_file.cpp"
+    node_header=a.sdk/"src/filesystem/node_file.h"
     file_header=a.sdk/"include/rex/kernel/object/file_object.h"
     crypt=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_crypt.cpp"
     outputs={crypt:corrected_signature_verifier(patch_public_verification(crypt.read_text())),
              file_header:patch_directory_header(file_header.read_text()),
              filesystem:patch_filesystem(filesystem.read_text()),
+             filesystem_header:patch_filesystem_header(filesystem_header.read_text()),
+             node_file:patch_node_file(node_file.read_text()),
+             node_header:patch_node_file_header(node_header.read_text()),
              filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
-             io:patch_storage_queries(patch_io(io.read_text())),
+             io:patch_stfs_contract(patch_storage_queries(patch_io(io.read_text()))),
              file:patch_directory_object(patch_file(file.read_text())),
              info:patch_volume_query(patch_file_information(info.read_text())),
              hid:patch_storage_notifications(hid.read_text()),

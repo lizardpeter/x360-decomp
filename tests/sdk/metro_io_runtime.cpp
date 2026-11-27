@@ -383,3 +383,26 @@ REX_TEST_CASE("metro_io_runtime: full attributes and volume query check guest sp
     CHECK(c.Kernel("NtClose",{handle})==0);
   });
 }
+
+
+REX_TEST_CASE("metro_io_runtime: original STFS 88-byte ABI never fabricates successful device creation",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture;
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 request=c.Alloc(88);
+    for (u32 off=0;off<88;off+=4) c.Store32(request+off,0xA5A50000u+off);
+    CHECK(c.Kernel("StfsCreateDevice",{0,88})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("StfsCreateDevice",{request,87})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("StfsCreateDevice",{request,89})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("StfsCreateDevice",{0xFFFFFFFCu,88})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("StfsCreateDevice",{request,88})==X_STATUS_NOT_SUPPORTED);
+    for (u32 off=0;off<88;off+=4) CHECK(c.Load32(request+off)==0xA5A50000u+off);
+    for (u32 command=0;command<=5;++command) {
+      CHECK(c.Kernel("StfsControlDevice",{0,command})==X_STATUS_INVALID_PARAMETER);
+      CHECK(c.Kernel("StfsControlDevice",{request,command})==X_STATUS_NOT_SUPPORTED);
+    }
+    CHECK(c.Kernel("StfsControlDevice",{request,6})==X_STATUS_INVALID_PARAMETER);
+    for (u32 off=0;off<88;off+=4) CHECK(c.Load32(request+off)==0xA5A50000u+off);
+  });
+}
