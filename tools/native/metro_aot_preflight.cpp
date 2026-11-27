@@ -138,6 +138,17 @@ public:
         if (!metro_boot::verify_live_binding(title_, *dash_xex, *xam, kXamDataBinding, true))
             return fail("dashboard_data_import");
         std::cout << "METRO_PREFLIGHT pass xam_data_mapping" << std::endl;
+        if (title_.FindGuestModule("xam.xex") != *kernel ||
+            title_.SelectRetailXam(*kernel) || !title_.SelectRetailXam(*user) ||
+            title_.SelectRetailXam(*user)) return fail("dynamic_xam_selection");
+        for (auto alias : {"xam", "XAM.XEX", "game:\\xam.xex", "flash:\\xam.xex",
+                           "\\Device\\Flash\\xam.xex", "\\SystemRoot\\xam.xex"})
+            if (title_.FindGuestModule(alias) != *user) return fail("dynamic_xam_identity");
+        if (registry.FindKernelModule("xam") != kernel ||
+            title_.FindGuestModule("xboxkrnl.exe") != registry.GetModule("xboxkrnl.exe").value_or(0) ||
+            title_.FindGuestModule("unloaded-test-module.xex"))
+            return fail("dynamic_xam_isolation");
+        std::cout << "METRO_PREFLIGHT pass dynamic_xam_identity" << std::endl;
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
 

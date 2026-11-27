@@ -271,6 +271,11 @@ protected:
         if (!verify_retail_routes(title, *dx, *xx)) return fail("retail_export_mapping");
         if (!verify_live_binding(title, *dx, *xx, kXamDataBinding, true))
             return fail("data_mapping");
+        if (!title.SelectRetailXam(*loaded) ||
+            title.FindGuestModule("xam.xex") != *loaded ||
+            title.FindGuestModule("flash:\\xam.xex") != *loaded ||
+            registry.FindKernelModule("xam") != kernel) return fail("dynamic_xam_identity");
+        std::cout << "METRO_BOOT pass dynamic_xam_identity" << std::endl;
         const auto original = title.FindFunction(kDashEntry);
         auto* dispatcher = dx->GetFunctionDispatcher();
         if (!original || !dispatcher || *original == &startup) return fail("entry_binding");
