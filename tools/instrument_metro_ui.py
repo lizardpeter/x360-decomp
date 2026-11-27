@@ -59,6 +59,62 @@ ENTRIES = {
                       0x81699910:"xam_font_typeface_result"},
     "generated_hud": {0x913E98F8:"hud_initialize",0x913E9B88:"hud_render_loop"},
 }
+
+# Original call sites independently recovered by 46018853868.
+# Status-only telemetry; never emit arguments, memory, strings, key material.
+TEXT_CALLS = {
+    "generated": {
+        0x9222FA44:("text_container_open",0x92230460,"status"),
+        0x9222FA6C:("text_container_header_read",0x92230670,"status"),
+        0x9222FAAC:("text_container_parser",0x9222F7E0,"category"),
+        0x9222FADC:("text_container_other_parser",0x9222E328,"category"),
+        0x9222F304:("text_verification_provider",0x9293BE3C,"status"),
+        0x9222F344:("text_signature_result",0x9293BE2C,"boolean"),
+        0x921D81F0:("text_descriptor_create_1",0x921D4580,"category"),
+        0x921D8800:("text_descriptor_create_2",0x921D51E0,"category"),
+        0x921D94E8:("text_descriptor_create_3",0x921D6ED8,"category"),
+        0x927AD454:("text_glyph_prepare_1",0x921DF760,"status"),
+        0x927AD468:("text_glyph_operation_1",0x921E3A58,"status"),
+        0x927AD484:("text_glyph_prepare_2",0x921DF760,"status"),
+        0x927AD498:("text_glyph_operation_2",0x921E3B60,"status"),
+        0x92911600:("text_table_object_1",0x928F2618,"category"),
+        0x92911610:("text_table_argument_1",0x928E1BB8,"category"),
+        0x9291161C:("text_table_value_1",0x921E03E8,"category"),
+        0x929116A0:("text_table_object_2",0x928F2618,"category"),
+        0x929116BC:("text_table_value_2",0x921E0428,"category"),
+        0x9291189C:("text_table_lookup_value",0x921E4180,"category"),
+    },
+    "generated_xam": {
+        0x8179630C:("text_xam_container_open",0x817A2E88,"status"),
+        0x81796334:("text_xam_container_header_read",0x817A3098,"status"),
+        0x81796374:("text_xam_container_parser",0x817960A8,"category"),
+        0x817963A4:("text_xam_container_other_parser",0x81794BF0,"category"),
+        0x81795BCC:("text_xam_verification_provider",0x81A72264,"status"),
+        0x81795C0C:("text_xam_signature_result",0x81A735D4,"boolean"),
+        0x817B8D98:("text_xam_descriptor_create_1",0x817B52D8,"category"),
+        0x817B93A8:("text_xam_descriptor_create_2",0x817B5F38,"category"),
+        0x817B9F20:("text_xam_descriptor_create_3",0x817B7A80,"category"),
+        0x81693948:("text_xam_reference_operation",0x817BCE00,"category"),
+        0x816AA2EC:("text_xam_reference_operation_2",0x817C0720,"category"),
+    },
+    "generated_hud": {},
+}
+TEXT_ENTRIES = {
+    "generated": {0x921D8188:"text_reference_1",0x921D8798:"text_reference_2",
+                  0x921D9480:"text_reference_3",0x92286980:"text_reference_4",
+                  0x92287A60:"text_reference_5",0x92287B78:"text_reference_6",
+                  0x927AD420:"text_glyph_reference",0x92911340:"text_reference_7",
+                  0x9222FA20:"text_container_entry",0x9222F2A0:"text_verification_entry"},
+    "generated_xam": {0x81693880:"text_xam_reference_1",0x816AA280:"text_xam_reference_2",
+                  0x817B8D30:"text_xam_reference_3",0x817B9340:"text_xam_reference_4",
+                  0x817B9EB8:"text_xam_reference_5",0x817F0418:"text_xam_reference_6",
+                  0x817F0480:"text_xam_reference_7",0x817962E8:"text_xam_container_entry",
+                  0x81795B68:"text_xam_verification_entry"},
+    "generated_hud": {},
+}
+TEXT_RESULTS={pc+4:kind for entries in TEXT_CALLS.values()
+              for pc,(_,_,kind) in entries.items()}
+
 MARK="/* METRO_UI_PROBES_INSERTED */"
 FONT_PATH_RETURNS={
     0x92265600:656,0x92265628:128,0x92265658:128,
@@ -131,6 +187,13 @@ def probes(module):
     for pc,name in CALLS[module].items():
         result[pc]=(name,"call")
         result[pc+4]=(name,"return")
+    for pc,name in TEXT_ENTRIES[module].items():
+        if pc in result:raise ValueError("duplicate text entry probe")
+        result[pc]=(name,"entry")
+    for pc,(name,target,kind) in TEXT_CALLS[module].items():
+        if pc in result or pc+4 in result:raise ValueError("duplicate text call probe")
+        result[pc]=(name,"call")
+        result[pc+4]=(name,"return")
     return result
 
 def insert(source,points):
@@ -149,7 +212,16 @@ def insert(source,points):
         result.append(prefix+'  static std::atomic<unsigned> metro_ui_samples{0};\n')
         result.append(prefix+'  const auto metro_ui_n=metro_ui_samples.fetch_add(1,std::memory_order_relaxed)+1;\n')
         result.append(prefix+'  if (metro_ui_n<=8 || (metro_ui_n & (metro_ui_n-1))==0) {\n')
-        result.append(prefix+f'    std::fprintf(stderr,"METRO_UI pc={pc:08X} label={name} phase={phase} count=%u r3=%08X r4=%08X r5=%08X r6=%08X r7=%08X r8=%08X\\n",metro_ui_n,{args});\n')
+        if name.startswith("text_"):
+            kind=TEXT_RESULTS.get(pc,"none") if phase=="return" else "none"
+            expression='"observed"'
+            if kind=="status":
+                expression='ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive")'
+            elif kind in ("boolean","category"):
+                expression='ctx.r3.u32==0?"zero":"nonzero"'
+            result.append(prefix+f'    std::fprintf(stderr,"METRO_TEXT pc={pc:08X} label={name} phase={phase} count=%u kind={kind} result=%s\\n",metro_ui_n,{expression});\n')
+        else:
+            result.append(prefix+f'    std::fprintf(stderr,"METRO_UI pc={pc:08X} label={name} phase={phase} count=%u r3=%08X r4=%08X r5=%08X r6=%08X r7=%08X r8=%08X\\n",metro_ui_n,{args});\n')
         if pc in FONT_PATH_RETURNS or pc in FONT_DESCRIPTORS or pc in FONT_PATCH_RETURNS:
             kind=0 if pc in FONT_PATH_RETURNS else 1 if pc in FONT_DESCRIPTORS else 2
             offset=FONT_PATH_RETURNS.get(pc,0)

@@ -19,6 +19,7 @@ from metro_xam_fault_evidence import bounded_entry,operand
 from pirs import parse
 from prepare_recompilation import ROOT,EXPECTED,original,sha
 from xex import parse as parse_xex
+from instrument_metro_ui import TEXT_CALLS,TEXT_ENTRIES
 
 # Independently recovered XuiText/Glyph/StringTable literal xrefs from
 # 45978542649. Names describe the evidence, not an invented function ABI.
@@ -44,6 +45,18 @@ def virtual_calls(body):
             # the dynamic callee. Preserve all recognized operands.
             result.append({"site":o["pc"],"window":ops[max(0,i-10):i+1]})
     return result
+
+def verify_trace_plan(label,image,base,funcs):
+    module={"dash":"generated","xam":"generated_xam"}[label]
+    entries=TEXT_ENTRIES[module]
+    if not set(entries)<=funcs.keys():raise ValueError("text entry outside original function inventory")
+    calls=[]
+    for pc,(name,target,kind) in sorted(TEXT_CALLS[module].items()):
+        owners=[a for a,size in funcs.items() if a<=pc and pc+4<a+size]
+        if len(owners)!=1 or branch(pc,struct.unpack_from(">I",image,pc-base)[0])!=(target,True):
+            raise ValueError(f"original text trace call differs {pc:08X}")
+        calls.append({"site":hx(pc),"return":hx(pc+4),"target":hx(target),"owner":hx(owners[0]),"label":name,"kind":kind})
+    return {"entries":{hx(a):n for a,n in sorted(entries.items())},"calls":calls}
 
 def audit(label,raw,image,meta,catalog,stubs):
     if meta["sha256"]!=DIGESTS[label]:raise ValueError("wrong original identity")
@@ -83,6 +96,7 @@ def audit(label,raw,image,meta,catalog,stubs):
     focus=roots|{a for a,d in nodes.items() if d<=2 and calls[a]}
     bodies={hx(a):bounded_entry(image,base,pe,a,thunks,4096) for a in sorted(focus)}
     result={"source_sha256":sha(raw),"decoded_sha256":meta["sha256"],
+            "verified_live_trace_plan":verify_trace_plan(label,image,base,funcs),
             "literal_reference_roots":{hx(a):ROOTS[label][a] for a in sorted(roots&ROOTS[label].keys())},
             "magic_candidates":magic,"forward_truncated":truncated,
             "forward_nodes":[{"entry":hx(a),"depth":d,"imports":calls[a]} for a,d in sorted(nodes.items())],

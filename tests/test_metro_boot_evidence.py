@@ -71,4 +71,14 @@ class BootEvidence(unittest.TestCase):
         self.assertEqual(result["resource_opens"][0]["options"],"00000060")
         self.assertEqual(result["gpu_shutdown_cancellations"],1)
         self.assertFalse(result["menu_visually_verified"])
+    def test_text_categories_are_sampled_not_inferred(self):
+        result=summarize([
+            "METRO_TEXT pc=9222F308 label=text_verification_provider phase=return count=1 kind=status result=positive",
+            "METRO_TEXT pc=9222F308 label=text_verification_provider phase=return count=16 kind=status result=negative",
+            "METRO_TEXT pc=9222F348 label=text_signature_result phase=return count=1 kind=boolean result=zero"],{"dash":[]})
+        a,b=result["text_trace_results"]
+        self.assertEqual(a["count_lower_bound"],16)
+        self.assertEqual(a["sample_counts"],{"positive":1,"negative":1})
+        self.assertEqual(b["observed_categories"],{"zero":1})
+        self.assertFalse(result["menu_visually_verified"])
 if __name__=="__main__":unittest.main()

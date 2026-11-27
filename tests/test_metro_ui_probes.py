@@ -41,4 +41,16 @@ class MetroUIProbes(unittest.TestCase):
         self.assertIn('mem.Load<rex::be_u16>',out)
         self.assertIn('mem->Load<rex::be_u32>(descriptor+4)',out)
         self.assertNotIn('mem->Store',out)
+    def test_text_trace_never_logs_arguments_or_payload(self):
+        points=probes("generated")
+        source="// METRO_GUEST_PC 9222F304\noriginal_call();\n// METRO_GUEST_PC 9222F308\noriginal_next();\n"
+        out,hits=insert(source,points)
+        self.assertEqual(sum(hits.values()),2)
+        self.assertIn("kind=none result=%s",out)
+        self.assertIn("kind=status result=%s",out)
+        self.assertIn("ctx.r3.u32==0",out)
+        self.assertNotIn("ctx.r4",out)
+        self.assertNotIn("METRO_UI pc=",out)
+        self.assertLess(out.index("phase=call"),out.index("original_call();"))
+        self.assertLess(out.index("phase=return"),out.index("original_next();"))
 if __name__=="__main__":unittest.main()

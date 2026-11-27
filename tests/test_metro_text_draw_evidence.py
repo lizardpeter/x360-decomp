@@ -16,3 +16,10 @@ class TextDrawEvidence(unittest.TestCase):
     def test_xttf_magic_observation(self):
         words=[(15<<26)|(11<<21)|0x7874,(24<<26)|(11<<21)|(11<<16)|0x7466]
         self.assertEqual(list(refs(words,0x92000000,MAGIC)),[(0x92000004,0x78747466,"constructed_address")])
+
+    def test_trace_plan_counts_and_semantics(self):
+        from instrument_metro_ui import TEXT_CALLS,TEXT_ENTRIES
+        self.assertEqual(sum(map(len,TEXT_CALLS.values())),30)
+        self.assertEqual(sum(map(len,TEXT_ENTRIES.values())),19)
+        self.assertEqual(TEXT_CALLS['generated'][0x9222F344][2],'boolean')
+        self.assertEqual(TEXT_CALLS['generated'][0x9222F304][2],'status')
