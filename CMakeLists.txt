@@ -37,6 +37,8 @@ add_library(x360_host STATIC runtime/host/kernel_startup.cpp runtime/host/virtua
 target_include_directories(x360_host PUBLIC include)
 target_link_libraries(x360_host PUBLIC x360_machine)
 target_link_libraries(x360_bootstrap_probe PRIVATE x360_host)
+add_executable(x360_kernel_file_probe tools/native/kernel_file_probe.cpp)
+target_link_libraries(x360_kernel_file_probe PRIVATE x360_host)
 include(CTest)
 if(BUILD_TESTING)
     add_executable(x360_native_tests tests/native/test_dispatch.cpp)

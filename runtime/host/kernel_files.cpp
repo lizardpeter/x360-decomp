@@ -4,6 +4,7 @@
 #include <fstream>
 #include <limits>
 #include <optional>
+#include <set>
 #include <system_error>
 namespace x360::host {
 using abi::ImportCallResult;
@@ -114,10 +115,13 @@ bool KernelFiles::mount(std::string_view volume,const std::filesystem::path& roo
     auto root_status=fs::symlink_status(root,ec);if(ec||fs::is_symlink(root_status)||!fs::is_directory(root_status))return false;
     KernelFiles staged(memory_);
     if(!staged.add_directory(*key))return false;
+    std::set<std::string> encountered;
     for(fs::recursive_directory_iterator it(root,ec),end;it!=end&&!ec;it.increment(ec)){
         auto stat=it->symlink_status(ec);if(ec||fs::is_symlink(stat))return false;
         auto relative=it->path().lexically_relative(root).generic_string();
         auto path=*key+"/"+relative;
+        auto canonical=normalize(path);
+        if(!canonical||!encountered.insert(*canonical).second)return false;
         if(fs::is_directory(stat)){
             if(!staged.add_directory(path))return false;
         }else if(fs::is_regular_file(stat)){
