@@ -104,7 +104,9 @@ int main(int argc,char** argv){
                     compounds+=s.compound_lists;shared+=s.shared_lists;ambiguous+=s.ambiguous_targets;
                     auto h=SceneStructure::parse(scene)->header;
                     if(h[1]!=s.inline_properties||h[2]!=s.inline_lists||h[4]!=s.compound_lists||h[7]!=s.timelines||h[11]!=s.objects_with_children)++header_mismatch;
-                    if(layout&&(d.id=="epix"||d.id=="socxzp"))audit_node(tree.root,d.id,e.name,"-");
+                    // Header presenters and their visual templates can be
+                    // stored in a different archive from localization.
+                    if(layout)audit_node(tree.root,d.id,e.name,"-");
                     ++parsed;
                 }catch(const std::exception& ex){++failed;std::cerr<<d.id<<"/"<<e.name<<": "<<ex.what()<<"\n";}
             }

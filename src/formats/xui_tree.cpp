@@ -80,6 +80,10 @@ struct Parser {
                 KeyframeRecord rec;rec.frame=c.packed();rec.flags=c.byte();
                 switch(rec.flags&63){
                 case 0:case 1:case 3:break;
+                // The pinned independent V8 reader advances directly to
+                // the token index for 4/5. Preserve the original flag byte;
+                // no interpolation meaning is assigned to these values.
+                case 4:case 5:break;
                 case 2:rec.extra={c.byte(),c.byte(),c.byte()};break;
                 case 10:rec.extra={c.packed()};break;
                 case 11:rec.extra={c.byte()};break;

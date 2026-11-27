@@ -63,13 +63,15 @@ class IoRuntime(unittest.TestCase):
         self.assertNotIn("X_STATUS_SUCCESS",result)
         with self.assertRaises(ValueError):patch_storage_notifications(result)
     def test_profile_mount_routes_explicit_alias_and_respects_provider_ownership(self):
-        source="\n".join([RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD,
+        source="\n".join([MOUNT_ROOT_OLD,RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD,
           "  return Opened{std::make_unique<NodeFile>(*node, access, std::move(stream)), action};",
           "  return std::unique_ptr<IDirectory>(std::make_unique<NodeDirectory>(*node, pattern));",
           "Result<void> FileSystem::Mount(const MountEntry& entry) {"])
         result=patch_filesystem(source)
         self.assertNotIn("FindLink(absolute)",result)
         self.assertIn("ChildMountEntries(*node)",result)
+        self.assertIn("mount && mount->relative.empty()",result)
+        self.assertIn("node = &mount->provider->GetRoot()",result)
         self.assertIn("resolved->provider == &directory.GetProvider()",result)
         self.assertIn("utf8_equal_case(base, parent)",result)
         self.assertIn("for (const auto& link : links_)",result)

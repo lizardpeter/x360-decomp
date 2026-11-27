@@ -46,10 +46,11 @@ def main():
         print(rows[-1],flush=True)
         if args.header_layout:
             layout=rows[:-1]
-            if not layout or not any(x.startswith('node\t"epix"\t') for x in layout):
-                raise RuntimeError("no original header scene nodes recovered")
-            if not any(x.startswith('property\t"epix"\t') for x in layout):
-                raise RuntimeError("no original header properties recovered")
+            if not layout or not any(x.startswith("node\t") for x in layout):
+                raise RuntimeError("no original scene nodes recovered")
+            if not any(x.startswith("property\t") and ('"PointSize"' in x or '"TextScale"' in x) for x in layout):
+                raise RuntimeError("no authored text geometry recovered")
+            print("Header archive parsed:",any(x.startswith('node\t"epix"\t') for x in layout),flush=True)
             args.header_layout.parent.mkdir(parents=True,exist_ok=True)
             args.header_layout.write_text("\n".join(layout)+"\n",encoding="utf-8")
             print(f"Authored layout records: {len(layout)}",flush=True)

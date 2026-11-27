@@ -444,7 +444,48 @@ CROSS_PROVIDER_READONLY_OLD = """  if (wants_write && ((parent && parent->IsRead
 CROSS_PROVIDER_READONLY_NEW = """  if (wants_write && ((parent && (!node || &parent->GetProvider() == &node->GetProvider()) &&
                        parent->IsReadOnly()) || (node && node->IsReadOnly()))) {"""
 
+MOUNT_ROOT_OLD = r"""  } else {
+    if (!base.empty()) {
+      auto resolved_parent = ResolveNode(base);
+      if (!resolved_parent) {
+        const bool missing = CodeOf(resolved_parent.error()) == FileSystemError::kNotFound;
+        return missing ? path_not_found() : Err<Opened>(resolved_parent.error());
+      }
+      parent = *resolved_parent;
+      if (!parent->IsDirectory()) {
+        return path_not_found();
+      }
+    }
+    if (auto resolved = ResolveNode(path)) {
+      node = *resolved;
+    }
+  }"""
+MOUNT_ROOT_NEW = r"""  } else {
+    // An exact provider root is a valid open target even when its virtual
+    // parent (e.g. \\Device) is not backed by a mounted filesystem.
+    // ResolveMount preserves the existing first-provider and link rules.
+    if (auto mount = ResolveMount(path, false); mount && mount->relative.empty()) {
+      node = &mount->provider->GetRoot();
+    } else {
+      if (!base.empty()) {
+        auto resolved_parent = ResolveNode(base);
+        if (!resolved_parent) {
+          const bool missing = CodeOf(resolved_parent.error()) == FileSystemError::kNotFound;
+          return missing ? path_not_found() : Err<Opened>(resolved_parent.error());
+        }
+        parent = *resolved_parent;
+        if (!parent->IsDirectory()) {
+          return path_not_found();
+        }
+      }
+      if (auto resolved = ResolveNode(path)) {
+        node = *resolved;
+      }
+    }
+  }"""
+
 def patch_filesystem(source):
+    source=replace(source,MOUNT_ROOT_OLD,MOUNT_ROOT_NEW)
     source=replace(source,RELATIVE_OPEN_OLD,RELATIVE_OPEN_NEW)
     source=replace(source,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_CHILD_NEW)
     source=replace(source,CROSS_PROVIDER_READONLY_OLD,CROSS_PROVIDER_READONLY_NEW)
@@ -638,7 +679,10 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
   // its physical parent while preserving registration precedence.
   REQUIRE(fs.Mount({"\\Device\\Harddisk0", ProviderType::kNull, {},
                     MountFlags::kWritable, {"\\Partition0"}}));
+  CHECK_FALSE(fs.Stat("\\Device"));
+  REQUIRE(fs.Stat("\\Device\\Harddisk0"));
   auto disk=Open("\\Device\\Harddisk0");
+  CHECK(disk.file->GetInfo().absolute_path=="\\Device\\Harddisk0");
   auto parts=disk.file->List("Partition1");
   REQUIRE(parts);
   auto partition_entry=(*parts)->Next();
