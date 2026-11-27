@@ -65,7 +65,7 @@ CUSTOM_OBJECT_EDITS = {
     ],
     [
       "    for (auto& [raw, owned] : objects_) {\n      retired.push_back(owned.release());",
-      "    for (auto& [raw, owned] : objects_) {\n      raw->guest_published = false; // no delete callbacks during bulk teardown\n      retired.push_back(owned.release());"
+      "    for (auto& [raw, owned] : objects_) {\n      // Reset follows stopped guest threads and UnloadAll(). Guest code is\n      // no longer callable, including the pool release routine. The\n      // title address space owns and reclaims all remaining guest blocks.\n      // Disarm both callbacks before removing the table's ownership, even\n      // if an outstanding host pin delays the native object's destruction.\n      raw->guest_published = false;\n      raw->guest_cleanup = {};\n      raw->guest_close = {};\n      retired.push_back(owned.release());"
     ],
     [
       "X_HANDLE ObjectTable::AddSlot(KernelObject* object) {",

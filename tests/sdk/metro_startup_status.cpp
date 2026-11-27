@@ -338,3 +338,33 @@ REX_TEST_CASE("metro_startup_status: empty hosted failed-device queue initialize
     CHECK(c.Load32(buffer+4)==0);
   });
 }
+
+REX_TEST_CASE("metro_startup_status: unload disarms guest object callbacks after original modules are gone",
+              "[kernel][metro_startup_status]") {
+  using namespace rex::kernel;
+  rex::test::KernelFixture fixture;
+  metro_allocs=0; metro_deletes=0; metro_frees=0;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& dispatch=GetFunctionDispatcher(c.GetRuntime());
+    const u32 alloc=dispatch.AllocateThunk(&MetroObjectAllocate,0);
+    const u32 release=dispatch.AllocateThunk(&MetroObjectFree,0);
+    const u32 cleanup=dispatch.AllocateThunk(&MetroObjectDelete,0);
+    REQUIRE(alloc); REQUIRE(release); REQUIRE(cleanup);
+    const u32 type=c.Alloc(28), out=c.Alloc(4), h=c.Alloc(4);
+    c.Store32(type,alloc); c.Store32(type+4,release); c.Store32(type+12,cleanup);
+    c.Store32(type+24,0x66746f4e);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,32,out})==0);
+    REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h})==0);
+    REQUIRE(c.Load32(h));
+    CHECK(metro_allocs.load()==1);
+    CHECK(metro_deletes.load()==0);
+    CHECK(metro_frees.load()==0);
+    // Leave an original custom object live deliberately. Bulk title unload
+    // must not re-enter guest code after guest threads/modules are gone.
+  });
+  REQUIRE_FALSE(KernelThread::IsInThread());
+  fixture.GetRuntime().Unload();
+  CHECK_FALSE(fixture.GetRuntime().IsLoaded());
+  CHECK(metro_deletes.load()==0);
+  CHECK(metro_frees.load()==0);
+}
