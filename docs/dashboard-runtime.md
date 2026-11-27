@@ -35,3 +35,14 @@ The same artifact establishes four distinct custom object creation sites, not on
 ## Original callback-backed custom objects
 
 Run 45953534958 verifies the first descriptor words: 81A72B54, 81A72734, 0, 816A7EE0, 0, 0xC, 66746F4E. The first two match the original ExAllocatePoolTypeWithTag and ExFreePool thunks. The new manager dispatches the allocator, registers a pointer-owned object without a hidden handle, atomically transfers creation ownership on insertion, preserves the original descriptor identity, mirrors header counts, and dispatches cleanup and release at final retirement. Native guest-thread tests exercise original-shaped callback thunks, zeroed body, explicit failure, duplicate handles, type mismatch, and final destruction. Named creation, nonzero bias, nonzero close/parse callbacks and custom wait semantics remain unsupported. Header size/count conventions and delete callback argument are implementation candidates awaiting retail verification. A last pin dropped outside its runtime's guest execution context cannot dispatch guest code; bulk shutdown reclaims guest memory rather than executing arbitrary callbacks. No claim of live menu progress until boot capture.
+
+## Full descriptor inventory and close callback
+
+Run 45954799479 recovered all four descriptors, in order (allocate, free, close, delete, parse, default-object word, tag):
+
+- 81A821E0: 81A72B54 81A72734 0 816A7EE0 0 C 66746F4E
+- 81A82574: 816E6CE0 816E6B10 0 816BB030 0 81A85484 7
+- 81A85494: 816E6CE0 816E6B10 816F1200 0 0 81A85484 6
+- 81A93738: 81897C50 8188B380 8188B388 0 0 81A85484 5370744D
+
+816F1200 calls ObReferenceObject on its own body before queuing work; 8188B388 dispatches a virtual callback on the first body word. Rejecting nonzero close hooks previously prevented both types from being created. The object table now transfers the closing handle's pointer ownership to an internal callback hold, removes the handle, and executes the original close procedure without holding the table lock. It passes the prior handle count as a second argument (consistent with earlier Xbox object-manager behavior; 360 convention needs live confirmation). Callback reentry may acquire a new pointer reference; final retirement occurs only when the hold and every other reference are gone. A regression exercises that exact reentrant final-close contract. Earlier regression 45954758243 passed 885 assertions in 32 cases; new close-callback tests remain pending. Default-object semantics and safe host-thread cleanup remain unresolved.

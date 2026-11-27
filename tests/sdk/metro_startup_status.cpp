@@ -165,3 +165,52 @@ REX_TEST_CASE("metro_startup_status: custom guest object callbacks and ownership
     CHECK(metro_value.load()==0xaabbccdd);
   });
 }
+
+namespace {
+std::atomic<u32> metro_closes{0}, metro_close_first{0}, metro_close_last{0}, metro_close_body{0};
+void MetroObjectClose(PPCContext& ctx,u8* base) {
+  rex::test::Caller c(ctx,base,rex::kernel::KernelThread::GetCallingThread()->GetRuntime());
+  const u32 body=ctx.r3.u32, count=ctx.r4.u32;
+  ++metro_closes;
+  if (count==2) metro_close_first=c.Load32(body-12);
+  if (count==1) {
+    metro_close_last=c.Load32(body-12);
+    metro_close_body=body;
+    // The original 816F1200 callback takes a pointer reference on close.
+    c.Kernel("ObReferenceObject",{body});
+  }
+}
+}
+REX_TEST_CASE("metro_startup_status: close callback may reference object during final handle closure",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    metro_allocs=0; metro_deletes=0; metro_frees=0; metro_closes=0;
+    metro_close_first=99; metro_close_last=99; metro_close_body=0;
+    auto& dispatch=GetFunctionDispatcher(c.GetRuntime());
+    const u32 alloc=dispatch.AllocateThunk(&MetroObjectAllocate,0);
+    const u32 release=dispatch.AllocateThunk(&MetroObjectFree,0);
+    const u32 cleanup=dispatch.AllocateThunk(&MetroObjectDelete,0);
+    const u32 close=dispatch.AllocateThunk(&MetroObjectClose,0);
+    REQUIRE(alloc); REQUIRE(release); REQUIRE(cleanup); REQUIRE(close);
+    const u32 type=c.Alloc(28), out=c.Alloc(4), h=c.Alloc(4), dup=c.Alloc(4);
+    c.Store32(type,alloc); c.Store32(type+4,release); c.Store32(type+8,close);
+    c.Store32(type+12,cleanup); c.Store32(type+24,0x66746f4e);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,48,out})==0);
+    const u32 body=c.Load32(out); c.Store32(body,0x12345678);
+    REQUIRE(c.Kernel("ObInsertObject",{body,0,0,h})==0);
+    REQUIRE(c.Kernel("NtDuplicateObject",{c.Load32(h),dup,0})==0);
+    CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
+    CHECK(metro_closes.load()==1); CHECK(metro_close_first.load()==1);
+    CHECK(c.Load32(body-16)==1);
+    CHECK(c.Kernel("NtClose",{c.Load32(dup)})==0);
+    CHECK(metro_closes.load()==2); CHECK(metro_close_last.load()==0);
+    CHECK(metro_close_body.load()==body); CHECK(c.Load32(body-16)==1);
+    CHECK(metro_deletes.load()==0); CHECK(metro_frees.load()==0);
+    CHECK(c.Kernel("ObDereferenceObject",{body})==0);
+    CHECK(metro_deletes.load()==1); CHECK(metro_frees.load()==1);
+    CHECK(metro_value.load()==0x12345678);
+    CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(body));
+  });
+}
