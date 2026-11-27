@@ -14,9 +14,11 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
+#include <cstddef>
 #include <string_view>
 #include "generated/dash_17559_init.h"
 #include "metro_preflight_bindings.hpp"
+#include "metro_resource_proofs.hpp"
 #include "metro_aot_boot.hpp"
 
 namespace {
@@ -26,6 +28,35 @@ using rex::kernel::TitleRuntime;
 bool fail(const char* stage) {
     std::cout << "METRO_PREFLIGHT fail " << stage << std::endl;
     return false;
+}
+
+template <std::size_t N>
+bool verify_resources(TitleRuntime& title, ModuleObject& module, const char* label,
+                      const MetroResourceProof (&proofs)[N]) {
+    for (const auto& proof : proofs) {
+        rex::u32 address=0, size=0;
+        const auto status=module.GetSection(proof.name,&address,&size);
+        if (status || address!=proof.address || size!=proof.size) {
+            std::cout<<"METRO_RESOURCE fail "<<label<<" "<<proof.name<<" lookup"<<std::endl;
+            return false;
+        }
+        auto bytes=title.GetGuestMemory().GetReadOnlySpan(address,size);
+        if (!bytes) {
+            std::cout<<"METRO_RESOURCE fail "<<label<<" "<<proof.name<<" mapping"<<std::endl;
+            return false;
+        }
+        std::uint64_t digest=0xcbf29ce484222325ull;
+        for (auto byte : *bytes) {
+            digest^=std::to_integer<unsigned char>(byte);
+            digest*=0x100000001b3ull;
+        }
+        if (digest!=proof.digest) {
+            std::cout<<"METRO_RESOURCE fail "<<label<<" "<<proof.name<<" content"<<std::endl;
+            return false;
+        }
+        std::cout<<"METRO_RESOURCE pass "<<label<<" "<<proof.name<<" bytes="<<size<<std::endl;
+    }
+    return true;
 }
 
 class MetroPreflight final : public rex::app::App {
@@ -191,6 +222,10 @@ public:
         }
         if (count!=233) return fail("hud_binding_count");
         std::cout<<"METRO_PREFLIGHT pass hud_retail_mapping"<<std::endl;
+        if (!verify_resources(title_,*dash,"dash",kDashResources) ||
+            !verify_resources(title_,*module,"xam",kXamResources) ||
+            !verify_resources(title_,*hud,"hud",kHudResources)) return fail("original_resource_integrity");
+        std::cout<<"METRO_PREFLIGHT pass original_resource_integrity"<<std::endl;
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
 

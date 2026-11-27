@@ -177,6 +177,30 @@ def custom_callback_hints(image,base,pe,descriptors=CUSTOM_OBJECT_DESCRIPTORS,
             record["slots"].append(f"{address+i*4:08X}")
     return sorted((v for v in report.values()),key=lambda r:r["address"])
 
+def resource_integrity_header(modules):
+    """Digest each pinned original resource independently before native loading."""
+    out=["#pragma once", "#include <cstdint>",
+         "struct MetroResourceProof { const char* name; std::uint32_t address, size; std::uint64_t digest; };"]
+    for label,raw,image,meta in modules:
+        pin=json.loads((ROOT/"analysis"/f"{label.lower()}_17559"/"resource_hashes.json").read_text())
+        if len(pin)!=len({r["id"] for r in pin}):raise ValueError("duplicate resource")
+        out.append(f"inline constexpr MetroResourceProof k{label}Resources[] = {{")
+        base=meta["image_base"]
+        for r in pin:
+            name=r["id"];addr=int(r["address"],16);size=r["bytes"]
+            if not re.fullmatch(r"[A-Za-z0-9_]{1,8}",name) or not base<=addr<=base+len(image)-size or not size:
+                raise ValueError("invalid original resource record")
+            payload=image[addr-base:addr-base+size]
+            if hashlib.sha256(payload).hexdigest()!=r["sha256"]:
+                raise ValueError("original resource digest mismatch "+name)
+            # FNV-1a is a fast memory-corruption check, not a security hash.
+            # SHA-256 above authenticates the source against the pinned census.
+            digest=0xcbf29ce484222325
+            for byte in payload:digest=((digest^byte)*0x100000001b3)&0xffffffffffffffff
+            out.append(f'    {{"{name}",0x{addr:08X}u,{size}u,0x{digest:016X}ull}},')
+        out.append("};")
+    return "\n".join(out)+"\n"
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("folder",type=Path)
@@ -238,6 +262,13 @@ def main():
             raise ValueError("custom allocator/release import proof failed")
     exports=sorted(set(exports)|{f"{callback:08X}"}|
                    {r["address"] for r in custom_callbacks if r["kind"]=="descriptor_entry"})
+    hud_raw=parse_pirs(original("pirs"))["$flash_hud.xex"]["payload"]
+    from stage_metro_xam_aot import HUD_SHA
+    if sha(hud_raw)!=HUD_SHA:raise ValueError("HUD source identity")
+    hi,hm=decode(hud_raw,a.lzx.resolve())
+    proofs=resource_integrity_header([("Dash",original("dash_basic"),image,info),
+                                     ("Xam",xam_raw,xi,xm),("Hud",hud_raw,hi,hm)])
+    (a.folder/"src/metro_resource_proofs.hpp").write_text(proofs)
     target=a.folder/"dash_17559_manifest.toml"
     if target.read_text()!=manifest():raise ValueError("unexpected paired manifest")
     updated=target.read_text().replace('out_directory_path = "generated_xam"','out_directory_path = "generated_xam"\nincludes = ["verified-xam-export-entries.toml"]')

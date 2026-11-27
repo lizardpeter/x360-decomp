@@ -14,6 +14,7 @@ PAD=re.compile(r"METRO_PAD user=(\d+) buttons=0x([0-9a-fA-F]+)")
 GUEST_PAD=re.compile(r"METRO_GUEST_PAD context=([0-9a-fA-F]+) user=(\d+) packet=(\d+) buttons=0x([0-9a-fA-F]+)")
 HEAP=re.compile(r"METRO_HEAP pc=([0-9A-Fa-f]+) stage=(\w+) r3=([0-9A-Fa-f]+) r4=([0-9A-Fa-f]+) r5=([0-9A-Fa-f]+) r6=([0-9A-Fa-f]+) r7=([0-9A-Fa-f]+) r8=([0-9A-Fa-f]+)")
 VM=re.compile(r"METRO_VM (\w+) lr=([0-9a-fA-F]+) region=(\d+) base=([0-9a-fA-F]+) size=([0-9a-fA-F]+) flags=([0-9a-fA-F]+) protect=([0-9a-fA-F]+) status=([0-9a-fA-F]+)")
+UI=re.compile(r"METRO_UI pc=([0-9A-Fa-f]+) label=(\w+) phase=(\w+) count=(\d+) r3=([0-9A-Fa-f]+) r4=([0-9A-Fa-f]+) r5=([0-9A-Fa-f]+) r6=([0-9A-Fa-f]+) r7=([0-9A-Fa-f]+) r8=([0-9A-Fa-f]+)")
 FRAME=re.compile(r"^METRO_BOOT frames (\d+)$")
 VAR=re.compile(r"METRO_KERNEL_VAR module=(\w+) ordinal=0x([0-9a-fA-F]+).* state=(\w+)")
 
@@ -31,7 +32,13 @@ def summarize(lines, inventories):
                 if a<=pc<a+size:return module,f"{a:08X}"
         return "unclassified",None
     gates=[];stubs=collections.Counter();sites={};pad=[];guest_pad=[];frames=[];variables=[];errors=[];heap=[];vm=[];failed_paths=collections.Counter()
+    ui={}
     for line in lines:
+        if m:=UI.search(line):
+            key=(m[1].upper(),m[2],m[3])
+            record=ui.setdefault(key,{"pc":key[0],"label":key[1],"phase":key[2],"count_lower_bound":0,"samples":[]})
+            record["count_lower_bound"]=max(record["count_lower_bound"],int(m[4]))
+            if len(record["samples"])<8:record["samples"].append({f"r{i}":m[i+2].upper() for i in range(3,9)})
         if m:=STUB.search(line):
             name=m[1];lr=int(m[2],16);module,caller=locate(lr)
             stubs[name]+=1
@@ -60,7 +67,7 @@ def summarize(lines, inventories):
     return {"boot_markers":gates,"observed_stub_counts":dict(stubs),"stub_call_sites":list(sites.values()),
             "pad_transitions":pad,"guest_pad_transitions":guest_pad,"frame_counts":frames,"kernel_variables":variables,
             "missing_mount_paths":dict(failed_paths),"errors":errors,
-            "heap_probes":heap,"virtual_memory_calls":vm,
+            "heap_probes":heap,"ui_probes":list(ui.values()),"virtual_memory_calls":vm,
             "virtual_memory_failures":[v for v in vm if int(v["status"],16)&0x80000000],
             "menu_visually_verified":False,"navigation_visually_verified":False}
 
