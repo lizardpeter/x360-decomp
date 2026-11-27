@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Read the original XAM app initialization table and exact loader contracts."""
 import argparse
+import bisect
+import collections
 import json
 import struct
 from pathlib import Path
@@ -8,6 +10,7 @@ from analyze_decoded import imports,pe_info
 from decode_image import decode
 from metro_import_contracts import DIGESTS,branch,hx,library,sdk_catalog
 from metro_xam_fault_evidence import operand,bounded_entry,conditional_details
+from metro_profile_evidence import linear_export_extent
 from metro_live_slot_and_input_evidence import executable
 from pirs import parse
 from prepare_recompilation import ROOT,EXPECTED,sha,original
@@ -121,6 +124,134 @@ def loader_audit(image,base,pe,thunks,records,members):
     return {"app_flash_identity":identities,"final_load":identity(read_name(image,base,addr)),
             "loader_sites":sites,"shared_tail_body":body}
 
+def policy_audit(image,base,pe,thunks,records):
+    """Recover the original loop's conditional policy, not inferred app names."""
+    def op(pc):return operand(pc,word(image,base,pc))
+    def edge(pc,target,field,bit,sense):
+        actual=conditional_details(pc,word(image,base,pc))
+        if not actual or actual["target"]!=hx(target) or actual["linked"] or actual["cr_test"]!={"field":field,"bit":bit,"sense":sense}:
+            raise ValueError("app policy branch changed "+hx(pc))
+    def compare(pc,reg,val,cr,unsigned):
+        row=op(pc)
+        if (row.get("kind"),row.get("register"),row.get("value"),row.get("unsigned"),(word(image,base,pc)>>23)&7)!=("compare_immediate",reg,val,unsigned,cr):
+            raise ValueError("app policy compare changed "+hx(pc))
+    for pc,reg,source in ((0x816BD27C,25,3),(0x816BD280,24,4)):
+        row=op(pc)
+        if (row.get("kind"),row.get("writes"),row.get("source"))!=("register_copy",reg,source):
+            raise ValueError("app policy argument copy changed")
+    for pc,value in ((0x816BDEF0,1),):
+        row=op(pc)
+        if (row.get("kind"),row.get("writes"),row.get("value"))!=("immediate",3,value):
+            raise ValueError("app startup mode changed")
+    compare(0x816BD318,4,242,6,True)
+    edge(0x816BD31C,0x816BD3FC,6,"eq","set")
+    compare(0x816BD37C,24,0,6,False)
+    edge(0x816BD384,0x816BD390,6,"eq","set")
+    compare(0x816BD388,11,0,6,False)
+    edge(0x816BD38C,0x816BD3A0,6,"eq","clear")
+    compare(0x816BD390,25,0,6,False)
+    edge(0x816BD394,0x816BD3F4,6,"eq","set")
+    compare(0x816BD398,11,0,6,False)
+    edge(0x816BD39C,0x816BD3F4,6,"eq","clear")
+    edge(0x816BD3B8,0x816BD3F4,0,"lt","clear")
+    optional=[]
+    for pc in range(0x816BD3C0,0x816BD3E9,8):
+        row=op(pc);val=row["value"];compare(pc,11,val,6,True)
+        if pc==0x816BD3E8:edge(pc+4,0x816BD3F4,6,"eq","clear")
+        else:edge(pc+4,0x816BD3F0,6,"eq","set")
+        optional.append(val)
+    if optional!=[249,248,247,239,245,244]:raise ValueError("unexpected optional startup app IDs")
+    row=op(0x816BD3F0)
+    if (row.get("kind"),row.get("writes"),row.get("value"))!=("immediate",28,0):
+        raise ValueError("app optional failure clear changed")
+    compare(0x816BD404,28,0,6,False)
+    edge(0x816BD408,0x816BD2D4,6,"lt","clear")
+    # The known caller uses mode1=1. Mode2 is preserved from the caller;
+    # model both classes, never assume a runtime hardware state.
+    scenarios=[]
+    for mode2 in (0,1):
+        for r in records:
+            skip=r["app_id"] in (0,242)
+            load=(not skip and ((mode2!=0 and r["load_flag_bit0"]) or
+                                (not r["load_flag_bit0"])))
+            scenarios.append({"app_id":r["app_id"],"name":r["name"],"mode2_nonzero":bool(mode2),
+                              "skip_for_zero_heap_flag":skip,"call_loader":load,
+                              "negative_result":"continue" if r["app_id"] in optional else "stop_loop"})
+    return {"optional_failure_ids":optional,"skipped_id":242,"mode1":1,
+            "scenarios_assuming_zero_heap_flag":scenarios}
+
+def callback_graph(image,base,pe,thunks,records):
+    """Follow table-backed executable callbacks separately from direct edges."""
+    funcs={a:n for a,n,_ in pe["functions"]}
+    # Recover direct tail/leaf wrappers only where a bounded original
+    # instruction sequence independently proves the entry extent.
+    roots={int(r["pointer"],16):r for r in records if r["pointer_location"]=="code"}
+    for a in roots:
+        if a not in funcs:
+            extent=linear_export_extent(image,base,pe,a)
+            if extent:funcs[a]=extent[0]
+    starts=sorted(funcs)
+    def owner(pc):
+        i=bisect.bisect_right(starts,pc)-1
+        return starts[i] if i>=0 and pc<starts[i]+funcs[starts[i]] else None
+    edges=collections.defaultdict(dict);reverse=collections.defaultdict(set)
+    imports_by_owner=collections.defaultdict(list);indirect=collections.defaultdict(list)
+    for a,n in sorted(funcs.items()):
+        for pc in range(a,a+n,4):
+            w=word(image,base,pc);b=branch(pc,w)
+            if b:
+                d,linked=b
+                if d in funcs and d!=a:
+                    edges[a].setdefault(d,{"site":hx(pc),"target":hx(d),"linked":linked})
+                    reverse[d].add(a)
+                if d in thunks:imports_by_owner[a].append({"site":hx(pc),"name":thunks[d]["name"]})
+            elif w>>26==19 and (w>>1)&1023==528 and w&1:
+                indirect[a].append(hx(pc))
+    # Report exact shortest routes from each real app callback to the
+    # observed key-service owner, or to its direct caller, without
+    # inventing any route through dynamically resolved destinations.
+    goals=(0x81899538,0x81899BB8,0x816A2B90)
+    routes=[]
+    for goal in goals:
+        dist={goal:0};q=collections.deque([goal])
+        while q:
+            d=q.popleft()
+            for a in sorted(reverse[d]):
+                if a not in dist:dist[a]=dist[d]+1;q.append(a)
+        for a,row in sorted(roots.items()):
+            path=[];here=a
+            if here in dist:
+                while here!=goal:
+                    nxt=min(d for d in edges[here] if dist.get(d)==dist[here]-1)
+                    path.append({"owner":hx(here),**edges[here][nxt]});here=nxt
+            routes.append({"app_id":row["app_id"],"name":row["name"],"callback":hx(a),
+                           "goal":hx(goal),"reachable_by_exact_entries":a in dist,"path":path})
+    # First three direct levels are sufficient to identify the immediate
+    # app callback ABI and outstanding runtime imports; do not claim
+    # completeness for the thousands of transitive descendants.
+    summaries=[]
+    for a,row in sorted(roots.items()):
+        seen={a:0};q=collections.deque([a])
+        while q:
+            here=q.popleft()
+            if seen[here]>=3:continue
+            for d in sorted(edges[here]):
+                if d not in seen:seen[d]=seen[here]+1;q.append(d)
+        counts=collections.Counter(i["name"] for v in seen for i in imports_by_owner[v])
+        summaries.append({"app_id":row["app_id"],"name":row["name"],"callback":hx(a),
+                          "exact_extent":a in funcs,"bounded_nodes":len(seen),
+                          "imports":dict(sorted(counts.items())),
+                          "indirect_calls":sum(len(indirect[v]) for v in seen)})
+    # App descriptor initialization stores the callback at +12; later
+    # the loader consumes that value and hands the descriptor to dispatch.
+    for pc,reg,offset in ((0x816BCC74,30,12),(0x816BCE68,11,12)):
+        row=operand(pc,word(image,base,pc))
+        if row.get("base")!=31 or row.get("offset")!=offset or row.get("width")!=4 or (row.get("source") if pc==0x816BCC74 else row.get("writes"))!=reg:
+            raise ValueError("app descriptor callback field changed")
+    return {"callback_field_offset":12,"registration_store":"816BCC74","loader_read":"816BCE68",
+            "callback_roots":summaries,"exact_routes":routes,
+            "dispatch_body":bounded_entry(image,base,pe,0x816A2B90,thunks,min(funcs.get(0x816A2B90,256),4096))}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -139,6 +270,11 @@ def main():
         for t in r["thunk_slots"]:thunks[t]={"name":name,"ordinal":r["ordinal"],"sdk_stub":name in stubs}
     result=app_table(image,base,pe)
     result["loaders"]=loader_audit(image,base,pe,thunks,result["records"],members)
+    result["policy"]=policy_audit(image,base,pe,thunks,result["records"])
+    result["callback_graph"]=callback_graph(image,base,pe,thunks,result["records"])
+    print("APP_POLICY",json.dumps(result["policy"],sort_keys=True))
+    print("APP_CALLBACK_ROOTS",json.dumps(result["callback_graph"]["callback_roots"],sort_keys=True))
+    print("APP_CALLBACK_ROUTES",json.dumps(result["callback_graph"]["exact_routes"],sort_keys=True))
     print("APP_TABLE",json.dumps(result["records"],sort_keys=True))
     print("APP_OBJECT_LAYOUT",result["object_origin"],result["object_multiplier"])
     print("APP_MODULES",json.dumps(result["loaders"]["app_flash_identity"],sort_keys=True))
