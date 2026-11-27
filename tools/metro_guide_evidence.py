@@ -27,7 +27,7 @@ GUIDE_EXPORTS={"XamShowGuideUI":0x816C3580,"XamInputSendXenonButtonPress":0x816F
  "XamInputGetKeystrokeHudEx":0x816F4C78}
 SYSREQ_OWNERS={0x816F0368,0x816F0410,0x816F0AE0,0x816F0DF0}
 INPUT_OWNERS={0x816F14E8,0x816F28A8,0x816F19C0,0x816F2A70,0x816F2B98,
- 0x816F2C50,0x816F2D88,0x816DA550,0x816F17E0,0x81696068,0x816D9060,0x816F06E8,0x816F0E70,0x816F3C48,0x816D8AA8,0x816F0400,0x816F0DE0,0x816C7D78,0x816CAF08,0x816E16E0,0x816C2AF0,0x81696AF0,0x816CE8B0,0x816F0F28,0x816968A8,0x816F4088}
+ 0x816F2C50,0x816F2D88,0x816DA550,0x816F17E0,0x81696068,0x816D9060,0x816F06E8,0x816F0E70,0x816F3C48,0x816D8AA8,0x816F0400,0x816F0DE0,0x816C7D78,0x816CAF08,0x816E16E0,0x816C2AF0,0x81696AF0,0x816CE8B0,0x816F0F28,0x816968A8,0x816F4088,0x81696558,0x816C9EA0,0x816CEBD8}
 KERNEL={"DrvSetSysReqCallback","DrvSetUserBindingCallback","XInputdReadState",
  "XInputdRawState","XInputdNotify","XInputdGetCapabilities"}
 UI={"XamShowGuideUI","XamInputSendXenonButtonPress","XamIsGuideDisabled",
@@ -228,6 +228,35 @@ def scan(label,raw,image,meta,catalog,stubs):
     trace={}
     def mark(a,name,phase):
         if executable(pe,base,a):trace.setdefault(hx(a),{"name":name,"phase":phase})
+    hardware_gate={}
+    if label=="xam":
+        def check(pc,**want):
+            actual=operand(struct.unpack_from(">I",image,pc-base)[0],pc)
+            if any(actual.get(k)!=v for k,v in want.items()):
+                raise ValueError(f"hardware UI gate mismatch {pc:08X}: {actual}")
+        # Original retail XAM uses this one hosted kernel variable in both
+        # graphics startup and deferred system-UI initialization.
+        hw=[r for r in imports(image,base,parse_xex(raw))
+            if library(r["library"])=="xboxkrnl" and int(r["ordinal"],16)==0x156]
+        if len(hw)!=1 or 0x815F0480 not in hw[0]["value_slots"]:
+            raise ValueError("XboxHardwareInfo import slot mismatch")
+        for pc in (0x816C9EB8,0x816966FC):
+            check(pc,kind="rotate_mask",mask_start=22,mask_end=22,shift_or_reg=0,source=11,writes=11)
+        for pc,dest in ((0x81696724,0x816CEBD8),(0x816CEC70,0x816BA6B0),(0x816CEB58,0x816F0F28)):
+            if branch(pc,struct.unpack_from(">I",image,pc-base)[0])!=(dest,True):
+                raise ValueError(f"Guide initialization edge mismatch {pc:08X}")
+        hardware_gate={"import_slot":"815F0480","ordinal":"0156","tested_mask":"00000200",
+                       "graphics_test":"816C9EB8","startup_test":"816966FC",
+                       "startup_branch":"81696700","skip_target":"81696748",
+                       "ui_registrar":"816CEBD8","ui_worker":"816CE8B0"}
+        for pc in (0x816C9EB8,0x816966FC):mark(pc,"hw_gate","test")
+        for pc in (0x816C9EC0,0x816C9EC8,0x81696704,0x81696748):
+            mark(pc,"hw_gate_path","observed")
+        for pc in (0x816C9EA0,0x81696558,0x816CEBD8):
+            mark(pc,"guide_boot_"+hx(pc),"entry")
+        for pc in (0x81696714,0x81696724,0x816CEC28,0x816CEC38,0x816CEC70,0x816CEC78):
+            mark(pc,"guide_boot_"+hx(pc),"call")
+            mark(pc+4,"guide_boot_"+hx(pc),"return")
     for name,a in exports.items():mark(a,name,"entry")
     for a in SYSREQ_OWNERS|extra if label=="xam" else ():
         mark(a,"sysreq_"+hx(a),"entry")
@@ -276,7 +305,7 @@ def scan(label,raw,image,meta,catalog,stubs):
       "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"computed_callback_refs":nonadjacent_refs,"startup_work_items":startup_arguments,"callback_candidates":[hx(a) for a in sorted(extra)],
       "reverse_graph":ancestors(roots,inbound,max_depth=3,max_nodes=1000),
       "forward_graph":{"nodes":{hx(a):n for a,n in chosen.items()},"truncated":truncated},
-      "bodies":bodies,"trace_points":trace}
+      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

@@ -260,6 +260,29 @@ inline bool verify_kernel_variables(rex::kernel::TitleRuntime& title,
     return failures==0 && passed+unknown==N;
 }
 
+// Explicit capability experiment. This is a hosted kernel variable, not an
+// alteration of the retail XAM image or its privilege/Guide-disabled checks.
+inline bool guide_hardware_experiment(rex::kernel::TitleRuntime& title) {
+    const char* setting=std::getenv("X360_METRO_GUIDE_UI");
+    if (!setting || std::string_view(setting)=="0") return true;
+    if (std::string_view(setting)!="1") return false;
+    const auto kernel=title.GetModuleRegistry().FindKernelModule("xboxkrnl");
+    if (!kernel) return false;
+    auto object=title.GetObjectTable().Get<rex::kernel::ModuleObject>(*kernel);
+    if (!object) return false;
+    auto& memory=title.GetGuestMemory();
+    const auto target=object->GetVariable(0x156);
+    const auto slot=memory.Load<rex::be_u32>(0x815F0480u);
+    if (!target || !slot || static_cast<rex::u32>(*slot)!=target) return false;
+    const auto before=memory.Load<rex::be_u32>(target);
+    if (!before || static_cast<rex::u32>(*before)!=0x20u) return false;
+    if (!memory.Store(target,rex::be_u32(0x220u))) return false;
+    const auto after=memory.Load<rex::be_u32>(target);
+    if (!after || static_cast<rex::u32>(*after)!=0x220u) return false;
+    std::cout<<"METRO_GUIDE_HW original=0x20 hosted=0x220 diagnostic=1"<<std::endl;
+    return true;
+}
+
 struct EntryBinding {
     PPCFunc* dashboard{};
     rex::kernel::FunctionDispatcher* dispatcher{};
@@ -398,6 +421,7 @@ protected:
             !xam->hmodule_ptr || !title.FindFunction(kXamEntry)) return fail("xam_identity");
         if (!verify_kernel_variables(title,*dx,kDashKernelVariables,"dash") ||
             !verify_kernel_variables(title,*xx,kXamKernelVariables,"xam")) return fail("kernel_variables");
+        if (!guide_hardware_experiment(title)) return fail("guide_hardware_experiment");
         if (!verify_retail_routes(title, *dx, *xx)) return fail("retail_export_mapping");
         if (!verify_live_binding(title, *dx, *xx, kXamDataBinding, true))
             return fail("data_mapping");

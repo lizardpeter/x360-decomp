@@ -21,6 +21,7 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   unset X360_METRO_LOCAL_PROFILES
   export X360_METRO_PROFILE_TRACE=1
   export X360_METRO_GUIDE_TRACE=1
+  export X360_METRO_GUIDE_UI="${X360_METRO_GUIDE_UI:-1}"
   profile_args=(--hid.guide_button=true --hid.keybind_guide=F9)
 fi
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
@@ -222,6 +223,12 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   done
   change="$(difference "$out/input-profile-before.png" "$out/input-profile-guide-4.png")" || exit 1
   tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=|METRO_GUIDE_TRACE|METRO_SYSREQ' > "$out/profile-guide.log" || true
+  guide_callbacks="$(grep -c 'METRO_SYSREQ.*deliver' "$out/profile-guide.log" || true)"
+  guide_original="$(grep -c 'METRO_GUIDE_TRACE module=xam pc=816F09E8' "$out/profile-guide.log" || true)"
+  guide_worker="$(grep -c 'METRO_GUIDE_TRACE module=xam pc=816F0AE0' "$out/boot.log" || true)"
+  guide_hud="$(grep -c 'METRO_GUIDE_TRACE module=hud' "$out/profile-guide.log" || true)"
+  grep 'METRO_GUIDE_HW' "$out/boot.log" >> "$out/receipt.txt" || true
+  printf 'guide_callback_delivery_traces=%s\nguide_original_callback_traces=%s\nguide_worker_entry_traces=%s\nguide_hud_traces=%s\n' "$guide_callbacks" "$guide_original" "$guide_worker" "$guide_hud" >> "$out/receipt.txt"
   # B is a cancel request. Never send A/confirm at an unknown account dialog.
   xdotool keydown BackSpace
   sleep 0.25
