@@ -210,12 +210,24 @@ def verified_storage_fault_details(image,base,pe,thunks):
     site=0x8167E7A4
     dest=branch(site,read_word(image,base,site))
     if dest!=(0x81679558,True):raise ValueError("fault caller site changed")
-    start,length=owner(pe,dest[0])
-    if start!=dest[0]:raise ValueError("fault intermediary is interior")
+    start=dest[0]
+    if not executable(pe,base,start):raise ValueError("intermediary outside executable section")
+    owners=[(a,size) for a,size,_ in pe["functions"] if a<=start<a+size]
+    exact=len(owners)==1 and owners[0][0]==start
+    # A direct branch target is known even when no PDATA entry covers it.
+    # Inspect only a bounded prefix; do not invent a function boundary.
+    following=min((a for a,_,_ in pe["functions"] if a>start),default=start+64)
+    length=owners[0][1] if exact else min(64,following-start)
+    while length and not executable(pe,base,start+length-4):length-=4
+    ops=describe(image,base,start,length,thunks)
+    first=branch(start,read_word(image,base,start))
     return {"gates":gates,
             "caller_return_pc":"8167E7A8","caller_call_site":hx(site),
-            "intermediate_entry":hx(start),"intermediate_operands":describe(image,base,start,length,thunks),
-            "intermediate_tail_path":direct_tail_path(image,base,pe,start,FRAMES[0]),
+            "intermediate_entry":hx(start),"intermediate_operands":ops,
+            "intermediate_pdata_owners":[{"entry":hx(a),"size":size} for a,size in owners],
+            "intermediate_extent_verified":exact,
+            "intermediate_first_direct_branch":None if not first else {"target":hx(first[0]),"linked":first[1]},
+            "intermediate_tail_path":direct_tail_path(image,base,pe,start,FRAMES[0]) if exact else None,
             "fault_load":operand(FAULT_PC,read_word(image,base,FAULT_PC))}
 
 def main():
