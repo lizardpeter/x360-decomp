@@ -182,3 +182,47 @@ REX_TEST_CASE("metro_audio_context: select original initialized CPU, not registr
   CHECK(SelectRetailRenderCPU(0xff,1u<<4)==4);
   CHECK(SelectRetailRenderCPU(0xff,0xc0)==0xff);
 }
+
+REX_TEST_CASE("metro_audio_context: exact module-local engine globals",
+              "[kernel][metro_audio_context]") {
+  using rex::kernel::GetRetailRenderEngineSlot;
+  CHECK(GetRetailRenderEngineSlot(0x819AE4E8u,0x815F0000u,0x610000u,0x81696AF0u)==0x81B5B5E4u);
+  CHECK(GetRetailRenderEngineSlot(0x92415C28u,0x92000000u,0x1028000u,0x92196610u)==0x92A5BEF0u);
+  CHECK(GetRetailRenderEngineSlot(0x92415C28u,0x815F0000u,0x610000u,0x81696AF0u)==0);
+  CHECK(GetRetailRenderEngineSlot(0x819AE4E8u,0x92000000u,0x1028000u,0x92196610u)==0);
+  CHECK(GetRetailRenderEngineSlot(0x92415C28u,0x92000000u,0x1028000u,0x92196614u)==0);
+  CHECK(GetRetailRenderEngineSlot(0x92415C28u,0x92000000u,0x1027000u,0x92196610u)==0);
+  CHECK(GetRetailRenderEngineSlot(0x92415C2Cu,0x92000000u,0x1028000u,0x92196610u)==0);
+  CHECK(GetRetailRenderEngineSlot(0x9804F308u,0x98000000u,638976u,0)==0);
+}
+REX_TEST_CASE("metro_audio_context: read real mapped processor buffer pairs",
+              "[kernel][metro_audio_context]") {
+  using rex::kernel::GetRetailInitializedCPUMask;
+  rex::test::KernelFixture fixture;
+  auto& runtime=fixture.GetRuntime();
+  auto& guest=runtime.GetGuestMemory();
+  auto* memory=StateOf(runtime).GetAddressSpace();
+  const auto engine=memory->SystemHeapAlloc(64);
+  const auto a=memory->SystemHeapAlloc(32);
+  const auto b=memory->SystemHeapAlloc(32);
+  REQUIRE(engine);
+  REQUIRE(a);
+  REQUIRE(b);
+  for (unsigned offset=0;offset<64;offset+=4)
+    REQUIRE(guest.Store(engine+offset,rex::be_u32{0}));
+  CHECK(GetRetailInitializedCPUMask(guest,engine)==0);
+  REQUIRE(guest.Store(engine+44,rex::be_u32{a}));
+  CHECK(GetRetailInitializedCPUMask(guest,engine)==0);
+  REQUIRE(guest.Store(engine+48,rex::be_u32{a}));
+  CHECK(GetRetailInitializedCPUMask(guest,engine)==0);
+  REQUIRE(guest.Store(engine+48,rex::be_u32{0xffffffffu}));
+  CHECK(GetRetailInitializedCPUMask(guest,engine)==0);
+  REQUIRE(guest.Store(engine+48,rex::be_u32{b}));
+  CHECK(GetRetailInitializedCPUMask(guest,engine)==0x10);
+  CHECK(rex::kernel::SelectRetailRenderCPU(3,GetRetailInitializedCPUMask(guest,engine))==4);
+  CHECK(GetRetailInitializedCPUMask(guest,0)==0);
+  CHECK(GetRetailInitializedCPUMask(guest,0xffffffffu)==0);
+  memory->SystemHeapFree(b);
+  memory->SystemHeapFree(a);
+  memory->SystemHeapFree(engine);
+}

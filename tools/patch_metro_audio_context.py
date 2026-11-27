@@ -14,6 +14,7 @@ def patch(sdk,tests):
     p="src/kernel/apu.h";s=(sdk/p).read_text()
     s=replace(s,"class XMADecoder;",
         """class XMADecoder;
+class GuestMemory;
 
 enum class RetailRenderContext { kNone, kXam17559, kBootanim17559 };
 // Match callback entry and exact loaded retail image layout. Generated direct
@@ -25,6 +26,18 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 base,u32 s
     return RetailRenderContext::kBootanim17559;
   return RetailRenderContext::kNone;
 }
+
+// The exact retail global-tail wrappers ignore the callback argument, load
+// their own engine global, and execute the original renderer. Both engines
+// index scratch pairs using PCR+268. Match all four image identity fields.
+constexpr u32 GetRetailRenderEngineSlot(u32 callback,u32 base,u32 size,u32 entry) {
+  if(callback==0x819AE4E8u && base==0x815F0000u && size==0x610000u && entry==0x81696AF0u)
+    return 0x81B5B5E4u;
+  if(callback==0x92415C28u && base==0x92000000u && size==0x1028000u && entry==0x92196610u)
+    return 0x92A5BEF0u;
+  return 0;
+}
+u8 GetRetailInitializedCPUMask(GuestMemory& mem,u32 engine);
 
 // The original engine provisions its scratch buffers in pairs per CPU.
 // Keep the registration CPU only if that CPU owns a complete pair; otherwise
@@ -46,6 +59,22 @@ constexpr u8 SelectRetailRenderCPU(u8 registration_cpu,u8 initialized_mask) {
     s=replace(s,"  void WorkerMain();","  void WorkerMain();\n  void FinishCallback(u32 index);")
     files[p]=s
     p="src/kernel/apu.cpp";s=(sdk/p).read_text()
+    s=replace(s,"namespace rex::kernel {", """namespace rex::kernel {
+
+u8 GetRetailInitializedCPUMask(GuestMemory& mem,u32 engine) {
+  if (!engine || engine>0xffffffffu-60u || !mem.GetReadOnlySpan(engine,60))return 0;
+  u8 initialized=0;
+  for (u8 cpu=0;cpu<6;++cpu) {
+    const auto a=mem.Load<be_u32>(engine+12+8*cpu);
+    const auto b=mem.Load<be_u32>(engine+16+8*cpu);
+    if (!a || !b)return 0;
+    const u32 pa=*a,pb=*b;
+    if (pa && pb && pa!=pb && mem.GetReadOnlySpan(pa,24) &&
+        mem.GetReadOnlySpan(pb,24))initialized|=static_cast<u8>(1u<<cpu);
+  }
+  return initialized;
+}
+""")
     s=replace(s,"      u32 client_callback_arg;","      u32 client_callback_arg;\n      u8 callback_cpu=0xff;")
     s=replace(s,"""        client_callback = clients_[index].callback;
         client_callback_arg = clients_[index].wrapped_callback_arg;""",
@@ -164,34 +193,25 @@ void APU::UnregisterClient(u32 index) {""")
     auto module=runtime.GetObjectTable().Get<ModuleObject>(*candidate);
     const auto* xex=module?module->GetXEX():nullptr;
     if (!xex || !xex->IsExecutableAddress(callback))continue;
-    // Both live a41ac6bc boot paths: registration on CPU 3, original
-    // constructor allocated both scratch buffers solely on CPU 4. A CPU
-    // selected from registration alone reproduces the null +0x14 fault.
-    // Original 819AE4E8 tail calls the engine at global 81B5B5E4, and
-    // 819AFF80 indexes its pair table at +12 + 8*guest CPU.
-    if (callback==0x819AE4E8u && xex->GetBaseAddress()==0x815f0000u &&
-        xex->GetImageSize()==0x610000u && xex->GetEntryPoint()==0x81696af0u) {
+    // XAM: live constructor provisioned CPU 4 while registering on CPU 3.
+    // Dashboard: run 45975346705 proved its distinct global-tail wrapper,
+    // matching configuration/allocator bodies and exact CPU-indexed slots.
+    // Never select an uninitialized processor or repair guest allocations.
+    const u32 engine_slot=kernel::GetRetailRenderEngineSlot(callback,xex->GetBaseAddress(),
+                                                           xex->GetImageSize(),xex->GetEntryPoint());
+    if (engine_slot) {
       auto& mem=runtime.GetGuestMemory();
-      const auto global=mem.Load<be_u32>(0x81B5B5E4u);
+      const auto global=mem.Load<be_u32>(engine_slot);
       const u32 engine=global?static_cast<u32>(*global):0;
-      if (!thread || !engine || engine>0xffffffffu-60u ||
-          !mem.GetReadOnlySpan(engine,60))return X_E_INVALIDARG;
-      u8 initialized=0;
-      for (u8 cpu=0;cpu<6;++cpu) {
-        const auto a=mem.Load<be_u32>(engine+12+8*cpu);
-        const auto b=mem.Load<be_u32>(engine+16+8*cpu);
-        if (!a || !b)return X_E_INVALIDARG;
-        const u32 pa=*a,pb=*b;
-        if (pa && pb && mem.GetReadOnlySpan(pa,24) &&
-            mem.GetReadOnlySpan(pb,24))initialized|=static_cast<u8>(1u<<cpu);
-      }
+      if (!thread || !runtime.FindFunction(callback))return X_E_INVALIDARG;
+      const u8 initialized=kernel::GetRetailInitializedCPUMask(mem,engine);
       const auto registration_cpu=thread->GetActiveCPU();
       callback_cpu=kernel::SelectRetailRenderCPU(registration_cpu,initialized);
-      REXKRNL_INFO("METRO_AUDIO engine={:08X} initialized_cpu_mask={:02X} registration_cpu={} selected_cpu={}",
-          engine,static_cast<unsigned>(initialized),static_cast<unsigned>(registration_cpu),
+      REXKRNL_INFO("METRO_AUDIO engine={:08X} engine_slot={:08X} initialized_cpu_mask={:02X} registration_cpu={} selected_cpu={}",
+          engine,engine_slot,static_cast<unsigned>(initialized),static_cast<unsigned>(registration_cpu),
           static_cast<unsigned>(callback_cpu));
       if(callback_cpu>=6)return X_E_INVALIDARG;
-      // This wrapper retains the original indirect argument ABI.
+      // These wrappers retain the original indirect argument ABI.
       break;
     }
     contract=kernel::GetRetailRenderContext(callback,xex->GetBaseAddress(),
