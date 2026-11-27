@@ -40,7 +40,7 @@ Result<void> TitleRuntime::PrepareHostedXamHeapFlag() {
     return Err(StatusError(X_STATUS_INVALID_PARAMETER));
   HeapAllocation info{};
   if (!heap->QueryRegionInfo(page,&info) || info.state)
-    return Err(StatusError(X_STATUS_CONFLICTING_ADDRESSES));
+    return Err(StatusError(X_STATUS_INVALID_PARAMETER));
   if (!heap->AllocFixed(page,bytes,bytes,kMemoryAllocationReserve|kMemoryAllocationCommit,
                          kMemoryProtectRead|kMemoryProtectWrite))
     return Err(StatusError(X_STATUS_NO_MEMORY));
