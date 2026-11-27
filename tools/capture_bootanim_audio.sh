@@ -42,12 +42,37 @@ export PULSE_SINK=metro_original_audio
 pactl list short sinks > "$out/sinks.txt"
 pactl list short sink-inputs > "$out/before-inputs.txt"
 test ! -s "$out/before-inputs.txt"
-# parec records the actual mixed host device output, not the original XMA
-# resource or a synthesized reference. Keep one second of silent baseline.
-parec --raw --format=float32le --rate=48000 --channels=2 \
-    --device=metro_original_audio.monitor > "$out/output.f32le" 2>"$out/parec.log" &
+# parec records actual mixed host output, not reference-decoded audio.
+# A wall-clock sleep is not a sample-clock baseline: PulseAudio may buffer
+# initial monitor data. Require a full second of recorded silence BEFORE
+# starting any guest process, preserving the original PCM validation gate.
+pcm="$out/output.f32le"
+parec --raw --format=float32le --rate=48000 --channels=2 --latency-msec=100 \
+    --device=metro_original_audio.monitor > "$pcm" 2>"$out/parec.log" &
 recorder=$!
-sleep 1
+baseline_bytes=$((48000 * 2 * 4))
+for _ in $(seq 1 100); do
+    kill -0 "$recorder"
+    if [[ $(stat -c %s "$pcm") -ge $baseline_bytes ]]; then break; fi
+    sleep 0.1
+done
+python - "$pcm" "$baseline_bytes" <<'PY'
+import array, math, sys
+from pathlib import Path
+with Path(sys.argv[1]).open("rb") as f:
+    data = f.read(int(sys.argv[2]))
+if len(data) != int(sys.argv[2]):
+    raise SystemExit("Monitor did not deliver one second of pre-launch PCM")
+samples = array.array("f")
+samples.frombytes(data)
+if sys.byteorder != "little":
+    samples.byteswap()
+if any(not math.isfinite(v) or abs(v) >= 1e-5 for v in samples):
+    raise SystemExit("Non-silent pre-launch monitor; refusing attribution")
+print("Verified one second of captured pre-launch silence")
+PY
+pactl list short sink-inputs > "$out/before-inputs.txt"
+test ! -s "$out/before-inputs.txt"
 kill -0 "$recorder"
 export X360_BOOTANIM_AUDIO_DRIVER=pulseaudio
 set +e
