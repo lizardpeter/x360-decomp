@@ -164,7 +164,8 @@ REX_TEST_CASE("metro_input_bridge: host text events preserve queue on bad guest 
     CHECK(c.Load32(stamp)==0x12345678);
     CHECK(c.Load32(stamp+12)==0x87654321);
     state.hosted_pad_input->SetInputCaptured(false);
-    state.hosted_pad_input->OnInputEvent(event);
+    rex::InputEvent blocked{.type=rex::InputEvent::Type::kButtonDown,.button=rex::MouseButton::kLeft};
+    state.hosted_pad_input->OnInputEvent(blocked);
     REQUIRE(c.Kernel("HidGetLastInputTime",{stamp+4})==0);
     CHECK(load_stamp()==after);
     state.hosted_pad_input->SetInputCaptured(true);
