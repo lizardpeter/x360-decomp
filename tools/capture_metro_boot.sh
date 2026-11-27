@@ -90,50 +90,66 @@ if [ -z "$win" ] || ! xdotool windowfocus --sync "$win"; then
   echo "Could not focus original dashboard window for navigation probe." >&2
   exit 1
 fi
-import -window "$win" "$out/input-00-idle.png"
-sleep 2
-import -window "$win" "$out/input-01-idle.png"
-# Use the real SDK's keyboard pad binding; never write guest input state.
+# Test both axes; a blocked direction is not itself an input failure.
 read_frame() {
   grep -E '^METRO_BOOT frames [1-9][0-9]*$' "$out/boot.log" | tail -n 1 | awk '{print $3}' || true
 }
+wait_frames() {
+  local before="$1" delta="$2" after
+  [[ "$before" =~ ^[0-9]+$ ]] || return 1
+  for _ in $(seq 1 12); do
+    kill -0 "$pid" 2>/dev/null || return 1
+    after="$(read_frame)"
+    if [[ "$after" =~ ^[0-9]+$ ]] && ((after>=before+delta)); then
+      printf '%s' "$after"; return 0
+    fi
+    sleep 0.5
+  done
+  return 1
+}
+difference() {
+  local count status=0
+  count="$(compare -fuzz 2% -metric AE "$1" "$2" null: 2>&1)" || status=$?
+  if ((status>1)) || ! [[ "$count" =~ ^[0-9]+$ ]]; then return 1; fi
+  printf '%s' "$count"
+}
 pad_observed=0
 visual_changes=0
-previous_image="$out/input-01-idle.png"
-for key in Right Left; do
-  kill -0 "$pid" 2>/dev/null || exit 1
-  line_start="$(wc -l < "$out/boot.log")"
-  frame_before="$(read_frame)"
-  xdotool keydown Shift_L
-  xdotool keydown "$key"
-  sleep 0.25
-  xdotool keyup "$key"
-  xdotool keyup Shift_L
-  # The CI software Vulkan device may present much slower than 60 Hz.
-  # Wait for a measured counter advance, not an assumed three-second cadence.
-  frame_after="$(read_frame)"
-  for _ in $(seq 1 15); do
+reversible_pairs=0
+for axis in vertical horizontal; do
+  if [[ "$axis" == vertical ]]; then first=Down; second=Up; else first=Right; second=Left; fi
+  pair="$out/input-$axis"
+  before="$(read_frame)"
+  import -window "$win" "$pair-idle-a.png"
+  wait_frames "$before" 5 >/dev/null || exit 1
+  import -window "$win" "$pair-idle-b.png"
+  idle="$(difference "$pair-idle-a.png" "$pair-idle-b.png")" || exit 1
+  previous="$pair-idle-b.png"
+  threshold=$((idle*3+64))
+  first_settled=0
+  for key in "$first" "$second"; do
     kill -0 "$pid" 2>/dev/null || exit 1
-    if [[ "$frame_before" =~ ^[1-9][0-9]*$ && "$frame_after" =~ ^[1-9][0-9]*$ ]] &&
-       [ "$frame_after" -gt "$frame_before" ]; then break; fi
-    sleep 1
-    frame_after="$(read_frame)"
-  done
-  kill -0 "$pid" 2>/dev/null || exit 1
-  import -window "$win" "$out/input-$key.png"
-  # Identical pixels cannot prove menu navigation, even when input reaches XAM.
-  if ! compare -metric AE "$previous_image" "$out/input-$key.png" null: 2>"$out/input-$key-difference.txt"; then
-    if [[ "$(cat "$out/input-$key-difference.txt")" =~ ^[1-9][0-9]*$ ]]; then
-      visual_changes=$((visual_changes+1))
-    fi
-  fi
-  previous_image="$out/input-$key.png"
-  printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
-  if [[ "$frame_before" =~ ^[1-9][0-9]*$ && "$frame_after" =~ ^[1-9][0-9]*$ ]] && [ "$frame_after" -gt "$frame_before" ]; then
-    # The keyboard bindings intentionally emit right/left D-pad bits.
-    # Require a real press AND later release on the same guest context.
-    expected=0008
-    if [ "$key" = Left ]; then expected=0004; fi
+    line_start="$(wc -l < "$out/boot.log")"
+    frame_before="$(read_frame)"
+    xdotool keydown Shift_L
+    xdotool keydown "$key"
+    sleep 0.25
+    xdotool keyup "$key"
+    xdotool keyup Shift_L
+    frame_after="$(wait_frames "$frame_before" 10)" || exit 1
+    image="$out/input-$key.png"
+    import -window "$win" "$image"
+    settled_frame="$(wait_frames "$frame_after" 5)" || exit 1
+    stable="$out/input-$key-settled.png"
+    import -window "$win" "$stable"
+    changed="$(difference "$previous" "$stable")" || exit 1
+    motion="$(difference "$image" "$stable")" || exit 1
+    restored="$(difference "$pair-idle-b.png" "$stable")" || exit 1
+    printf 'input_key=Shift+%s frames_before=%s frames_after=%s settled_frame=%s idle_noise=%s changed_pixels=%s settling_pixels=%s from_pair_baseline=%s threshold=%s\n' \
+      "$key" "$frame_before" "$frame_after" "$settled_frame" "$idle" "$changed" "$motion" "$restored" "$threshold" >> "$out/receipt.txt"
+    case "$key" in
+      Up) expected=0001;; Down) expected=0002;; Left) expected=0004;; Right) expected=0008;;
+    esac
     trace="$out/input-$key.log"
     tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_GUEST_PAD ' > "$trace" || true
     cat "$trace" >> "$out/receipt.txt"
@@ -143,23 +159,27 @@ for key in Right Left; do
         else if (pressed && index(tolower($0),"buttons=0x0000")) released=1
       }
       END {exit !(pressed && released)}
-    ' "$trace"; then
-      pad_observed=$((pad_observed+1))
+    ' "$trace"; then pad_observed=$((pad_observed+1)); fi
+    if ((changed>threshold && motion<=threshold)); then
+      visual_changes=$((visual_changes+1))
+      if [[ "$key" == "$first" ]]; then first_settled=1; fi
     fi
-  fi
+    if [[ "$key" == "$second" ]] && ((first_settled && changed>threshold && motion<=threshold && restored<=threshold)); then
+      reversible_pairs=$((reversible_pairs+1))
+    fi
+    previous="$stable"
+  done
 done
 for file in "$out"/input-*.png; do
   (cd "$out" && sha256sum "$(basename "$file")") >> "$out/receipt.txt"
 done
-printf 'input_probes_with_frame_progress_and_pad_transition=%s\n' "$pad_observed" >> "$out/receipt.txt"
+printf 'input_probes_with_frame_progress_and_pad_transition=%s\ninput_probes_with_stable_visual_changes=%s\ninput_reversible_visual_pairs=%s\n' \
+  "$pad_observed" "$visual_changes" "$reversible_pairs" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
-if [ "$pad_observed" -ne 2 ]; then
-  echo "Guest-consumed pad transitions and frame progress have not been established for both probes." >&2
-  exit 1
+if ((pad_observed!=4)); then
+  echo "Not all four directions reached the original guest." >&2; exit 1
 fi
-printf 'input_probes_with_pixel_changes=%s\n' "$visual_changes" | tee -a "$out/receipt.txt"
-if [ "$visual_changes" -ne 2 ]; then
-  echo "Original guest consumed input, but the captured pixels did not change for both probes." >&2
-  exit 1
+if ((reversible_pairs<1)); then
+  echo "No stable reversible visual navigation candidate yet." >&2; exit 1
 fi
-echo "Captured actual guest-frame and input candidates; visual menu inspection is still required."
+echo "Captured real guest input and reversible visual candidates; menu/navigation still require visual inspection."

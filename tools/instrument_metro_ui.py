@@ -57,6 +57,71 @@ ENTRIES = {
     "generated_hud": {0x913E98F8:"hud_initialize",0x913E9B88:"hud_render_loop"},
 }
 MARK="/* METRO_UI_PROBES_INSERTED */"
+FONT_PATH_RETURNS={
+    0x92265600:656,0x92265628:128,0x92265658:128,
+    0x92265694:656,0x922656B0:128,
+}
+FONT_DESCRIPTORS={0x92265754,0x92265778,0x922657B8,0x92202490}
+FONT_PATCH_RETURNS={0x92265608,0x92265630,0x92265660,0x9226569C,0x922656B8,0x81699244}
+FONT_HEADER=r"""
+#include <string>
+#include <string_view>
+#include <rex/kernel/title_runtime.h>
+#include <rex/kernel/guest_memory.h>
+namespace {
+struct MetroFontPath {const char* tag;unsigned units;};
+MetroFontPath metro_font_path(rex::kernel::GuestMemory& mem,unsigned addr) {
+    if(!addr)return {"null",0};
+    std::string ascii;
+    for(unsigned i=0;i<260;++i) {
+        if(addr>0xffffffffu-2*i)return {"unmapped",i};
+        const auto value=mem.Load<rex::be_u16>(addr+2*i);
+        if(!value)return {"unmapped",i};
+        const unsigned ch=*value;
+        if(!ch) {
+            const auto slash=ascii.find_last_of("/\\");
+            const auto name=std::string_view(ascii).substr(slash==std::string::npos?0:slash+1);
+            if(name=="segoexbox-light.xtt")return {"segoe",i};
+            if(name=="xenonclatin.xtt")return {"clatin",i};
+            if(name=="xenonjklatin.xtt")return {"jklatin",i};
+            return {i?"other":"empty",i};
+        }
+        ascii.push_back(ch>=65&&ch<=90?static_cast<char>(ch+32):
+                        ch<128?static_cast<char>(ch):'?');
+    }
+    return {"unterminated",260};
+}
+void metro_font_observe(unsigned pc,const char* label,const PPCContext& ctx,unsigned kind,unsigned offset) {
+    auto* mem=REX_GUEST_MEMORY();
+    if(!mem)return;
+    unsigned address=0,detail=0;
+    const char* category="path";
+    if(kind==0) {
+        const unsigned sp=ctx.r1.u32;
+        if(sp && sp<=0xffffffffu-offset)address=sp+offset;
+    } else if(kind==1) {
+        category="descriptor";
+        const unsigned descriptor=ctx.r3.u32;
+        if(!descriptor || descriptor>0xffffffffu-20u) {
+            std::fprintf(stderr,"METRO_FONT pc=%08X label=%s kind=descriptor status=%08X path=unmapped units=0 detail=unmapped\n",pc,label,ctx.r3.u32);
+            return;
+        }
+        auto path=mem->Load<rex::be_u32>(descriptor+4);
+        auto patch=mem->Load<rex::be_u32>(descriptor+8);
+        if(!path || !patch) {
+            std::fprintf(stderr,"METRO_FONT pc=%08X label=%s kind=descriptor status=%08X path=unmapped units=0 detail=unmapped\n",pc,label,ctx.r3.u32);
+            return;
+        }
+        address=*path;detail=*patch;
+    } else {
+        category="patch";address=ctx.r3.u32;
+    }
+    const auto path=metro_font_path(*mem,address);
+    std::fprintf(stderr,"METRO_FONT pc=%08X label=%s kind=%s status=%08X path=%s units=%u detail=%08X\n",
+                 pc,label,category,ctx.r3.u32,path.tag,path.units,detail);
+}
+}
+"""
 
 def probes(module):
     result={pc:(name,"entry") for pc,name in ENTRIES[module].items()}
@@ -82,9 +147,14 @@ def insert(source,points):
         result.append(prefix+'  const auto metro_ui_n=metro_ui_samples.fetch_add(1,std::memory_order_relaxed)+1;\n')
         result.append(prefix+'  if (metro_ui_n<=8 || (metro_ui_n & (metro_ui_n-1))==0) {\n')
         result.append(prefix+f'    std::fprintf(stderr,"METRO_UI pc={pc:08X} label={name} phase={phase} count=%u r3=%08X r4=%08X r5=%08X r6=%08X r7=%08X r8=%08X\\n",metro_ui_n,{args});\n')
+        if pc in FONT_PATH_RETURNS or pc in FONT_DESCRIPTORS or pc in FONT_PATCH_RETURNS:
+            kind=0 if pc in FONT_PATH_RETURNS else 1 if pc in FONT_DESCRIPTORS else 2
+            offset=FONT_PATH_RETURNS.get(pc,0)
+            result.append(prefix+f'    metro_font_observe(0x{pc:08X}u,"{name}",ctx,{kind}u,{offset}u);\n')
         result.append(prefix+'  }\n'+prefix+'}\n')
     if not hits:return source,hits
-    return MARK+"\n#include <atomic>\n#include <cstdio>\n#include <cstdlib>\n"+"".join(result),hits
+    font=FONT_HEADER if set(hits)&(set(FONT_PATH_RETURNS)|FONT_DESCRIPTORS|FONT_PATCH_RETURNS) else ""
+    return MARK+"\n#include <atomic>\n#include <cstdio>\n#include <cstdlib>\n"+font+"".join(result),hits
 
 def instrument(folder):
     report={}

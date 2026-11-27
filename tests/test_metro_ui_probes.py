@@ -32,4 +32,13 @@ class MetroUIProbes(unittest.TestCase):
         self.assertEqual(xam[0x81699910],("xam_font_typeface_result","entry"))
         self.assertEqual(xam[0x816998FC],("xam_font_copy_path_2","return"))
         self.assertEqual(xam[0x81699244],("xam_font_patch_result","entry"))
+    def test_font_path_probe_uses_caller_stack_and_checked_memory(self):
+        source="// METRO_GUEST_PC 92265600\nnext();\n// METRO_GUEST_PC 92265754\ncall();\n"
+        out,hits=insert(source,probes("generated"))
+        self.assertEqual(sum(hits.values()),2)
+        self.assertIn('ctx,0u,656u',out)
+        self.assertIn('ctx,1u,0u',out)
+        self.assertIn('mem.Load<rex::be_u16>',out)
+        self.assertIn('mem->Load<rex::be_u32>(descriptor+4)',out)
+        self.assertNotIn('mem->Store',out)
 if __name__=="__main__":unittest.main()

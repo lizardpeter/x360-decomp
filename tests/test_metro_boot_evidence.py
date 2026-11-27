@@ -47,4 +47,15 @@ class BootEvidence(unittest.TestCase):
         self.assertEqual(result["post_handoff_frame_counts"],[5])
         self.assertEqual(result["frame_counter_resets"],[0])
         self.assertFalse(result["menu_visually_verified"])
+    def test_resource_read_and_font_results_remain_distinct(self):
+        result=summarize([
+            "METRO_FONT pc=92265754 label=dash_font_register_1 kind=descriptor status=00000000 path=segoe units=28 detail=00000000",
+            "METRO_UI_FILE name=SegoeXbox-Light.xtt size=4096 offset=0 requested=4096 actual=4096 status=00000000 count=1",
+            "METRO_UI_FILE name=SegoeXbox-Light.xtt size=4096 offset=4096 requested=16 actual=0 status=00000000 count=2",
+            "METRO_FONT pc=81699244 label=xam_font_patch_result kind=patch status=00000000 path=null units=0 detail=00000000"],
+            {"dash":[]})
+        self.assertEqual(result["font_probes"][0]["path"],"segoe")
+        self.assertEqual(result["font_probes"][1]["path"],"null")
+        self.assertEqual([r["actual"] for r in result["resource_reads"]],[4096,0])
+        self.assertFalse(result["menu_visually_verified"])
 if __name__=="__main__":unittest.main()
