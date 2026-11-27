@@ -29,3 +29,8 @@ class TestMetroIntro(unittest.TestCase):
         self.assertNotIn("intro_frames>=",source)
         self.assertNotIn("intro_visible",source)
         self.assertNotIn("CreateTaskThread(metro_intro::kControl,1)",source)
+        self.assertIn("compare_exchange_strong(idle,4",source)
+        capture=(Path(__file__).resolve().parents[1]/"tools/capture_metro_intro.sh").read_text()
+        self.assertIn("METRO_INTRO original_initial_update_event signaled",capture)
+        self.assertIn("METRO_INTRO pass control_return argument=0 flag_b=1",capture)
+        self.assertIn("events!=sorted(set(events))",capture)

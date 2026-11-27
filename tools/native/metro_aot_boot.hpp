@@ -308,7 +308,8 @@ struct EntryBinding {
 inline EntryBinding entry;
 inline std::atomic<bool> attached{false};
 inline std::atomic<bool> intro_entered{false},intro_returned{false};
-// 0 not requested, 1 dispatched, 2 original control returned, 3 failed.
+// 0 not requested, 1 dispatched, 2 original control returned, 3 failed,
+// 4 original animation returned before control could be claimed.
 inline std::atomic<unsigned> intro_control_state{0};
 
 // Argument 0 arms flag B. Original 9800EA10 then checks its own
@@ -360,6 +361,8 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
         std::cout<<"METRO_INTRO original_return result=0x"<<std::hex<<result<<std::dec<<std::endl;
         // Join the actual control publication, not a timed sleep loop.
         // A naturally completed original run need not have a control task.
+        unsigned idle=0;
+        intro_control_state.compare_exchange_strong(idle,4,std::memory_order_acq_rel);
         unsigned state=intro_control_state.load(std::memory_order_acquire);
         while (state==1) {
             intro_control_state.wait(state,std::memory_order_acquire);

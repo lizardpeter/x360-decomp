@@ -68,7 +68,7 @@ set -e
 trap - EXIT
 printf 'intro_frames=%s\npost_handoff_frames=%s\nalive_at_capture_end=%s\nexit_code=%s\nmenu_visually_verified=false\naudio_audibly_verified=false\n' \
   "$intro" "$dash" "$alive" "$status" > "$out/receipt.txt"
-grep -E '^METRO_(INTRO|BOOT) (pass|fail|original_entry|original_return|post_handoff_frames|guest_exit)' "$out/integrated.log" >> "$out/receipt.txt" || true
+grep -E '^METRO_(INTRO|BOOT) (pass|fail|original_entry|original_return|original_initial_update_event|post_handoff_frames|guest_exit)' "$out/integrated.log" >> "$out/receipt.txt" || true
 cat "$out/dashboard-samples.txt" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
 for gate in "METRO_INTRO pass loaded_as_user_module" "METRO_INTRO pass original_completion" "METRO_BOOT pass xam_attach" "METRO_BOOT pass dashboard_entry"; do
@@ -77,3 +77,24 @@ done
 test "$intro" -gt 0
 test "$dash" -eq 4
 test "$alive" = true
+
+# Require the original event and original graceful-control return, in order.
+# A successful visual capture cannot excuse a missing lifecycle transition.
+python - "$out/integrated.log" <<'PY'
+import sys
+from pathlib import Path
+lines=Path(sys.argv[1]).read_text(errors="replace").splitlines()
+def first(prefix):
+    return next((i for i,l in enumerate(lines) if l.startswith(prefix)),None)
+events=[first(p) for p in (
+    "METRO_INTRO original_entry ",
+    "METRO_INTRO original_initial_update_event signaled",
+    "METRO_INTRO pass control_return argument=0 flag_b=1",
+    "METRO_INTRO pass original_completion",
+    "METRO_BOOT pass xam_attach",
+    "METRO_BOOT pass dashboard_entry",
+)]
+if any(x is None for x in events) or events!=sorted(set(events)):
+    raise SystemExit("Original event-driven intro lifecycle not verified")
+print("Original event-driven intro lifecycle verified; visual/audio fidelity remains unverified.")
+PY
