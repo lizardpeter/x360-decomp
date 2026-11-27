@@ -214,3 +214,59 @@ REX_TEST_CASE("metro_startup_status: close callback may reference object during 
     CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(body));
   });
 }
+
+REX_TEST_CASE("metro_startup_status: custom waits use embedded and shared event identities",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    auto& dispatch=GetFunctionDispatcher(c.GetRuntime());
+    const u32 alloc=dispatch.AllocateThunk(&MetroObjectAllocate,0);
+    const u32 release=dispatch.AllocateThunk(&MetroObjectFree,0);
+    REQUIRE(alloc); REQUIRE(release);
+    const u32 type=c.Alloc(28), out=c.Alloc(4), h=c.Alloc(4);
+    c.Store32(type,alloc); c.Store32(type+4,release); c.Store32(type+20,12);
+    c.Store32(type+24,0x66746f4e);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,48,out})==0);
+    const u32 body=c.Load32(out), embedded=body+12;
+    // Match retail constructor 816A8A54..816A8A78, including zero size byte.
+    c.Store32(embedded,0x01000000); c.Store32(embedded+4,0);
+    c.Store32(embedded+8,embedded+8); c.Store32(embedded+12,embedded+8);
+    REQUIRE(c.Kernel("ObInsertObject",{body,0,0,h})==0);
+    const u32 handle=c.Load32(h), zero=c.AllocQuad(0);
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{handle,1,0,zero})==X_STATUS_TIMEOUT);
+    c.Kernel("KeSetEvent",{embedded,0,0});
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{handle,1,0,zero})==0);
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{handle,1,0,zero})==X_STATUS_TIMEOUT);
+    const u32 array=c.Alloc(4); c.Store32(array,handle);
+    CHECK(c.Kernel("NtWaitForMultipleObjectsEx",{1,array,1,1,0,zero})==X_STATUS_TIMEOUT);
+    c.Kernel("KeSetEvent",{embedded,0,0});
+    CHECK(c.Kernel("NtWaitForMultipleObjectsEx",{1,array,1,1,0,zero})==0);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+    CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(embedded));
+    // Three retail types reference one shared initialized event. Use the
+    // fixture's actual guest memory and dispatch rather than a fake signal.
+    const u32 shared=c.Alloc(16);
+    REQUIRE((shared&0x80000000u)!=0);
+    c.Kernel("KeInitializeEvent",{shared,1,1});
+    c.Store32(type+20,shared);
+    const u32 h2=c.Alloc(4);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
+    REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h})==0);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
+    REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h2})==0);
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h),1,0,zero})==0);
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h2),1,0,zero})==X_STATUS_TIMEOUT);
+    c.Kernel("KeSetEvent",{shared,0,0});
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h2),1,0,zero})==0);
+    CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
+    CHECK(c.Kernel("NtClose",{c.Load32(h2)})==0);
+    CHECK(c.GetRuntime().GetObjectTable().GetByAddress(shared));
+    // An out-of-range relative offset is never treated as signaled.
+    c.Store32(type+20,12);
+    REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
+    REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h})==0);
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h),1,0,zero})==X_STATUS_OBJECT_TYPE_MISMATCH);
+    CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
+  });
+}
