@@ -25,6 +25,7 @@ PROFILE={
     "XamUserGetIndexFromXUID","XamUserGetUserFlags","XamUserGetDeviceId",
     "XamUserReadUserPreference","XamUserCreateTitlesPlayedEnumerator",
     "XamGetCachedGamerTagW","XamShowCreateProfileUI","XamEnumerate",
+    "XamShowDeviceSelectorUI","XamShowKeyboardUI",
     "XamUserGetXUID","XamUserGetGamerTag","XamUserGetName","XamUserGetSigninState",
     "XamUserGetSigninInfo","XamUserReadProfileSettings","XamUserReadProfileSettingsEx",
     "XamProfileCreateEnumerator","XamProfileEnumerate","XamProfileOpen","XamProfileClose",
@@ -53,6 +54,33 @@ def grouped_paths(groups, edges, calls, limit=1000, depth=3):
                                  for (l,o,n,s),count in sorted(imports.items())]}
     return result
 
+def linear_export_extent(image,base,pe,address,limit=64):
+    """Recognize only bounded, straight-line exact exported leaf/tail wrappers.
+
+    PDATA interiors, conditional control flow and unknown indirect exits are not
+    given a fabricated function extent. Even a recognized leaf is evidence,
+    not a claim that the complete original call graph has been reconstructed.
+    """
+    if any(a<=address<a+n for a,n,_ in pe["functions"]):return None
+    code=[(base+s["rva"],base+s["rva"]+s["loaded_bytes"])
+          for s in pe["sections"] if s["flags"]&0x20000000]
+    ends=[hi for lo,hi in code if lo<=address and address+4<=hi]
+    if len(ends)!=1 or address&3:return None
+    following=min((a for a,_,_ in pe["functions"] if a>address),default=address+limit)
+    end=min(address+limit,following,ends[0])
+    for pc in range(address,end,4):
+        if pc+4>end:return None
+        w=struct.unpack_from(">I",image,pc-base)[0]
+        if not w:return None
+        if w==0x4E800020:return (pc+4-address,"return")
+        b=branch(pc,w)
+        if b and not b[1]:
+            if not any(lo<=b[0] and b[0]+4<=hi for lo,hi in code):return None
+            return (pc+4-address,"direct_tail")
+        if w>>26 in (16,17) or (w>>26==19 and ((w>>1)&1023) in (16,528,50)):
+            return None
+    return None
+
 def audit(label,raw,image,meta,catalog,stubs,export_map):
     expected=DIGESTS[label] if label in DIGESTS else PROFILE_MODULES[label][1]
     if meta["sha256"]!=expected:raise ValueError("wrong original image")
@@ -62,13 +90,20 @@ def audit(label,raw,image,meta,catalog,stubs,export_map):
         name,kind=catalog.get((lib,ord),("", "unknown"))
         for a in row["thunk_slots"]:thunks[a]={"name":name,"library":lib,"ordinal":f"{ord:04X}","sdk_stub":name in stubs}
     funcs={a:s for a,s,_ in pe["functions"]}
+    wrapper_entries={}
+    if label=="xam":
+        for address in set(export_map.values())-funcs.keys():
+            if extent:=linear_export_extent(image,base,pe,address):
+                length,terminal=extent
+                funcs[address]=length
+                wrapper_entries[address]={"extent":length,"terminal":terminal}
     outgoing=collections.defaultdict(set);incoming=collections.defaultdict(set)
     calls=collections.defaultdict(list);sites=[];roots=set();groups=collections.defaultdict(set)
     if label=="xam":
         roots={a for a in export_map.values() if a in funcs}
         for name,address in export_map.items():
             if address in funcs:groups[name].add(address)
-    for start,size,_ in pe["functions"]:
+    for start,size in sorted(funcs.items()):
         words=[w for w, in struct.iter_unpack(">I",image[start-base:start-base+size])]
         for i,w in enumerate(words):
             pc=start+4*i;b=branch(pc,w)
@@ -88,6 +123,7 @@ def audit(label,raw,image,meta,catalog,stubs,export_map):
     report={"roots":[hx(a) for a in sorted(roots)],"direct_sites":sites,
             "export_roots":{n:hx(a) for n,a in export_map.items()} if label=="xam" else {},
             "unresolved_exports":[n for n,a in export_map.items() if a not in funcs] if label=="xam" else [],
+            "linear_export_wrappers":[{"name":n,"address":hx(a),**wrapper_entries[a]} for n,a in sorted(export_map.items()) if a in wrapper_entries],
             "nodes":[{"entry":hx(a),"depth":d,"imports":calls[a]} for a,d in sorted(nodes.items())],
             "edges":[{"caller":hx(a),"callee":hx(t),"site":hx(pc),"linked":linked}
                 for a in sorted(nodes) for t,pc,linked in sorted(outgoing[a]) if t in nodes],
@@ -100,6 +136,7 @@ def audit(label,raw,image,meta,catalog,stubs,export_map):
             "root_bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,4096) for a in sorted(roots)}}
     print(label,"profile roots",len(roots),"direct calls",len(sites),"descendants",len(nodes),
           "host import names",sorted({c["import"]["name"] for a in nodes for c in calls[a]}))
+    if label=="xam":print("bounded exported leaf/tail wrappers",len(wrapper_entries),"unresolved",len(report["unresolved_exports"]))
     return report
 def main():
     p=argparse.ArgumentParser(description=__doc__)

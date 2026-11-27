@@ -1,0 +1,47 @@
+# Native Metro profile UI integration gates
+
+The original dashboard, XAM and HUD use the 17559 resource tree. The new
+profile UI staging is an isolated compile and registration trial, not a
+replacement account implementation. It cannot mark a user signed in.
+
+| Module | Original guest base | Loaded image bytes | PDATA entries | XAM imports |
+|---|---:|---:|---:|---:|
+| signin | 0x90100000 | 274432 | 456 | 232 |
+| deviceselector | 0x916D0000 | 94208 | 129 | 87 |
+| vk | 0x917D0000 | 114688 | 177 | 89 |
+| gamerprofile | 0x90100000 | 319488 | 715 | 189 |
+| createprofile | 0x90100000 | 114688 | 222 | 113 |
+
+These totals (1,699 original PDATA functions; 710 bindings across 366 XAM
+ordinals) are independently checked against original decoded metadata and then
+against original PIRS bytes at staging time. They do not count native function
+registrations or a completed sign-in.
+
+The signin, gamerprofile and createprofile images occupy overlapping address
+ranges. They cannot be simultaneously registered. The isolated native trials
+require each original module entry and XAM import thunk to have a real host
+function in its registration table. The SDK regression separately exercises
+the real memory/dispatcher with synthetic callbacks at the original image
+and text ranges, checking overlap refusal and repeated unregister/reload.
+
+Before adding these modules to the working dashboard's live loader:
+
+1. Require the native registration receipt for each module. Investigate
+   missing entries, unresolved functions, and codegen errors rather than
+   generating a stub to make a count pass.
+2. Compare all exact required original XAM target addresses against the
+   generated XAM mapping table. The integrated build writes this coverage in
+   zero-address-mappings.json. PDATA membership alone is not sufficient.
+3. Extend the native registry only for the verified original module paths;
+   preserve original import slot/thunk ABI and require every XAM export
+   target. Never route to a hosted XAM placeholder.
+4. Test module lifetime, attach/detach, overlapping image release and
+   dependency reference ownership on the live guest. The synthetic regression
+   does not establish that the original profile UI transitions are safe.
+5. Use original profile enumerators, storage-device state, account metadata
+   and original sign-in state transitions. No online authentication,
+   fabricated XUIDs, forced sign-in flags, or private keys.
+
+The public font verification provider is separate from account handling. It
+supplies only the genuine PIRS RSA public verification key requested by the
+original signed-font reader. The guest's signature result is not modified.
