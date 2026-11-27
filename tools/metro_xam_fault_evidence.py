@@ -406,8 +406,30 @@ def global_object_report(image,base,pe,thunks):
                 lo=max(start,pc-64);hi=min(start+size,pc+64)
                 incoming.append({"owner":hx(start),"site":hx(pc),"target":hx(dest[0]),
                                  "linked":dest[1],"operands":describe(image,base,lo,hi-lo,thunks)})
+    # The one confirmed writer calls the allocation helper, then the object
+    # constructor, and stores the returned pointer. Traverse bounded callees
+    # of both to expose the real upstream kernel contracts and failure paths.
+    roots=[0x816E6C78,0x8169BFA0,0x816A14B8]
+    for pc,target in ((0x816A17CC,roots[0]),(0x816A17D8,roots[1]),(0x816A17F8,roots[2])):
+        if branch(pc,read_word(image,base,pc))!=(target,True):
+            raise ValueError("global constructor call changed")
+    queue=[(a,0) for a in roots]
+    visited={}
+    while queue and len(visited)<200:
+        a,depth=queue.pop(0)
+        if a in visited or not executable(pe,base,a):continue
+        detail=bounded_entry(image,base,pe,a,thunks,4096 if depth==0 else 512)
+        visited[a]={"depth":depth,**detail}
+        if depth>=3:continue
+        for row in detail["operands"]:
+            if row.get("kind")=="branch" and "import" not in row:
+                dest=int(row["target"],16)
+                if dest<a or dest>=a+detail["bounded_length"]:
+                    queue.append((dest,depth+1))
     return {"address":hx(slot),"original_initial_word":hx(read_word(image,base,slot)),
-            "references":refs,"writer_functions":producers,"writer_incoming_edges":incoming}
+            "references":refs,"writer_functions":producers,"writer_incoming_edges":incoming,
+            "construction_call_graph":list(visited.values()),"traversal_truncated":bool(queue)}
+
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
