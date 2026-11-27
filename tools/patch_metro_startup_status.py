@@ -151,6 +151,12 @@ CUSTOM_OBJECT_EDITS = {
       "    WaitTarget target = TargetOf(runtime, object);\n    if (!target.handle) {",
       "    WaitTarget target = TargetOf(runtime, object);\n    if (target.invalid_custom_wait) return X_STATUS_OBJECT_TYPE_MISMATCH;\n    if (!target.handle) {"
     ]
+  ],
+  "include/rex/kernel/types/status.h": [
+    [
+      "inline constexpr X_STATUS X_STATUS_NO_SUCH_FILE = 0xC000000F;",
+      "inline constexpr X_STATUS X_STATUS_NO_SUCH_DEVICE = 0xC000000E;\ninline constexpr X_STATUS X_STATUS_NO_SUCH_FILE = 0xC000000F;"
+    ]
   ]
 }
 
@@ -200,7 +206,25 @@ def patch_object_contracts(source):
   std::string object_name(reinterpret_cast<const char*>(bytes->data()), bytes->size());
   if (object_name.find('\0') != std::string::npos) return X_STATUS_OBJECT_NAME_INVALID;
   auto& table = runtime.GetObjectTable();
-  auto opened = table.OpenByName(object_name);'''),
+  auto opened = table.OpenByName(object_name);
+  if (!opened && ToXStatus(opened)==X_STATUS_OBJECT_NAME_NOT_FOUND) {
+    auto& state = kernel::GetCurrentState();
+    const u32 device_type = state.GetKernelGlobals() +
+        offsetof(KernelGuestGlobals, IoDeviceObjectType);
+    if (object_type_ptr == device_type && state.GetKernelGlobals()) {
+      // A typed device reference is not an ordinary named object lookup.
+      // Original XAM 816AD760 checks STATUS_NO_SUCH_DEVICE explicitly,
+      // then conditionally releases the output even on this failure.
+      if (!guest.Store(out_object_ptr.GetGuestAddress(), be_u32{0}))
+        return X_STATUS_ACCESS_VIOLATION;
+      auto volume = state.GetFileSystem()->GetVolume(object_name);
+      if (!volume && filesystem::CodeOf(volume.error())==filesystem::FileSystemError::kNoMount)
+        return X_STATUS_NO_SUCH_DEVICE;
+      if (!volume) return ToXStatus(volume.error());
+      // Existing hosted volumes are not native DEVICE_OBJECTs.
+      return X_STATUS_NOT_SUPPORTED;
+    }
+  }'''),
         (r'''    REXKRNL_WARN_ONCE(bodyless_once, std::to_underlying(object.GetType()),
                       "ObReferenceObjectByHandle on object type {} with no guest body returns 0",
                       std::to_underlying(object.GetType()));''', r'''    REXKRNL_WARN_ONCE(bodyless_once, std::to_underlying(object.GetType()),

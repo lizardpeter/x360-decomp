@@ -246,8 +246,8 @@ REX_TEST_CASE("metro_startup_status: custom waits use embedded and shared event 
     CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(embedded));
     // Three retail types reference one shared initialized event. Use the
     // fixture's actual guest memory and dispatch rather than a fake signal.
-    const u32 shared=c.Alloc(16);
-    REQUIRE((shared&0x80000000u)!=0);
+    const u32 shared=c.Kernel("MmAllocatePhysicalMemory",{0,4096,4});
+    REQUIRE(shared); REQUIRE((shared&0x80000000u)!=0);
     c.Kernel("KeInitializeEvent",{shared,1,1});
     c.Store32(type+20,shared);
     const u32 h2=c.Alloc(4);
@@ -262,11 +262,37 @@ REX_TEST_CASE("metro_startup_status: custom waits use embedded and shared event 
     CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
     CHECK(c.Kernel("NtClose",{c.Load32(h2)})==0);
     CHECK(c.GetRuntime().GetObjectTable().GetByAddress(shared));
+    c.GetRuntime().GetObjectTable().ForgetAddress(shared);
+    c.Kernel("MmFreePhysicalMemory",{0,shared});
     // An out-of-range relative offset is never treated as signaled.
     c.Store32(type+20,12);
     REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
     REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h})==0);
     CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h),1,0,zero})==X_STATUS_OBJECT_TYPE_MISMATCH);
     CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
+  });
+}
+
+REX_TEST_CASE("metro_startup_status: typed missing optical device follows original absent-device branch",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4), out=c.Alloc(4);
+    REQUIRE(c.Kernel("NtCreateEvent",{h,0,0,0})==0);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{c.Load32(h),0,out})==0);
+    const u32 body=c.Load32(out);
+    const u32 event_type=c.Load32(body-8);
+    const u32 device_type=event_type - offsetof(KernelGuestGlobals, ExEventObjectType) +
+        offsetof(KernelGuestGlobals, IoDeviceObjectType);
+    CHECK(c.Kernel("ObDereferenceObject",{body})==0);
+    CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
+    const u32 name=c.Load32(c.AllocAttributes("\\Device\\HdDvdRom")+4);
+    c.Store32(out,0xbebebebe);
+    CHECK(c.Kernel("ObReferenceObjectByName",{name,0,device_type,0,out})==X_STATUS_NO_SUCH_DEVICE);
+    CHECK(c.Load32(out)==0);
+    c.Store32(out,0x12345678);
+    CHECK(c.Kernel("ObReferenceObjectByName",{name,0,0,0,out})==X_STATUS_OBJECT_NAME_NOT_FOUND);
+    CHECK(c.Load32(out)==0x12345678);
   });
 }
