@@ -46,3 +46,14 @@ class TestMetroIntro(unittest.TestCase):
         self.assertEqual(changed.count("metro_intro_object=ctx.r3.u32;"),1)
         self.assertNotIn("mem->Store",changed)
         with self.assertRaises(ValueError):insert(body.replace("sub_9800EA10","sub_98000000"))
+
+    def test_optimization_targets_only_original_animation(self):
+        from stage_metro_intro import optimized_scaffold
+        old="rexglue_project(dash_17559)\nrexglue_setup_target(dash_17559)\n"
+        new=optimized_scaffold(old)
+        self.assertTrue(new.startswith(old))
+        self.assertEqual(optimized_scaffold(new),new)
+        self.assertIn("generated_bootanim",new)
+        self.assertIn("target_compile_options(${_metro_bootanim_targets} PRIVATE",new)
+        self.assertIn(":-O2>",new)
+        with self.assertRaises(ValueError):optimized_scaffold("wrong target")

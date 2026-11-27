@@ -15,6 +15,8 @@ class BootanimAOT(unittest.TestCase):
         self.assertNotIn(0x98000000,EXPORTS.values())
         self.assertIn("add_library(metro_bootanim_module SHARED",CMAKE)
         self.assertIn("add_executable(metro_bootanim_live",CMAKE)
+        self.assertIn("target_compile_options(metro_bootanim_module PRIVATE",CMAKE)
+        self.assertIn(":-O2>",CMAKE)
     def test_isolated_graceful_control_matches_integrated_policy(self):
         root=Path(__file__).resolve().parents[1]
         source=(root/"tools/native/metro_bootanim_live.cpp").read_text()

@@ -37,6 +37,8 @@ add_library(metro_bootanim_module SHARED ${REXGLUE_ENTRYPOINT_GENERATED_SOURCES}
 target_include_directories(metro_bootanim_module PRIVATE "${REXGLUE_ENTRYPOINT_INCLUDE_DIR}")
 target_link_libraries(metro_bootanim_module PRIVATE rex::sdk)
 rexglue_apply_recomp_settings(metro_bootanim_module "${REXGLUE_ENTRYPOINT_INCLUDE_DIR}/metro_bootanim_pch.h")
+target_compile_options(metro_bootanim_module PRIVATE
+  $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-O2>)
 add_dependencies(metro_bootanim_module metro_bootanim_codegen)
 set_target_properties(metro_bootanim_module PROPERTIES CXX_VISIBILITY_PRESET hidden)
 rexglue_configure_module_target(metro_bootanim_module)

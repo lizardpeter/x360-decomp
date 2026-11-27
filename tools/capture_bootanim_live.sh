@@ -12,17 +12,18 @@ export SDL_AUDIODRIVER="${X360_BOOTANIM_AUDIO_DRIVER:-dummy}"
 ./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex > "$out/bootanim-live.log" 2>&1 &
 pid=$!
 trap 'kill -KILL "$pid" 2>/dev/null || true' EXIT
-count=0
-deadline=$((SECONDS+52))
+count=0;last_sample_time=-2
+# Observe long enough for software Vulkan without determining the guest exit.
+deadline=$((SECONDS+105))
 while ((SECONDS<deadline)); do
     kill -0 "$pid" 2>/dev/null || break
     window="$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | head -1 || true)"
-    if [[ -n "$window" ]]; then
+    if [[ -n "$window" ]] && ((count<20 && SECONDS-last_sample_time>=2)); then
         if import -window "$window" "$out/frame-$(printf '%03d' "$count").png" 2>/dev/null; then
-            ((count+=1))
+            ((count+=1));last_sample_time=$SECONDS
         fi
     fi
-    sleep 0.15
+    sleep 0.4
 done
 set +e
 timed_out=false

@@ -131,7 +131,7 @@ jobs:
       - name: Compile and link the original boot-animation module
         run: |
           folder="$PWD/build/bootanim-native"
-          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gline-tables-only' -DCMAKE_PREFIX_PATH="$SDK"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_RELEASE=-O2 -DNDEBUG' -DREXGLUE_RECOMP_OPTIMIZATION_RELEASE=O2 -DREXGLUE_RECOMP_DEBUG_INFO_RELEASE=line-tables-only -DCMAKE_PREFIX_PATH="$SDK"
           set +e
           cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
           status=$?
@@ -154,14 +154,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/bootanim-native"
-          timeout --kill-after=10s 70s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-capture"
+          timeout --kill-after=10s 125s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-capture"
       - name: Verify original animation host PCM output on an isolated audio device
         if: always() && steps.live.outcome == 'success'
         run: |
           sudo apt-get install -y pulseaudio pulseaudio-utils
           folder="$PWD/build/bootanim-native"
           set +e
-          timeout --kill-after=10s 80s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_audio.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-audio"
+          timeout --kill-after=10s 145s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_audio.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-audio"
           status=$?
           set -e
           for f in pcm-evidence.json pulse-info.txt sinks.txt before-inputs.txt pulse.log parec.log; do

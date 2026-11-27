@@ -20,6 +20,49 @@ is_dll = true
 includes = ["verified-bootanim-entries.toml"]
 '''
 
+# Match the actual generated module source ownership, never assume a target
+# name or change the optimization level of the dashboard and XAM.
+INTRO_OPTIMIZATION_CMAKE=r"""
+get_property(_metro_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+set(_metro_bootanim_targets "")
+foreach(_metro_target IN LISTS _metro_targets)
+  get_target_property(_metro_type ${_metro_target} TYPE)
+  if(_metro_type STREQUAL "SHARED_LIBRARY")
+    get_target_property(_metro_sources ${_metro_target} SOURCES)
+    foreach(_metro_source IN LISTS _metro_sources)
+      file(TO_CMAKE_PATH "${_metro_source}" _metro_source_path)
+      if(_metro_source_path MATCHES "(^|/)generated_bootanim/")
+        list(APPEND _metro_bootanim_targets ${_metro_target})
+        break()
+      endif()
+    endforeach()
+  endif()
+endforeach()
+list(LENGTH _metro_bootanim_targets _metro_count)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/generated_bootanim/sources.cmake")
+  if(NOT _metro_count EQUAL 1)
+    message(FATAL_ERROR "Metro original animation target ownership is ambiguous")
+  endif()
+  target_compile_options(${_metro_bootanim_targets} PRIVATE
+    $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-O2>)
+endif()
+unset(_metro_targets)
+unset(_metro_bootanim_targets)
+unset(_metro_count)
+unset(_metro_target)
+unset(_metro_type)
+unset(_metro_sources)
+unset(_metro_source)
+unset(_metro_source_path)
+"""
+
+def optimized_scaffold(text):
+    if INTRO_OPTIMIZATION_CMAKE.strip() in text:
+        return text
+    if text.count("rexglue_setup_target(dash_17559)")!=1:
+        raise ValueError("unexpected dashboard CMake scaffold")
+    return text.rstrip()+"\n"+INTRO_OPTIMIZATION_CMAKE
+
 def append_module(text):
     parsed=tomllib.loads(text)
     modules=parsed.get("modules",[])
@@ -45,6 +88,8 @@ def stage(folder,lzx):
     write_exact(folder/"src/metro_bootanim_live_proofs.hpp",live_proofs(image,meta))
     write_exact(folder/"src/metro_bootanim_mapping.hpp",
                 (ROOT/"tools/native/metro_bootanim_mapping.hpp").read_text())
+    cmake=folder/"CMakeLists.txt"
+    cmake.write_text(optimized_scaffold(cmake.read_text()))
     path.write_text(updated)
     return {"original_sha256":BOOT_SHA,"decoded_sha256":DECODED_SHA,
             "entrypoint":None,"exports":{str(k):f"{v:08X}" for k,v in EXPORTS.items()},

@@ -18,17 +18,19 @@ cd "$native"
 pid=$!
 trap 'kill -KILL "$pid" 2>/dev/null || true' EXIT
 intro=0;dash=0;last_intro=0;last_dash=0
+last_sample_time=-2
+# This is a diagnostic observation budget, not a guest handoff deadline.
 : > "$out/dashboard-samples.txt"
-deadline=$((SECONDS+55))
+deadline=$((SECONDS+110))
 while ((SECONDS<deadline)); do
     kill -0 "$pid" 2>/dev/null || break
     win="$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | head -1 || true)"
     if [[ -n "$win" ]]; then
         frame="$(grep -E '^METRO_INTRO frames [0-9]+$' "$out/integrated.log" | tail -1 | awk '{print $3}' || true)"
-        if [[ "$frame" =~ ^[0-9]+$ ]] && ((frame>=last_intro+4 && intro<28)) &&
+        if [[ "$frame" =~ ^[0-9]+$ ]] && ((frame>=last_intro+4 && intro<12 && SECONDS-last_sample_time>=2)) &&
            ! grep -Fq 'METRO_INTRO original_return ' "$out/integrated.log"; then
             if import -window "$win" "$out/intro-$(printf '%03d' "$intro").png" 2>/dev/null; then
-                intro=$((intro+1));last_intro="$frame"
+                intro=$((intro+1));last_intro="$frame";last_sample_time=$SECONDS
             fi
         fi
         frame="$(grep -E '^METRO_INTRO post_handoff_frames [0-9]+$' "$out/integrated.log" | tail -1 | awk '{print $3}' || true)"
@@ -54,7 +56,7 @@ while ((SECONDS<deadline)); do
         fi
     fi
     if ((dash>=4)); then break; fi
-    sleep 0.15
+    sleep 0.4
 done
 alive=false
 if kill -0 "$pid" 2>/dev/null; then
