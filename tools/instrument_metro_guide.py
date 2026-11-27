@@ -31,6 +31,7 @@ def insert(source,module,plan):
             raise ValueError("invalid guide trace metadata")
         result='"observed"'
         if pc in STATUS or (phase=='return' and name.startswith(('ui_init_','guide_boot_'))):result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
+        if phase=="return" and name=="hud_skin_load":result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if name=="hw_gate":result='((ctx.r11.u32&0x200u)?"bit_set":"bit_clear")'
         if pc in INIT_OBJECT:result='(ctx.r3.u32?"nonzero_object":"null_object")'
         out.extend([p+'if (std::getenv("X360_METRO_GUIDE_TRACE")) {\n',

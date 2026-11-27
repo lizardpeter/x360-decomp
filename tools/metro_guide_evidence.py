@@ -260,6 +260,17 @@ def scan(label,raw,image,meta,catalog,stubs):
         for pc in (0x816C9EB8,0x816966FC):mark(pc,"hw_gate","test")
         for pc in (0x816C9EC0,0x816C9EC8,0x81696704,0x81696748):
             mark(pc,"hw_gate_path","observed")
+        # The original UI initializer registers a graphics callback and
+        # opens a resource-only XEX before reaching the Guide worker.
+        for site,name,expected_import in (
+            (0x816CE980,"graphics_register","VdRegisterXamGraphicsNotification"),
+            (0x816CEA04,"hud_skin_load","XexLoadImage")):
+            b=branch(site,struct.unpack_from(">I",image,site-base)[0])
+            if not b or not b[1] or thunks.get(b[0],{}).get("name")!=expected_import:
+                raise ValueError("original Guide graphics/skin trace site mismatch")
+            mark(site,name,"call")
+            mark(site+4,name,"return")
+        mark(0x816CBFD8,"graphics_notification_callback","entry")
         for pc in (0x816C9EA0,0x81696558,0x816CEBD8):
             mark(pc,"guide_boot_"+hx(pc),"entry")
         for pc in (0x81696714,0x81696724,0x816CEC28,0x816CEC38,0x816CEC70,0x816CEC78):

@@ -306,7 +306,34 @@ def main():
         if not any(r["library"]=="xboxkrnl.exe" and int(r["ordinal"],16)==ordinal and
                    f"{addr:08X}" in r["thunk_slots"].split(",") for r in xam_imports):
             raise ValueError("custom allocator/release import proof failed")
+    # Verify the original graphics callback address independently of the
+    # evidence report. A PDATA entry needs no additional inferred extent.
+    from metro_xam_fault_evidence import operand
+    from metro_import_contracts import branch as original_branch
+    from metro_profile_evidence import linear_export_extent
+    from analyze_decoded import imports as original_imports
+    from xex import parse as original_xex
+    graphics_callback=0x816CBFD8
+    high=operand(0x816CE968,word(xi,xb,0x816CE968))
+    low=operand(0x816CE978,word(xi,xb,0x816CE978))
+    if (high.get("writes")!=11 or low.get("writes")!=3 or low.get("base")!=11 or
+        (high["value"]+low["value"])&0xffffffff!=graphics_callback):
+        raise ValueError("original graphics callback pointer mismatch")
+    call=original_branch(0x816CE980,word(xi,xb,0x816CE980))
+    if not call or not call[1]:
+        raise ValueError("original graphics callback registration branch missing")
+    # The import is independently joined in metro_guide_graphics_evidence;
+    # here require a genuine kernel import thunk rather than a nearby branch.
+    if not any(r["library"]=="xboxkrnl.exe" and call[0] in r["thunk_slots"]
+               for r in original_imports(xi,xb,original_xex(xam_raw))):
+        raise ValueError("original graphics callback registration import missing")
+    if not inside(graphics_callback,sections(xpe,xb,True)) or (
+        graphics_callback not in starts and
+        (in_function(graphics_callback,xpe["functions"],starts) or
+         not linear_export_extent(xi,xb,xpe,graphics_callback))):
+        raise ValueError("original graphics callback is not an independent entry")
     guide_callbacks=guide_callback_hints(xi,xb,xpe,xam_raw)
+    guide_callbacks=sorted(set(guide_callbacks)|{f"{graphics_callback:08X}"})
     exports=sorted(set(exports)|set(guide_callbacks)|{f"{callback:08X}"}|
                    {r["address"] for r in custom_callbacks if r["kind"]=="descriptor_entry"})
     hud_raw=parse_pirs(original("pirs"))["$flash_hud.xex"]["payload"]
