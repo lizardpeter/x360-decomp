@@ -127,3 +127,41 @@ REX_TEST_CASE("metro_audio_context: retiring slot survives an in-flight legacy c
   CHECK(fixture.GetAudio().GetStats().open_streams==rex::kernel::APU::kMaxClients);
   apu.Shutdown();
 }
+
+
+namespace {
+std::atomic<unsigned> metro_audio_cpu{255},metro_audio_pcr_cpu{255};
+std::atomic<rex::u32> metro_audio_cpu_buffer{0};
+void MetroAudioProcessorCallback(PPCContext& ctx,rex::u8* base) {
+  auto* thread=rex::kernel::KernelThread::GetCallingThread();
+  const unsigned cpu=thread->GetActiveCPU();
+  metro_audio_pcr_cpu.store(base[ctx.r13.u32+268]);
+  const auto object=static_cast<rex::u32>(*reinterpret_cast<const rex::be_u32*>(base+ctx.r3.u32));
+  if(cpu<6)metro_audio_cpu_buffer.store(static_cast<rex::u32>(
+      *reinterpret_cast<const rex::be_u32*>(base+object+12+8*cpu)));
+  metro_audio_cpu.store(cpu);
+}
+}
+REX_TEST_CASE("metro_audio_context: callback uses initialized processor-local render buffers",
+              "[kernel][metro_audio_context]") {
+  rex::test::KernelFixture fixture;
+  auto& runtime=fixture.GetRuntime();
+  auto* memory=StateOf(runtime).GetAddressSpace();
+  const auto object=memory->SystemHeapAlloc(64);
+  REQUIRE(object);
+  for(unsigned j=0;j<6;++j)
+    *memory->TranslateVirtual<rex::be_u32*>(object+12+8*j)=j==4?0x12345678u:0;
+  const auto cb=StateOf(runtime).GetFunctionDispatcher()->AllocateThunk(&MetroAudioProcessorCallback,0);
+  REQUIRE(cb);
+  rex::kernel::APU apu(runtime,&fixture.GetAudio());
+  REQUIRE(apu.Setup());
+  metro_audio_cpu=255;metro_audio_pcr_cpu=255;metro_audio_cpu_buffer=0;
+  const auto slot=apu.RegisterClient(cb,object,false,0,4);
+  REQUIRE(slot);
+  REQUIRE(WaitFor([]{return metro_audio_cpu.load()!=255;}));
+  CHECK(metro_audio_cpu.load()==4);
+  CHECK(metro_audio_pcr_cpu.load()==4);
+  CHECK(metro_audio_cpu_buffer.load()==0x12345678u);
+  apu.Shutdown();
+  memory->SystemHeapFree(object);
+}

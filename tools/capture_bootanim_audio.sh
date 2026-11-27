@@ -13,21 +13,27 @@ export PULSE_RUNTIME_PATH="$out/xdg/pulse"
 export PULSE_SERVER="unix:$PULSE_RUNTIME_PATH/native"
 mkdir -p "$PULSE_RUNTIME_PATH"
 # No default host audio device or unrelated stream is included in the capture.
-pulseaudio --start --exit-idle-time=-1 --log-target="file:$out/pulse.log"
+pulseaudio --daemonize=no --use-pid-file=no --exit-idle-time=-1 --log-target="file:$out/pulse.log" -n \
+    -L "module-native-protocol-unix socket=$PULSE_RUNTIME_PATH/native auth-anonymous=1" &
+pulse_pid=$!
 recorder=""
 cleanup() {
     if [[ -n "$recorder" ]]; then
         kill -INT "$recorder" 2>/dev/null || true
         wait "$recorder" 2>/dev/null || true
     fi
-    pulseaudio --kill 2>/dev/null || true
+    kill "$pulse_pid" 2>/dev/null || true
+    wait "$pulse_pid" 2>/dev/null || true
 }
 trap cleanup EXIT
 for _ in $(seq 1 30); do
     if pactl info > "$out/pulse-info.txt" 2>/dev/null; then break; fi
     sleep 0.2
 done
-pactl info > "$out/pulse-info.txt"
+if ! pactl info > "$out/pulse-info.txt"; then
+    cat "$out/pulse.log" >&2 || true
+    exit 1
+fi
 module="$(pactl load-module module-null-sink sink_name=metro_original_audio rate=48000 channels=2 sink_properties=device.description=MetroOriginalAudio)"
 pactl set-default-sink metro_original_audio
 pactl set-sink-mute metro_original_audio 0

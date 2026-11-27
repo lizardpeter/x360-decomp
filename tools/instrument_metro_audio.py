@@ -21,7 +21,9 @@ POINTS={
     0x819A516C:("voice_queue_call",2),
     0x819A4F00:("voice_queue_entry",2),
     0x819A5040:("voice_virtual_call",0),
-    0x819AF968:("voice_render_entry",0),
+    0x819AF968:("voice_render_entry",4),
+    0x819AF988:("voice_get_buffer_call",4),
+    0x819AF98C:("voice_get_buffer_result",0),
     0x819AF9F4:("voice_render_virtual",0),
     0x819A7918:("voice_route_entry",0),
     0x819A7978:("buffer_select_call",3),
@@ -77,6 +79,11 @@ void metro_original_audio_probe(const char* label,unsigned pc,const PPCContext& 
         word("object64",address(ctx.r3.u32,64));
         word("object300",address(ctx.r3.u32,300));
         word("object304",address(ctx.r3.u32,304));
+    }
+    if (kind==4) {
+        auto vtable=mem->Load<rex::be_u32>(ctx.r3.u32);
+        if(vtable)word("voice_get_buffer_target",address(*vtable,72));
+        std::fprintf(stderr," ctr=%08X",static_cast<unsigned>(ctx.ctr));
     }
     if (kind==3) {
         byte("route5",address(ctx.r4.u32,5));
