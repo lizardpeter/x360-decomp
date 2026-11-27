@@ -81,6 +81,23 @@ class IoRuntime(unittest.TestCase):
         self.assertIn("root_node.IsDirectory()",result)
         self.assertIn("OpenFrom(nullptr, absolute, options)",result)
         with self.assertRaises(ValueError):patch_filesystem(result)
+    def test_system_entropy_replaces_constant_and_links_os_provider(self):
+        source="#include <rex/platform.h>\n"+RANDOM_OLD
+        patched=patch_system_entropy(source)
+        self.assertNotIn("0xFD",patched)
+        self.assertIn("GetWritableSpan(address, buf_size)",patched)
+        self.assertIn("BCryptGenRandom",patched)
+        self.assertIn("BCRYPT_USE_SYSTEM_PREFERRED_RNG",patched)
+        self.assertIn("getrandom(output, chunk, 0)",patched)
+        self.assertIn("errno == EINTR",patched)
+        self.assertIn("remaining -= done",patched)
+        self.assertIn("arc4random_buf",patched)
+        self.assertIn("std::abort()",patched)
+        self.assertIn("if (!buf_size) return;",patched)
+        self.assertNotIn("std::rand(",patched)
+        self.assertEqual(patch_entropy_linkage("target_link_libraries(${kernel_target} PRIVATE ws2_32 winmm)"),
+                         "target_link_libraries(${kernel_target} PRIVATE ws2_32 winmm bcrypt)")
+        with self.assertRaises(ValueError):patch_system_entropy(patched)
     def test_stfs_verified_request_abi_never_fabricates_success(self):
         patched=patch_stfs_contract(STFS_OLD)
         self.assertEqual(patched,STFS_NEW)

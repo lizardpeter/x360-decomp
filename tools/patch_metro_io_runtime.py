@@ -862,6 +862,79 @@ def patch_directory_header(source):
                    "#include <rex/filesystem/file_stat.h>\\n#include <rex/platform.h>".replace("\\n","\n"))
     return replace(source,DIRECTORY_HEADER_OLD,DIRECTORY_HEADER_NEW)
 
+# This replaces an existing deterministic placeholder, not a hardware key
+# identity or key-vault implementation. Random bytes remain in guest memory.
+RANDOM_HEADER = r"""#include <rex/platform.h>
+#include <atomic>
+#include <cerrno>
+#include <cstdlib>
+#if REX_PLATFORM_WIN32
+#include <windows.h>
+#include <bcrypt.h>
+#elif REX_PLATFORM_LINUX
+#include <sys/random.h>
+#elif REX_PLATFORM_MAC
+#include <stdlib.h>
+#endif"""
+RANDOM_OLD = r"""void XeCryptRandom_entry(MappedVoid buf, u32 buf_size) {
+  std::memset(buf, 0xFD, buf_size);
+}"""
+RANDOM_NEW = r"""void XeCryptRandom_entry(u32 address, u32 buf_size) {
+  // Original export is void: zero bytes is a no-op. Never report fake
+  // entropy, silently truncate a request, or substitute deterministic data.
+  if (!buf_size) return;
+  auto& memory = kernel::GetCurrent().GetGuestMemory();
+  auto bytes = memory.GetWritableSpan(address, buf_size);
+  if (!address || !bytes) {
+    REXKRNL_ERROR("XeCryptRandom: invalid guest output extent");
+    std::abort();
+  }
+  auto* output = reinterpret_cast<u8*>(bytes->data());
+  size_t remaining = bytes->size();
+  while (remaining) {
+    const size_t chunk = std::min(remaining, size_t{256 * 1024});
+#if REX_PLATFORM_WIN32
+    if (BCryptGenRandom(nullptr, output, static_cast<ULONG>(chunk),
+                        BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
+      REXKRNL_ERROR("XeCryptRandom: system entropy failure");
+      std::abort();
+    }
+    const size_t done = chunk;
+#elif REX_PLATFORM_LINUX
+    // A large request may be interrupted or only partially completed.
+    // Retry EINTR and continue from the actual number of bytes written.
+    ssize_t count;
+    do { count = getrandom(output, chunk, 0); } while (count < 0 && errno == EINTR);
+    if (count <= 0 || static_cast<size_t>(count) > chunk) {
+      REXKRNL_ERROR("XeCryptRandom: system entropy failure");
+      std::abort();
+    }
+    const size_t done = static_cast<size_t>(count);
+#elif REX_PLATFORM_MAC
+    arc4random_buf(output, chunk);
+    const size_t done = chunk;
+#else
+#error No approved system entropy provider
+#endif
+    output += done;
+    remaining -= done;
+  }
+  if (std::getenv("X360_METRO_GUIDE_TRACE")) {
+    static std::atomic<unsigned> samples{0};
+    const auto count = samples.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (count <= 8 || (count & (count - 1)) == 0)
+      REXKRNL_INFO("METRO_ENTROPY successful_requests={} bytes={}", count, buf_size);
+  }
+}"""
+
+def patch_system_entropy(source):
+    source=replace(source,"#include <rex/platform.h>",RANDOM_HEADER)
+    return replace(source,RANDOM_OLD,RANDOM_NEW)
+
+def patch_entropy_linkage(source):
+    return replace(source,"target_link_libraries(${kernel_target} PRIVATE ws2_32 winmm)",
+                          "target_link_libraries(${kernel_target} PRIVATE ws2_32 winmm bcrypt)")
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -883,7 +956,9 @@ def main():
     node_header=a.sdk/"src/filesystem/node_file.h"
     file_header=a.sdk/"include/rex/kernel/object/file_object.h"
     crypt=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_crypt.cpp"
-    outputs={crypt:corrected_signature_verifier(patch_public_verification(crypt.read_text())),
+    kernel_cmake=a.sdk/"src/kernel/CMakeLists.txt"
+    outputs={crypt:patch_system_entropy(corrected_signature_verifier(patch_public_verification(crypt.read_text()))),
+             kernel_cmake:patch_entropy_linkage(kernel_cmake.read_text()),
              file_header:patch_directory_header(file_header.read_text()),
              filesystem:patch_filesystem(filesystem.read_text()),
              filesystem_header:patch_filesystem_header(filesystem_header.read_text()),

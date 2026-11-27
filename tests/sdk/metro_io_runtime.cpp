@@ -406,3 +406,40 @@ REX_TEST_CASE("metro_io_runtime: original STFS 88-byte ABI never fabricates succ
     for (u32 off=0;off<88;off+=4) CHECK(c.Load32(request+off)==0xA5A50000u+off);
   });
 }
+
+
+REX_TEST_CASE("metro_io_runtime: XeCryptRandom uses system entropy and preserves exact guest extent",
+              "[kernel][crypt][metro_io_runtime]") {
+  KernelFixture fixture;
+  fixture.RunOnGuestThread([](Caller& c) {
+    const u32 buffer=c.Alloc(72);
+    c.Store32(buffer,0x13579BDF);
+    c.Store32(buffer+68,0x2468ACE0);
+    std::array<u32,16> first{},second{};
+    for (u32 offset=4;offset<68;offset+=4) c.Store32(buffer+offset,0xFDFDFDFD);
+    c.Kernel("XeCryptRandom",{buffer+4,64});
+    for (u32 i=0;i<16;++i) first[i]=c.Load32(buffer+4+i*4);
+    c.Kernel("XeCryptRandom",{buffer+4,64});
+    for (u32 i=0;i<16;++i) second[i]=c.Load32(buffer+4+i*4);
+    const bool independent=first!=second;
+    bool varied=false;
+    for (auto word:first) if (word!=first.front()) varied=true;
+    // Only assert boolean properties; do not print entropy bytes.
+    CHECK(independent);
+    CHECK(varied);
+    CHECK(c.Load32(buffer)==0x13579BDF);
+    CHECK(c.Load32(buffer+68)==0x2468ACE0);
+    c.Kernel("XeCryptRandom",{buffer+4,0});
+    c.Kernel("XeCryptRandom",{0,0});
+    bool unchanged=true;
+    for (u32 i=0;i<16;++i) if (c.Load32(buffer+4+i*4)!=second[i]) unchanged=false;
+    CHECK(unchanged);
+    // Also exercise a request larger than one OS-call chunk.
+    constexpr u32 size=256*1024+16;
+    const u32 large=c.Alloc(size+8);
+    c.Store32(large,0x12345678);c.Store32(large+size+4,0x87654321);
+    c.Kernel("XeCryptRandom",{large+4,size});
+    CHECK(c.Load32(large)==0x12345678);
+    CHECK(c.Load32(large+size+4)==0x87654321);
+  });
+}
