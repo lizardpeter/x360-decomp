@@ -222,6 +222,8 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
         std::cout << "METRO_BOOT fail xam_attach" << std::endl;
         thread->Exit(1);
     }
+    const auto bound_pads = thread->GetRuntime().AnnounceHostedPads();
+    std::cout << "METRO_BOOT hosted_pads=" << bound_pads << std::endl;
     attached.store(true, std::memory_order_release);
     std::cout << "METRO_BOOT pass xam_attach\nMETRO_BOOT pass dashboard_entry" << std::endl;
     entry.dashboard(ctx, base);

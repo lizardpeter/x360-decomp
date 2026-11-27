@@ -165,6 +165,23 @@ def main():
         raise ValueError("XAM decoded identity differs")
     xpe=pe_info(xi,xm["image_base"])
     exports,interior=xam_hints(xi,xm["image_base"],xpe,xam_raw)
+    # 17559 explicitly constructs the callback passed to DrvSetUserBindingCallback.
+    # Verify both instructions and its exact import call; do not scan arbitrary pointers.
+    xb=xm["image_base"]
+    callback=0x816D9060
+    hi=word(xi,xb,0x8169690C);lo=word(xi,xb,0x81696910)
+    if hi>>26!=15 or (hi>>21)&31!=11 or (hi>>16)&31!=0 or lo>>26!=14 or (lo>>21)&31!=3 or (lo>>16)&31!=11:
+        raise ValueError("unexpected binding callback construction")
+    low=lo&65535
+    if low&0x8000:low-=65536
+    if (((hi&65535)<<16)+low)&0xffffffff!=callback or branch(0x81696914,word(xi,xb,0x81696914))!=0x81A72984:
+        raise ValueError("original binding callback mismatch")
+    if not inside(callback,sections(xpe,xb,True)):
+        raise ValueError("callback not executable")
+    starts=[a for a,_,_ in xpe["functions"]]
+    if in_function(callback,xpe["functions"],starts) and callback not in starts:
+        raise ValueError("callback is an interior PDATA address")
+    exports=sorted(set(exports)|{f"{callback:08X}"})
     target=a.folder/"dash_17559_manifest.toml"
     if target.read_text()!=manifest():raise ValueError("unexpected paired manifest")
     updated=target.read_text().replace('out_directory_path = "generated_xam"','out_directory_path = "generated_xam"\nincludes = ["verified-xam-export-entries.toml"]')

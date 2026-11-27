@@ -6,6 +6,8 @@ on:
       - 'tools/patch_metro_io_runtime.py'
       - 'tests/sdk/metro_io_runtime.cpp'
       - 'tools/patch_metro_xex_views.py'
+      - 'tools/patch_metro_input_runtime.py'
+      - 'tests/sdk/metro_input_bridge.cpp'
       - 'tests/sdk/metro_xex_isolation.cpp'
       - '.github/workflows/metro-sdk-io-tests.yml'
 permissions:
@@ -36,6 +38,7 @@ jobs:
           python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
           python tools/patch_rexglue_function_tables.py build/sdk-source
           python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
+          python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp
       - name: Restore compiler cache
         uses: actions/cache/restore@v4
         with:
@@ -60,7 +63,7 @@ jobs:
           runner="$(realpath out/linux-amd64/Debug/unit_tests)"
           test -x "$runner"
           cd "$(dirname "$runner")"
-          "$runner" '[metro_io_runtime],[metro_xex_isolation]' --reporter compact
+          "$runner" '[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge]' --reporter compact
       - name: Retain reusable compiler cache
         if: always()
         uses: actions/cache/save@v4

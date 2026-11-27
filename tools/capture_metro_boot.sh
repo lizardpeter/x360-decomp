@@ -91,8 +91,7 @@ if [ "$samples" -ge 4 ]; then
     for key in Right Left; do
       kill -0 "$pid" 2>/dev/null || break
       line_start="$(wc -l < "$out/boot.log")"
-      frame_before="$(grep -E '^METRO_BOOT frames [1-9][0-9]*
- "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
+      frame_before="$(grep -E '^METRO_BOOT frames [1-9][0-9]*$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
       xdotool keydown Shift_L
       xdotool keydown "$key"
       sleep 0.25
@@ -100,6 +99,51 @@ if [ "$samples" -ge 4 ]; then
       xdotool keyup Shift_L
       sleep 3
       frame_after="$(grep -E '^METRO_BOOT frames [1-9][0-9]*
+ "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
+      if kill -0 "$pid" 2>/dev/null; then
+        import -window "$win" "$out/input-$key.png" || true
+      fi
+      printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
+      tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_PAD ' >> "$out/receipt.txt" || true
+    done
+    for file in "$out"/input-*.png; do
+      [ -f "$file" ] || continue
+      (cd "$out" && sha256sum "$(basename "$file")") >> "$out/receipt.txt"
+    done
+  fi
+fi
+if ! kill -0 "$pid" 2>/dev/null; then
+  echo "Guest exited during navigation probe." >&2
+  exit 1
+fi
+cat "$out/receipt.txt"
+echo "Captured actual guest-frame candidates; visual inspection is still required."
+ "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
+      xdotool keydown Shift_L
+      xdotool keydown "$key"
+      sleep 0.25
+      xdotool keyup "$key"
+      xdotool keyup Shift_L
+      sleep 3
+      frame_after="$(grep -E '^METRO_BOOT frames [1-9][0-9]*$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
+      if kill -0 "$pid" 2>/dev/null; then
+        import -window "$win" "$out/input-$key.png" || true
+      fi
+      printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
+      tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_PAD ' >> "$out/receipt.txt" || true
+    done
+    for file in "$out"/input-*.png; do
+      [ -f "$file" ] || continue
+      (cd "$out" && sha256sum "$(basename "$file")") >> "$out/receipt.txt"
+    done
+  fi
+fi
+if ! kill -0 "$pid" 2>/dev/null; then
+  echo "Guest exited during navigation probe." >&2
+  exit 1
+fi
+cat "$out/receipt.txt"
+echo "Captured actual guest-frame candidates; visual inspection is still required."
  "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
       if kill -0 "$pid" 2>/dev/null; then
         import -window "$win" "$out/input-$key.png" || true
