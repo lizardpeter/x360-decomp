@@ -23,6 +23,27 @@ from xex import parse as parse_xex
 BOOT_SHA="45eb980c0f841b4807d43c07c766fae5e70b8e2fa4d13fb247a491897cfc6de7"
 DECODED_SHA="b2bc842157ea7fbc6fde9adede7d55a5b6b9a4bdb88f73fbdb01f03371b1835b"
 
+def xma1_format(fmt):
+    # XMAWAVEFORMAT, not WAVEFORMATEX. FFmpeg n7.1 wmaprodec.c
+    # confirms the stream count and per-stream channel offsets.
+    if len(fmt)<12:raise ValueError("truncated XMA1 global format")
+    tag,bits,options,largest_skip,streams,loops,version=struct.unpack_from("<HHHHHBB",fmt)
+    if tag!=0x165 or not 1<=streams<=64 or len(fmt)!=12+20*streams:
+        raise ValueError("invalid XMA1 format extent")
+    records=[]
+    for i in range(streams):
+        avg,rate,begin,end,subframe,channels,mask=struct.unpack_from("<IIIIBBH",fmt,12+20*i)
+        if channels not in (1,2) or not 8000<=rate<=192000:
+            raise ValueError("invalid XMA1 stream format")
+        records.append({"average_bytes_per_second":avg,"sample_rate":rate,
+                        "loop_start":begin,"loop_end":end,"loop_subframe_data":subframe,
+                        "channels":channels,"channel_mask":f"{mask:04X}"})
+    return {"format_tag":"0165","codec":"XMA1","bits_per_sample":bits,
+            "encode_options":f"{options:04X}","largest_skip":largest_skip,
+            "stream_count":streams,"loop_count":loops,"version":version,
+            "channels":sum(r["channels"] for r in records),"streams":records,
+            "packet_size":2048}
+
 def riff_metadata(payload):
     if len(payload)<12 or payload[:4]!=b"RIFF" or payload[8:12]!=b"WAVE":
         raise ValueError("expected embedded RIFF/WAVE")
@@ -37,14 +58,27 @@ def riff_metadata(payload):
         chunks.append({"id":key,"offset":offset+8,"size":size})
         if key=="fmt ":
             if fmt is not None or size<16:raise ValueError("invalid WAVE format")
-            tag,ch,rate,avg,align,bits=struct.unpack_from("<HHIIHH",payload,offset+8)
-            fmt={"format_tag":f"{tag:04X}","channels":ch,"sample_rate":rate,
-                 "average_bytes_per_second":avg,"block_align":align,"bits_per_sample":bits}
+            tag=struct.unpack_from("<H",payload,offset+8)[0]
+            if tag==0x165:
+                fmt=xma1_format(payload[offset+8:end])
+            else:
+                tag,ch,rate,avg,align,bits=struct.unpack_from("<HHIIHH",payload,offset+8)
+                fmt={"format_tag":f"{tag:04X}","channels":ch,"sample_rate":rate,
+                     "average_bytes_per_second":avg,"block_align":align,"bits_per_sample":bits}
         offset=end+(size&1)
     if fmt is None or not any(c["id"]=="data" for c in chunks):
         raise ValueError("missing WAVE format/data")
-    return {"container":"RIFF/WAVE","riff_extent":extent,"resource_bytes":len(payload),
+    result={"container":"RIFF/WAVE","riff_extent":extent,"resource_bytes":len(payload),
             "format":fmt,"chunks":chunks}
+    if fmt["format_tag"]=="0165":
+        data=next(c for c in chunks if c["id"]=="data")
+        if data["size"]%fmt["packet_size"]:raise ValueError("partial XMA1 packet")
+        result["packet_count"]=data["size"]//fmt["packet_size"]
+        seek=[c for c in chunks if c["id"]=="seek"]
+        if seek:
+            if len(seek)!=1 or seek[0]["size"]%4:raise ValueError("invalid seek chunk extent")
+            result["seek_words"]=seek[0]["size"]//4
+    return result
 
 def kernel_imports(raw,image,base,pe,catalog,stubs):
     thunks={};items=[]
@@ -96,6 +130,68 @@ def loader_references(image,base,pe):
     return {"literal_addresses":[hx(a) for a in sorted(literals)],
             "pointer_addresses":[hx(a) for a in sorted(pointers)],"code_references":refs}
 
+def shape(word):
+    # Preserve register operands, memory offsets and comparison constants.
+    primary=word>>26
+    if primary==18:return word&0xfc000003
+    if primary==16:return word&0xffff0003
+    if primary==15:return word&0xffff0000
+    return word
+
+def body_words(image,base,start,size):
+    if size%4 or not base<=start<=base+len(image)-size:raise ValueError("function range")
+    return [w for w, in struct.iter_unpack(">I",image[start-base:start-base+size])]
+
+def matching_functions(source,source_base,source_pe,target,target_base,target_pe,roots):
+    """Identify exact normalized homologues and bounded near matches."""
+    source_sizes={a:s for a,s,_ in source_pe["functions"]}
+    targets=[(a,size,tuple(shape(w) for w in body_words(target,target_base,a,size)))
+             for a,size,_ in target_pe["functions"]]
+    result=[]
+    for root in roots:
+        if root not in source_sizes:raise ValueError("source root missing")
+        size=source_sizes[root]
+        needle=tuple(shape(w) for w in body_words(source,source_base,root,size))
+        exact=[];near=[]
+        for a,ts,words in targets:
+            if ts==size and words==needle:exact.append(hx(a))
+            elif abs(ts-size)<=16:
+                same=sum(x==y for x,y in zip(needle,words))
+                ratio=same/max(len(needle),len(words))
+                if ratio>=.6:near.append({"address":hx(a),"size":ts,"aligned_similarity":round(ratio,4)})
+        near.sort(key=lambda n:(-n["aligned_similarity"],n["address"]))
+        result.append({"source":hx(root),"size":size,"exact":exact,"near":near[:8]})
+    return result
+
+def lifecycle_report(raw,image,meta,thunks):
+    base=meta["image_base"];pe=pe_info(image,base)
+    roots=(0x98020E60,0x98020EC8,0x98020ED8,0x98020EF0,
+           0x980432B8,0x9800FF08,0x98044400,0x980210F8,0x98020FD0,
+           0x9800E910,0x9800F380,0x9800F5A8,0x9800FDB0,0x9800E448,
+           0x9800E550,0x98045A60,0x98045A58,0x98045A10)
+    details=[bounded_entry(image,base,pe,addr,thunks,8192) for addr in roots]
+    by_pc={r["pc"]:r for f in details for r in f["operands"]}
+    def absolute_slot(lis,access):
+        hi=by_pc[hx(lis)];lo=by_pc[hx(access)]
+        if hi["kind"]!="immediate" or hi["writes"]!=lo["base"]:
+            raise ValueError("boot animation module slot construction")
+        return (hi["value"]+lo["offset"])&0xffffffff
+    store=by_pc["9800FF20"];load=by_pc["9800E47C"]
+    if store.get("kind")!="memory_store" or store.get("source")!=3 or load.get("kind")!="memory_load" or load.get("writes")!=3:
+        raise ValueError("boot animation handle flow")
+    slot=absolute_slot(0x9800FF14,0x9800FF20)
+    if slot!=absolute_slot(0x9800E468,0x9800E47C):raise ValueError("handle slot mismatch")
+    masks=[]
+    for pc in (0x9800FF18,0x9800FF28):
+        op=by_pc[hx(pc)]
+        if op["kind"]!="rotate_mask" or op["source"]!=4 or op["mask_start"]!=op["mask_end"]:
+            raise ValueError("startup flags shape")
+        masks.append(f"{1<<(31-op['mask_start']):08X}")
+    return {"first_export_arguments":{"r3":"module handle (verified resource lookup flow)",
+            "r4":"flags word (verified masks, caller policy not recovered)"},
+            "module_handle_global":hx(slot),"startup_flag_masks":masks,
+            "functions":details}
+
 def audit(raw,image,meta,catalog,stubs):
     if sha(raw)!=BOOT_SHA or meta["sha256"]!=DECODED_SHA:
         raise ValueError("boot animation source identity")
@@ -127,6 +223,7 @@ def audit(raw,image,meta,catalog,stubs):
             "pe_entry_executable":executable(pe,base,pe["entry_point"]),
             "image_base":hx(base),"image_bytes":len(image),"pdata_functions":len(pe["functions"]),
             "exports":exports,"audio":audio,"imports":items,
+            "lifecycle":lifecycle_report(raw,image,meta,thunks),
             "focused_functions":[{"imports":sorted(names),**bounded_entry(image,base,pe,addr,thunks,8192)}
                                  for addr,names in sorted(focus.items())],
             "missing_or_stub_imports":[{k:v for k,v in item.items() if k!="direct_calls"}
@@ -149,13 +246,20 @@ def main():
         image,m=decode(raw,a.lzx.resolve())
         from metro_import_contracts import DIGESTS
         if m["sha256"]!=DIGESTS[label]:raise ValueError("caller image identity")
-        callers[label]=loader_references(image,m["image_base"],pe_info(image,m["image_base"]))
+        pe=pe_info(image,m["image_base"])
+        callers[label]=loader_references(image,m["image_base"],pe)
+        if label=="xam":
+            report["audio_library_homologues"]=matching_functions(
+                image,m["image_base"],pe,im,meta["image_base"],pe_info(im,meta["image_base"]),
+                (0x819AC540,0x819A5878,0x819A50B8,0x819A4F00,0x819AFF80,0x819B6FA0))
     report["caller_references"]=callers
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("boot animation:",len(report["exports"]),"exports",len(report["focused_functions"]),
           "focused functions",len(report["missing_or_stub_imports"]),"missing/stub imports")
-    print("audio",report["audio"]["format"])
+    print("audio",report["audio"]["format"],"packets",report["audio"].get("packet_count"))
+    print("lifecycle",report["lifecycle"]["module_handle_global"],report["lifecycle"]["startup_flag_masks"])
+    print("audio library homologues",report["audio_library_homologues"])
     print("exports",[(r["ordinal"],r["address"],r["kind"]) for r in report["exports"]])
     print("caller references", {k:len(v["code_references"]) for k,v in callers.items()})
 if __name__=="__main__":main()
