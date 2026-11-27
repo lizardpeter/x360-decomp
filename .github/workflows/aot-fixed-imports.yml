@@ -1,5 +1,10 @@
 name: Rebuild SDK with verified Metro XAM bindings
 on:
+  workflow_call:
+    inputs:
+      profile_modules:
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       profile_modules:
@@ -9,6 +14,8 @@ on:
   push:
     paths:
       - 'tools/stage_metro_profile_modules.py'
+      - 'tools/native/metro_profile_mapping.hpp'
+      - 'tools/verify_metro_profile_generated.py'
       - 'tools/patch_metro_public_verification.py'
       - 'tools/verify_retail_firmware.py'
       - 'tools/patch_rexglue_imports.py'
@@ -74,7 +81,7 @@ on:
       - 'tests/test_metro_sdk_patches.py'
       - '.github/workflows/aot-fixed-imports.yml'
 concurrency:
-  group: metro-native-${{ github.ref }}
+  group: metro-native-${{ github.ref }}-${{ inputs.profile_modules || false }}
   cancel-in-progress: false
 permissions:
   contents: read
@@ -246,6 +253,8 @@ jobs:
           find "$folder/native" -type f -name "libdash_17559_xam.so" -print -quit | grep -q .
       - name: Verify native dashboard and XAM mapping without guest execution
         id: preflight
+        env:
+          X360_METRO_PROFILE_MODULE_PREFLIGHT: ${{ inputs.profile_modules && '1' || '0' }}
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           cd "$folder/native"
@@ -258,7 +267,8 @@ jobs:
           grep -E '^METRO_BINDING ' "$folder/preflight.log" > build/receipts/metro-binding-values.txt || true
           grep -E '^METRO_RETAIL_' "$folder/preflight.log" > build/receipts/metro-retail-routing.txt || true
           grep -E '^METRO_KERNEL_VAR' "$folder/preflight.log" > build/receipts/metro-kernel-variables.txt || true
-          cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt
+          grep -E '^METRO_PROFILE_PREFLIGHT ' "$folder/preflight.log" > build/receipts/profile-preflight.txt || true
+          cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt build/receipts/profile-preflight.txt
           if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
@@ -266,6 +276,10 @@ jobs:
           for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity bootanim_native_mapping clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
+          if [ "$X360_METRO_PROFILE_MODULE_PREFLIGHT" = 1 ]; then
+            grep -Fxq "METRO_PREFLIGHT pass profile_module_mapping" build/receipts/metro-preflight.txt
+            grep -Fxq "METRO_PROFILE_PREFLIGHT total cycles=10 xam_bindings=1420 guest_executed=false" build/receipts/profile-preflight.txt
+          fi
       - name: Attempt original graphical boot and capture actual presented title frame
         run: |
           sudo apt-get update

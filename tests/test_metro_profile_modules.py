@@ -80,3 +80,23 @@ class ProfileModules(unittest.TestCase):
         self.assertIn("module->user.is_dll_module",code)
         self.assertEqual(code.count("return import.value_address=="),710)
         with self.assertRaises(ValueError):patch_profile_loader(code,inventory())
+
+    def test_preflight_header_has_every_exact_original_slot(self):
+        from stage_metro_profile_modules import preflight_header
+        r=inventory();h=preflight_header(r)
+        for name,m in r["modules"].items():
+            self.assertIn(f'{{"{name}.xex",0x{m["base"]:08X}u,{m["size"]}u,0x{m["entry"]:08X}u',h)
+            for kind in ("xam","kernel"):
+                for b in m[kind+"_bindings"]:
+                    self.assertIn(f"{{0x{b['ordinal']:04X}u,0x{b['slot']:08X}u,0x{b['thunk']:08X}u,0x{b.get('target',0):08X}u}}",h)
+
+    def test_strict_callable_registration_gate(self):
+        from verify_metro_profile_generated import strict_mappings
+        prefix="const PPCFuncMapping kPPCFuncMappings[] = {\n"
+        body="  {0x1000, &fn},\n  {0, nullptr},\n};"
+        self.assertEqual(strict_mappings(prefix+body,[0x1000])["native_mappings"],1)
+        for bad in (body.replace("&fn","nullptr"),body.replace("0x1000","0x1001"),
+                    body.replace("  {0, nullptr},","  {0x1000, &fn2},\n  {0, nullptr},"),
+                    body.replace("  {0, nullptr},",""),
+                    body.replace("0x1000","0x2000")):
+            with self.assertRaises(ValueError):strict_mappings(prefix+bad,[0x1000])

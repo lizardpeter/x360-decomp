@@ -260,6 +260,23 @@ def patch_profile_loader(source,report):
     source=source.replace(recomp_anchor,recomp_anchor+registration,1)
     return source
 
+def preflight_header(report):
+    parts=["#pragma once\n#include <cstdint>\n#include <cstddef>\n",
+           "namespace metro_profile {\n",
+           "struct OriginalBinding {std::uint16_t ordinal; std::uint32_t slot,thunk,target;};\n",
+           "struct ModuleProof {const char* name; std::uint32_t base,size,entry; const OriginalBinding* xam; std::size_t xam_count; const OriginalBinding* kernel; std::size_t kernel_count;};\n"]
+    for name,m in report["modules"].items():
+        for kind in ("xam","kernel"):
+            parts.append(f"inline constexpr OriginalBinding k_{name}_{kind}[]={{\n")
+            parts.extend(f"  {{0x{b['ordinal']:04X}u,0x{b['slot']:08X}u,0x{b['thunk']:08X}u,0x{b.get('target',0):08X}u}},\n"
+                         for b in m[kind+"_bindings"])
+            parts.append("};\n")
+    parts.append("inline constexpr ModuleProof kModules[]={\n")
+    for name,m in report["modules"].items():
+        parts.append(f'  {{"{name}.xex",0x{m["base"]:08X}u,{m["size"]}u,0x{m["entry"]:08X}u,k_{name}_xam,{len(m["xam_bindings"])}u,k_{name}_kernel,{len(m["kernel_bindings"])}u}},\n')
+    parts.append("};\n}\n")
+    return "".join(parts)
+
 def integrated_manifest(text,report):
     parsed=tomllib.loads(text)
     previous=parsed.get("modules",[])

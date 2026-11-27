@@ -4,6 +4,7 @@
 #include <rex/ppc/recompiled_code.h>
 #include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <map>
 #include <set>
 #include "profile_module_identity.hpp"

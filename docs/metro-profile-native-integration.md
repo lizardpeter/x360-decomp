@@ -57,3 +57,10 @@ all five entrypoint/import thunk tables to be present before native linking.
 The runtime refuses a profile UI load if its native shared library is not
 registered, rather than attaching an uncompiled XEX. Alias paths normalize to
 the read-only flash tree. No actual sign-in is asserted until a live test.
+
+The dedicated integrated workflow calls the production Linux build with
+`profile_modules: true`. Its additional load-only gate alternates each original
+module's bare and flash alias across two cycles, verifies every original import
+slot and native thunk, and checks 1,420 XAM bindings in ten real loader cycles.
+It does not execute DllMain, alter the user's profile, or claim actual sign-in.
+The ordinary build remains independent of this opt-in gate.

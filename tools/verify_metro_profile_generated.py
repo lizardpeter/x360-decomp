@@ -5,7 +5,29 @@ import json
 from pathlib import Path
 from prepare_recompilation import ROOT
 from stage_metro_profile_modules import inventory,mapping_coverage
-from filter_zero_aot_mappings import filter_text,process
+from filter_zero_aot_mappings import TABLE,ROW
+
+def strict_mappings(source,required):
+    if source.count(TABLE)!=1:raise ValueError("unexpected mapping table count")
+    start=source.index(TABLE);end=source.find("\n};",start)
+    if end<0:raise ValueError("unterminated mapping table")
+    addresses=set();sentinel=False
+    for line in source[start:end].splitlines()[1:]:
+        match=ROW.match(line)
+        if not match:
+            if line.strip():raise ValueError("unrecognized mapping row")
+            continue
+        address=int(match.group(2),16);host=match.group(3).strip()
+        if sentinel:raise ValueError("mapping after sentinel")
+        if not address and host=="nullptr":
+            sentinel=True;continue
+        if not address or address&3 or host=="nullptr" or address in addresses:
+            raise ValueError("invalid or duplicate mapping")
+        addresses.add(address)
+    if not sentinel:raise ValueError("missing mapping sentinel")
+    missing=set(required)-addresses
+    if missing:raise ValueError("missing callable mappings: "+", ".join(f"{a:08X}" for a in sorted(missing)))
+    return {"native_mappings":len(addresses),"required_addresses":len(set(required))}
 
 def verify(folder):
     report=inventory()
@@ -17,9 +39,7 @@ def verify(folder):
         path=directory/("metro_"+name+"_init.cpp")
         required=(m["entry"],*(b["thunk"] for b in m["xam_bindings"]))
         try:
-            record=process(path,required)
-            if record["removed_zero_address_mappings"]:
-                raise ValueError("unexpected zero-address mappings")
+            record=strict_mappings(path.read_text(),required)
             result["modules"][name]=record|{"valid":True}
         except (OSError,ValueError) as exc:
             result["modules"][name]={"valid":False,"error":str(exc)}

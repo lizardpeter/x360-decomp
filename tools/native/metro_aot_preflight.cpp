@@ -20,6 +20,7 @@
 #include "metro_preflight_bindings.hpp"
 #include "metro_resource_proofs.hpp"
 #include "metro_aot_boot.hpp"
+#include "metro_profile_mapping.hpp"
 
 namespace {
 using rex::kernel::ModuleObject;
@@ -231,6 +232,12 @@ public:
         if (!intro_hmodule || !title_.FindFunction(metro_intro::kStart) ||
             !title_.FindFunction(metro_intro::kControl))return fail("bootanim_native_mapping");
         std::cout<<"METRO_PREFLIGHT pass bootanim_native_mapping"<<std::endl;
+        const char* profile_check=std::getenv("X360_METRO_PROFILE_MODULE_PREFLIGHT");
+        if (profile_check && std::string_view(profile_check)=="1") {
+            if (!metro_profile::verify_load_cycles(title_,*xam,*user,kDashEntry,0x913F8D00))
+                return fail("profile_module_mapping");
+            std::cout<<"METRO_PREFLIGHT pass profile_module_mapping"<<std::endl;
+        }
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
 

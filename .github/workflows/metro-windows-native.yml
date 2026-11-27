@@ -127,7 +127,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/win-amd64
-          key: rexglue-metro-win64-vs2022-release-crtwarn-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/verify_retail_firmware.py', 'tools/stage_metro_xam_aot.py', 'tests/sdk/*.cpp') }}
+          key: rexglue-metro-win64-vs2022-release-crtwarn-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/verify_retail_firmware.py', 'tools/stage_metro_xam_aot.py', 'tools/stage_metro_profile_modules.py', 'tests/sdk/*.cpp') }}
       # MSVC marks read-only getenv calls in the portable runtime/probes as
       # deprecated. Keep the warnings visible, without promoting that category
       # to an error; all other compiler error policies remain unchanged.
