@@ -112,8 +112,12 @@ def loader_audit(image,base,pe,thunks,records,members):
     tail=branch(0x816E0250,word(image,base,0x816E0250))
     if tail!=(0x816CECD8,False):raise ValueError("original shared tail changed")
     entries={a:n for a,n,_ in pe["functions"]}
-    if tail[0] not in entries:raise ValueError("unbounded original shared tail")
-    body=bounded_entry(image,base,pe,tail[0],thunks,entries[tail[0]])
+    # This verified branch target is not necessarily a PDATA start.
+    # Report its bounded instruction window without claiming a full function.
+    containing=[a+size-tail[0] for a,size,_ in pe["functions"] if a<=tail[0]<a+size]
+    limit=entries.get(tail[0],min(containing,default=128))
+    body=bounded_entry(image,base,pe,tail[0],thunks,min(limit,512))
+    if not body["operands"]:raise ValueError("empty original shared tail evidence")
     return {"app_flash_identity":identities,"final_load":identity(read_name(image,base,addr)),
             "loader_sites":sites,"shared_tail_body":body}
 
