@@ -57,5 +57,22 @@ int main(){
     check(m.release(address),"release service region");
     s.gpr[3]=0x1000;s.gpr[5]=0x60003000;check(m.store_be32(0x1000,0)&&m.store_be32(0x1004,65536),"combined args");
     check(service.allocate(s,m)==ImportCallResult::completed&&!s.gpr[3]&&m.load_be32(address,n)&&!n,"reserve+commit");
+    auto args=[&](std::uint32_t a,std::uint32_t bytes,std::uint32_t kind){
+        s={};s.gpr[3]=0x1000;s.gpr[4]=0x1004;s.gpr[5]=kind;
+        check(m.store_be32(0x1000,a)&&m.store_be32(0x1004,bytes),"service args");
+    };
+    check(m.store_be32(address,0x12345678),"service test content");
+    args(address,65536,2);s.gpr[6]=0x1008;
+    check(service.protect(s,m)==ImportCallResult::completed&&!s.gpr[3]&&
+          m.load_be32(0x1008,n)&&n==4&&!m.store_be32(address,9),"protect syscall old RW");
+    args(address,65536,4);s.gpr[6]=0x1008;
+    check(service.protect(s,m)==ImportCallResult::completed&&!s.gpr[3]&&
+          m.load_be32(0x1008,n)&&n==2&&m.load_be32(address,n)&&n==0x12345678,"protect syscall restore");
+    args(address,65536,0x4000);
+    check(service.free(s,m)==ImportCallResult::completed&&!s.gpr[3]&&!m.load_be32(address,n)&&
+          bool(m.reservation(address)),"decommit syscall");
+    args(address,0,0x8000);
+    check(service.free(s,m)==ImportCallResult::completed&&!s.gpr[3]&&!m.reservation(address)&&
+          m.load_be32(0x1004,n)&&n==65536,"release syscall");
     std::cout<<"Virtual reserve/commit/decommit/release, permissions, first-fit and hosted allocation contracts passed\n";
 }

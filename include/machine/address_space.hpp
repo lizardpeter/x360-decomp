@@ -21,6 +21,7 @@ public:
     std::optional<Reservation> reservation(abi::Address address) const noexcept;
     bool commit(abi::Address base,std::uint32_t size,bool writable);
     // Change access only on a fully committed range within one reservation.
+    std::optional<bool> page_writable(abi::Address address) const noexcept;
     bool protect(abi::Address base,std::uint32_t size,bool writable);
     bool decommit(abi::Address base,std::uint32_t size);
     bool release(abi::Address base);

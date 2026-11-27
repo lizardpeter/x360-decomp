@@ -102,6 +102,13 @@ bool AddressSpace::release(abi::Address base){
         pos=regions_.erase(pos);
     reservations_.erase(it);return true;
 }
+std::optional<bool> AddressSpace::page_writable(abi::Address address) const noexcept{
+    auto it=regions_.upper_bound(address);
+    if(it==regions_.begin())return {};
+    --it;
+    if(std::uint64_t(address)-it->first>=it->second.bytes.size())return {};
+    return it->second.writable;
+}
 bool AddressSpace::protect(abi::Address base,std::uint32_t size,bool writable){
     auto r=reservation(base);
     if(!r||!valid_pages(base,size,r->page_size)||

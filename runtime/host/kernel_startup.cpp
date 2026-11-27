@@ -48,6 +48,8 @@ std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint
 ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){
     if(!ready_||lib!="xboxkrnl.exe")return ImportCallResult::unsupported;
     if(o==204&&virtual_memory_)return virtual_memory_->allocate(s,memory);
+    if(o==220&&virtual_memory_)return virtual_memory_->free(s,memory);
+    if(o==225&&virtual_memory_)return virtual_memory_->protect(s,memory);
     if(process_type_&&o==102){
         s.gpr[3]=static_cast<std::uint32_t>(*process_type_);
         return ImportCallResult::completed;
