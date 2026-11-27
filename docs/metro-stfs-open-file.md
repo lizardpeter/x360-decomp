@@ -1,0 +1,5 @@
+# Open-file STFS provider (first implementation)
+
+Original XAM's STFS device creation is not the SDK's existing path-based mount. This patch adds a bounded read-only mount from an already open guest file, using the SDK's existing STFS parser and directory/data extent implementation. It does not reopen arbitrary host paths or assign an account identity. The 64 MiB snapshot limit is deliberate for this initial local-profile reader; large and writable STFS packages need a streaming provider later. The caller must ensure the source is not concurrently modified; size changes and short reads are rejected, but a same-size concurrent write cannot be detected by this layer. Signature/identity validation remains the original caller's responsibility.
+
+The original kernel request structure (88 bytes), object references and command lifecycle must still be connected to this provider after the exact guest ABI is recovered. This isolated workflow tests real fixtures, cross-block reads, read-only access, source-close/delete lifetime, namespace collisions, malformed input and unmount lifetime. It is not enabled in the dashboard runtime until tested.

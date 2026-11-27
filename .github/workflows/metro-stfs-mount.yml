@@ -1,0 +1,63 @@
+name: Metro STFS open-file provider regression
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/patch_metro_stfs_mount.py'
+      - 'tests/sdk/metro_stfs_mount.cpp'
+      - '.github/workflows/metro-stfs-mount.yml'
+permissions:
+  contents: read
+jobs:
+  real-sdk-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./build/sdk-source/.github/actions/setup-toolchain
+        with:
+          platform: linux-amd64
+      - name: Stage open-file STFS provider and real fixture tests
+        run: python tools/patch_metro_stfs_mount.py build/sdk-source --tests tests/sdk/metro_stfs_mount.cpp
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+          restore-keys: metro-clang20-ccache-
+      - name: Build pinned SDK test runner
+        working-directory: build/sdk-source
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+          export CCACHE_DIR="$GITHUB_WORKSPACE/build/compiler-cache"
+          export CCACHE_BASEDIR="$GITHUB_WORKSPACE"
+          export CCACHE_COMPILERCHECK=content
+          ccache --max-size=3G
+          cmake --preset linux-amd64 -DCMAKE_CONFIGURATION_TYPES=Debug -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=ON -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --build out/build/linux-amd64 --config Debug --target unit_tests --parallel 4
+      - name: Execute actual STFS and filesystem tests
+        working-directory: build/sdk-source
+        run: |
+          set -euo pipefail
+          runner="$(realpath out/linux-amd64/Debug/unit_tests)"
+          test -x "$runner"
+          cd "$(dirname "$runner")"
+          "$runner" '[metro_stfs_open_file],[base][container],[filesystem]' --reporter compact
+      - name: Retain reusable compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+        continue-on-error: true
