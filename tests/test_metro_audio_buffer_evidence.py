@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from metro_audio_buffer_evidence import GLOBAL,add,scaled_cpu,local_accesses
+from metro_audio_buffer_evidence import GLOBAL,add,scaled_cpu,local_accesses,wrapper_prefix
 
 def dform(op,rt,ra,d):
     return (op<<26)|(rt<<21)|(ra<<16)|(d&0xffff)
@@ -30,3 +30,11 @@ class AudioBufferEvidenceTests(unittest.TestCase):
     def test_branch_clears_unproven_register(self):
         code=[dform(15,11,0,0x81b6),0x48000008,0x60000000,dform(32,10,11,-18972)]
         self.assertFalse(local_accesses(code,0x819a0000))
+    def test_verified_global_tail_wrapper(self):
+        import struct
+        base=0x92400000
+        words=[dform(15,11,0,0x9290),dform(32,3,11,-32),0x48000100]
+        image=struct.pack(">III",*words)
+        self.assertEqual(wrapper_prefix(image,base,base),{"global_slot":"928FFFE0","tail_target":"92400108","entry":"92400000"})
+        self.assertIsNone(wrapper_prefix(struct.pack(">III",*words[:2],0x48000101),base,base))
+        self.assertIsNone(wrapper_prefix(struct.pack(">III",words[0],dform(32,4,11,-32),words[2]),base,base))

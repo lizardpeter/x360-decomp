@@ -274,13 +274,90 @@ def audit(raw,lzx,sdk):
             "graph_truncated":truncated,
             "scope":"Conservative block-local expressions, actual static references and candidate vtables. No proof of live aliasing or runtime callback processor policy."}
 
+
+# Independently observed in the same-runtime handoff of run 45971765588.
+DASH_CALLBACK=0x92415C28
+DASH_REGISTER_RETURN=0x9241B9A0
+
+def wrapper_prefix(image,base,entry):
+    """Prove the exact lis/lwz/tail-branch wrapper; reject other shapes."""
+    words=[read_word(image,base,entry+4*j) for j in range(3)]
+    hi,load=(operand(entry+4*j,words[j]) for j in range(2))
+    tail=branch(entry+8,words[2])
+    if (hi.get("kind")!="immediate" or load.get("kind")!="memory_load" or
+        load.get("width")!=4 or load.get("writes")!=3 or
+        hi.get("writes")!=load.get("base") or not tail or tail[1]):
+        return None
+    return {"global_slot":hx((hi["value"]+load["offset"])&MASK),
+            "tail_target":hx(tail[0]),"entry":hx(entry)}
+
+def audit_dashboard(raw,xam_raw,lzx,sdk):
+    from metro_bootanim_evidence import matching_functions
+    from metro_xam_fault_evidence import xam_global_references
+    image,meta=decode(raw,lzx)
+    xam,xmeta=decode(xam_raw,lzx)
+    if meta["sha256"]!=DIGESTS["dash"] or xmeta["sha256"]!=DIGESTS["xam"] or sha(xam_raw)!=EXPECTED["xam_17559"]:
+        raise ValueError("dashboard or XAM decoded identity differs")
+    base=meta["image_base"];pe=pe_info(image,base)
+    xb=xmeta["image_base"];xp=pe_info(xam,xb)
+    catalog,stubs=sdk_catalog(sdk);thunks={}
+    for row in imports(image,base,parse_xex(raw)):
+        lib=library(row["library"]);ordinal=int(row["ordinal"],16)
+        name,_=catalog.get((lib,ordinal),("", "unknown"))
+        for addr in row["thunk_slots"]:
+            thunks[addr]={"library":lib,"ordinal":f"{ordinal:04X}","name":name,"sdk_stub":name in stubs}
+    pc=DASH_REGISTER_RETURN-4
+    owners=[a for a,n,_ in pe["functions"] if a<=pc<a+n]
+    if len(owners)!=1 or not executable(pe,base,DASH_CALLBACK):
+        raise ValueError("observed dashboard registration identity differs")
+    registration=bounded_entry(image,base,pe,owners[0],thunks,4096)
+    calls=[o for o in registration["operands"] if o["pc"]==hx(pc)]
+    if len(calls)!=1:
+        raise ValueError("registration call site outside original extent")
+    # A compiled LR may come from a direct import or a local wrapper.
+    # Record the actual edge and wrapper rather than presume the ABI.
+    direct=branch(pc,read_word(image,base,pc))
+    target_prefix=None
+    if direct and direct[0] not in thunks and executable(pe,base,direct[0]):
+        target_prefix=bounded_entry(image,base,pe,direct[0],thunks,192)
+    wrapper=wrapper_prefix(image,base,DASH_CALLBACK)
+    references=[]
+    if wrapper:
+        slot=int(wrapper["global_slot"],16)
+        if not base<=slot<=base+len(image)-4 or not executable(pe,base,int(wrapper["tail_target"],16)):
+            raise ValueError("callback wrapper points outside verified dashboard")
+        references=xam_global_references(image,base,pe,thunks,slot)
+    roots=(0x819AC540,0x819A5878,0x819A50B8,0x819A4F00,0x819AFF80,0x819B6FA0,0x819A5A98,0x819A4570,0x819A44E0)
+    matches=matching_functions(xam,xb,xp,image,base,pe,roots)
+    # Compare the original XAM and observed dashboard callback using its own
+    # decoded wrapper, not a similarity score alone. A matched function is
+    # still only a candidate until its exact operands and live state agree.
+    focused={hx(DASH_CALLBACK):bounded_entry(image,base,pe,DASH_CALLBACK,thunks,2048)}
+    candidates=set()
+    for m in matches:
+        candidates.update(int(x,16) for x in m["exact"])
+        candidates.update(int(x["address"],16) for x in m["near"][:2])
+    if wrapper:candidates.add(int(wrapper["tail_target"],16))
+    for a in sorted(candidates):
+        focused[hx(a)]=bounded_entry(image,base,pe,a,thunks,4096)
+    cpu_accesses={a:[o for o in f["operands"] if o.get("kind")=="memory_load" and o.get("base")==13 and o.get("offset")==268 and o.get("width")==1]
+                  for a,f in focused.items()}
+    return {"source_run":45971765588,"module_sha256":sha(raw),"decoded_sha256":meta["sha256"],
+            "callback":hx(DASH_CALLBACK),"registration_return":hx(DASH_REGISTER_RETURN),
+            "registration":registration,"registration_target_prefix":target_prefix,
+            "exact_global_tail_wrapper":wrapper,"global_references":references,
+            "xam_function_homologues":matches,"focused_functions":focused,
+            "processor_byte_reads":{a:v for a,v in cpu_accesses.items() if v},
+            "scope":"Static evidence only; no claim that dashboard callback uses the XAM CPU policy or that the observed registration is a crash."}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
     p.add_argument("--lzx",type=Path,required=True)
     p.add_argument("--output",type=Path,required=True)
+    p.add_argument("--dashboard-output",type=Path)
     a=p.parse_args()
-    if not a.output.resolve().is_relative_to(ROOT/"build"):p.error("output under build only")
+    if any(not x.resolve().is_relative_to(ROOT/"build") for x in (a.output,a.dashboard_output) if x is not None):p.error("output under build only")
     raw=parse(original("pirs"))["$flash_xam.xex"]["payload"]
     d=audit(raw,a.lzx.resolve(),a.sdk)
     a.output.parent.mkdir(parents=True,exist_ok=True)
@@ -290,4 +367,11 @@ def main():
     print("Global writer entries:",d["global_writer_entries"])
     print("Verified processor-buffer construction:",d["processor_buffer_construction"])
     print("Getter candidates:",[(r["candidate_table"],r["getter_slot_72"],r["route_slot_84"]) for r in d["candidate_vtables"]])
+    if a.dashboard_output:
+        report=audit_dashboard(original("dash_basic"),raw,a.lzx.resolve(),a.sdk)
+        a.dashboard_output.parent.mkdir(parents=True,exist_ok=True)
+        a.dashboard_output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
+        print("Dashboard observed callback wrapper:",report["exact_global_tail_wrapper"])
+        print("Dashboard processor-byte readers:",list(report["processor_byte_reads"]))
+        print("Dashboard XAM homologues:",report["xam_function_homologues"])
 if __name__=="__main__":main()

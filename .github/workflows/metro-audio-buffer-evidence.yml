@@ -32,12 +32,14 @@ jobs:
       - name: Trace original audio global, buffer constructors, and virtual getters
         run: |
           python -m unittest discover -s tests -p test_metro_audio_buffer_evidence.py
-          python tools/fetch_originals.py --only pirs
+          python tools/fetch_originals.py --only pirs --only dash_basic
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
-          python tools/metro_audio_buffer_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-audio-buffer-evidence.json
+          python tools/metro_audio_buffer_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-audio-buffer-evidence.json --dashboard-output build/receipts/metro-dashboard-audio-evidence.json
       - uses: actions/upload-artifact@v4
         with:
           name: metro-audio-buffer-evidence
-          path: build/receipts/metro-audio-buffer-evidence.json
+          path: |
+            build/receipts/metro-audio-buffer-evidence.json
+            build/receipts/metro-dashboard-audio-evidence.json
           if-no-files-found: error
