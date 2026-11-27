@@ -2,6 +2,8 @@
 #include "abi/import_provider.hpp"
 #include "machine/address_space.hpp"
 #include "host/virtual_memory.hpp"
+#include "host/kernel_objects.hpp"
+#include "host/kernel_pool.hpp"
 #include <map>
 namespace x360::host {
 struct Notification {abi::Address routine;std::uint32_t priority;};
@@ -14,6 +16,11 @@ public:
     std::optional<std::uint32_t> value(std::string_view library,std::uint16_t ordinal) const override;
     abi::ImportCallResult call(std::string_view library,std::uint16_t ordinal,abi::GuestCall& state,abi::GuestMemory& memory) override;
     void enable_virtual_memory(machine::AddressSpace& memory,bool diagnostic_selector2=false){virtual_memory_.emplace(memory,diagnostic_selector2);}
+    // Explicit opt-in keeps the established narrow original trace profiles unchanged.
+    void enable_kernel_services(machine::AddressSpace& memory){
+        if(!objects_)objects_.emplace(memory);
+        if(!pool_)pool_.emplace(memory);
+    }
     static constexpr abi::Address hardware_info_address=0x71000100;
     bool install_hardware_info(machine::AddressSpace& memory,const std::array<std::uint8_t,16>& bytes);
     enum class ProcessType:std::uint32_t {idle=0,user=1,system=2};
@@ -23,6 +30,8 @@ public:
     const std::map<abi::Address,Notification>& notifications() const noexcept{return notifications_;}
 private:
     std::optional<VirtualMemory> virtual_memory_;
+    std::optional<KernelObjects> objects_;
+    std::optional<KernelPool> pool_;
     std::optional<ProcessType> process_type_;
     abi::Address diagnostic_thread_{};
     bool hardware_ready_{};

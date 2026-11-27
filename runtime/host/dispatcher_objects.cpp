@@ -29,6 +29,17 @@ ImportCallResult wait_multiple(abi::GuestCall& s,abi::GuestMemory& memory){
     const auto timeout=static_cast<abi::Address>(s.gpr[9]);
     if(!count||count>64||kind>1||mode>1||alertable)return ImportCallResult::unsupported;
     if(!objects||(objects&3u)||std::uint64_t(objects)+count*4>0x100000000ull)return ImportCallResult::fault;
+    std::array<abi::Address,64> addresses{};
+    for(unsigned i=0;i<count;++i)
+        if(!memory.load_be32(objects+4*i,addresses[i]))return ImportCallResult::fault;
+    return DispatcherObjects::wait_addresses(std::span(addresses).first(count),kind,mode,alertable,timeout,s,memory);
+}
+}
+ImportCallResult DispatcherObjects::wait_addresses(std::span<const abi::Address> addresses,
+        std::uint32_t kind,std::uint32_t mode,std::uint32_t alertable,abi::Address timeout,
+        abi::GuestCall& s,abi::GuestMemory& memory){
+    const auto count=static_cast<unsigned>(addresses.size());
+    if(!count||count>64||kind>1||mode>1||alertable)return ImportCallResult::unsupported;
     bool poll=false;
     if(timeout){
         std::array<std::uint8_t,8> b{};
@@ -40,8 +51,8 @@ ImportCallResult wait_multiple(abi::GuestCall& s,abi::GuestMemory& memory){
     unsigned first=count;
     bool all=true;
     for(unsigned i=0;i<count;++i){
-        abi::Address address{};
-        if(!memory.load_be32(objects+4*i,address)||!address||(address&3u)||address>0xffffffecu)
+        const auto address=addresses[i];
+        if(!address||(address&3u)||address>0xffffffecu)
             return ImportCallResult::fault;
         // Duplicate or overlapping guest object records are not a valid
         // independent wait set in this restricted model.
@@ -78,7 +89,6 @@ ImportCallResult wait_multiple(abi::GuestCall& s,abi::GuestMemory& memory){
         if((kind==0||i==first)&&items[i].consume)
             if(!memory.store_be32(items[i].address+4,items[i].signal-1))return ImportCallResult::fault;
     return done(s,kind==0?0:first);
-}
 }
 ImportCallResult DispatcherObjects::call(std::uint16_t ordinal,abi::GuestCall& s,abi::GuestMemory& memory){
     if(ordinal==0xaf)return wait_multiple(s,memory);

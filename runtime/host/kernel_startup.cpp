@@ -49,6 +49,8 @@ std::optional<std::uint32_t> KernelStartup::value(std::string_view lib,std::uint
 }
 ImportCallResult KernelStartup::call(std::string_view lib,std::uint16_t o,abi::GuestCall& s,abi::GuestMemory& memory){
     if(!ready_||lib!="xboxkrnl.exe")return ImportCallResult::unsupported;
+    if(objects_&&KernelObjects::handles(o))return objects_->call(o,s,memory);
+    if(pool_&&KernelPool::handles(o))return pool_->call(o,s,memory);
     if(o==204&&virtual_memory_)return virtual_memory_->allocate(s,memory);
     if(o==220&&virtual_memory_)return virtual_memory_->free(s,memory);
     if(o==225&&virtual_memory_)return virtual_memory_->protect(s,memory);
