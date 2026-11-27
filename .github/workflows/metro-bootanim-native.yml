@@ -1,0 +1,145 @@
+name: Metro boot animation native module
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/stage_metro_bootanim_aot.py'
+      - 'tools/native/metro_bootanim_module_probe.cpp'
+      - 'tests/test_metro_bootanim_aot.py'
+      - '.github/workflows/metro-bootanim-native.yml'
+permissions:
+  contents: read
+concurrency:
+  group: metro-bootanim-native-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  bootanim-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check staging and original input
+        run: |
+          python -m unittest discover -s tests -p test_metro_bootanim_aot.py
+          python tools/fetch_originals.py --only dash --only dash_basic --only pirs
+          mkdir -p build/receipts
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Correct import record walker
+        run: |
+          python tools/patch_rexglue_imports.py build/sdk-source
+          python tools/stage_metro_xam_aot.py patch build/sdk-source
+          python tools/patch_rexglue_function_tables.py build/sdk-source
+          python tools/patch_metro_import_slots.py build/sdk-source
+          python tools/patch_metro_device_control.py build/sdk-source
+          python tools/patch_metro_retail_routing.py build/sdk-source --receipt build/receipts/retail-routing.json
+          python tools/patch_metro_boot_contracts.py build/sdk-source
+          python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
+          python tools/patch_metro_virtual_memory.py build/sdk-source --tests tests/sdk/metro_virtual_memory.cpp
+          python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
+          python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp
+          python tools/patch_metro_system_attach.py build/sdk-source --tests tests/sdk/metro_system_attach.cpp
+          python tools/patch_metro_module_identity.py build/sdk-source
+          python tools/patch_metro_guest_pc.py build/sdk-source
+          python tools/patch_metro_console_config.py build/sdk-source --tests tests/sdk/metro_xconfig.cpp
+          python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
+      - name: Set up pinned SDK's documented build toolchain
+        uses: ./build/sdk-source/.github/actions/setup-toolchain
+        with:
+          platform: linux-amd64
+      - name: Prepare persistent compiler cache
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/compiler-cache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+      - name: Restore compiler cache across SDK and title builds
+        uses: actions/cache/restore@v4
+        with:
+          path: build/compiler-cache
+          key: metro-bootanim-clang20-ccache-${{ github.run_id }}
+          restore-keys: |
+            metro-clang20-ccache-
+      - name: Configure compiler cache limit
+        run: ccache --max-size=3G
+      - name: Restore exact patched SDK installation
+        id: sdk_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/sdk-source/out/install/linux-amd64
+          key: rexglue-linux-amd64-debug-release-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/patch_metro_boot_contracts.py', 'tools/patch_metro_io_runtime.py', 'tests/sdk/metro_io_runtime.cpp', 'tools/patch_metro_virtual_memory.py', 'tests/sdk/metro_virtual_memory.cpp', 'tools/patch_metro_system_attach.py', 'tests/sdk/metro_system_attach.cpp', 'tools/patch_metro_xex_views.py', 'tests/sdk/metro_xex_isolation.cpp', 'tools/patch_metro_input_runtime.py', 'tests/sdk/metro_input_bridge.cpp', 'tools/patch_metro_module_identity.py', 'tools/patch_metro_guest_pc.py', 'tools/patch_metro_console_config.py', 'tests/sdk/metro_xconfig.cpp', 'tools/patch_metro_startup_status.py', 'tests/sdk/metro_startup_status.cpp') }}
+      - name: Build corrected SDK
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        working-directory: build/sdk-source
+        run: |
+          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 '-DCMAKE_CONFIGURATION_TYPES=Debug;Release' -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --build out/build/linux-amd64 --target install --parallel 4
+      - name: Select verified patched SDK installation
+        run: |
+          test -x build/sdk-source/out/install/linux-amd64/bin/rexglue
+          echo "SDK=$(realpath build/sdk-source/out/install/linux-amd64)" >> "$GITHUB_ENV"
+      - name: Cache successful SDK build before guest tests
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/sdk-source/out/install/linux-amd64
+          key: ${{ steps.sdk_cache.outputs.cache-primary-key }}
+        continue-on-error: true
+      - name: Stage hash-verified original and generate callable module
+        run: |
+          source=build/sdk-source/thirdparty/libmspack/libmspack/mspack
+          cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+          python tools/stage_metro_bootanim_aot.py build/bootanim-native --lzx build/lzx_adapter.so --receipt build/receipts/bootanim-input.json
+          folder="$PWD/build/bootanim-native"
+          cd "$folder"
+          set +e
+          "$SDK/bin/rexglue" --log-file "$folder/codegen-detail.log" codegen metro_bootanim_manifest.toml > codegen.log 2>&1
+          status=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/bootanim-codegen-diagnostics.json
+          python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/bootanim-generated.json
+          test "$status" -eq 0
+      - name: Compile and link the original boot-animation module
+        run: |
+          folder="$PWD/build/bootanim-native"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gline-tables-only' -DCMAKE_PREFIX_PATH="$SDK"
+          set +e
+          cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
+          status=$?
+          set -e
+          python tools/aot_diagnostics.py "$folder/build.log" --output build/receipts/bootanim-build.json
+          if [ "$status" -ne 0 ]; then tail -n 80 "$folder/build.log"; fi
+          test "$status" -eq 0
+      - name: Verify actual native registration of the three original exports
+        run: |
+          folder="$PWD/build/bootanim-native"
+          cd "$folder/native"
+          set -o pipefail
+          LD_LIBRARY_PATH="$SDK/lib:${LD_LIBRARY_PATH:-}" ./metro_bootanim_probe | tee "$GITHUB_WORKSPACE/build/receipts/bootanim-native-registration.txt"
+          for addr in 98020e60 98020ec8 98020ed8; do
+            grep -Fxq "BOOTANIM_NATIVE pass export $addr" "$GITHUB_WORKSPACE/build/receipts/bootanim-native-registration.txt"
+          done
+      - name: Upload metadata only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-bootanim-native-receipt
+          path: build/receipts/
+          if-no-files-found: ignore
+      - name: Save reusable compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/compiler-cache
+          key: metro-bootanim-clang20-ccache-${{ github.run_id }}
+        continue-on-error: true
