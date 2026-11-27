@@ -231,7 +231,7 @@ def scan(label,raw,image,meta,catalog,stubs):
     hardware_gate={}
     if label=="xam":
         def check(pc,**want):
-            actual=operand(struct.unpack_from(">I",image,pc-base)[0],pc)
+            actual=operand(pc,struct.unpack_from(">I",image,pc-base)[0])
             if any(actual.get(k)!=v for k,v in want.items()):
                 raise ValueError(f"hardware UI gate mismatch {pc:08X}: {actual}")
         # Original retail XAM uses this one hosted kernel variable in both
@@ -240,6 +240,14 @@ def scan(label,raw,image,meta,catalog,stubs):
             if library(r["library"])=="xboxkrnl" and int(r["ordinal"],16)==0x156]
         if len(hw)!=1 or 0x815F0480 not in hw[0]["value_slots"]:
             raise ValueError("XboxHardwareInfo import slot mismatch")
+        for pc,reg,offset in ((0x816C9EB0,11,1152),(0x816C9EB4,11,0),
+                              (0x816966F4,28,1152),(0x816966F8,11,0)):
+            check(pc,kind="memory_load",base=reg,offset=offset,writes=11,width=4)
+        for pc,dest,sense in ((0x816C9EBC,0x816C9EC8,4),(0x81696700,0x81696748,12)):
+            w=struct.unpack_from(">I",image,pc-base)[0]
+            check(pc,kind="conditional_branch",target=hx(dest))
+            if ((w>>21)&31,(w>>16)&31)!=(sense,2):
+                raise ValueError(f"Guide hardware conditional mismatch {pc:08X}")
         for pc in (0x816C9EB8,0x816966FC):
             check(pc,kind="rotate_mask",mask_start=22,mask_end=22,shift_or_reg=0,source=11,writes=11)
         for pc,dest in ((0x81696724,0x816CEBD8),(0x816CEC70,0x816BA6B0),(0x816CEB58,0x816F0F28)):
