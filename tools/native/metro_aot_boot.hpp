@@ -470,6 +470,7 @@ protected:
     void OnRun() override {
         std::uint64_t dash_reported=0, intro_baseline=0, intro_reported=0, dash_baseline=0;
         bool intro_seen=false, dash_seen=false;
+        std::chrono::steady_clock::time_point intro_first_frame{};
         while (RunFrame()) {
             const auto frames = GetGraphics().GetFrameStats().frame_count;
             if (intro_entered.load(std::memory_order_acquire) &&
@@ -477,12 +478,18 @@ protected:
                 if (!intro_seen) {intro_seen=true;intro_baseline=frames;}
                 const auto intro_frames=frames>=intro_baseline?frames-intro_baseline:0;
                 if (intro_frames>intro_reported) {
+                    if (!intro_reported) intro_first_frame=std::chrono::steady_clock::now();
                     intro_reported=intro_frames;
                     std::cout<<"METRO_INTRO frames "<<intro_frames<<std::endl;
                 }
-                // 110 actual presented frames was the successful isolated
-                // diagnostic policy; exact retail cold-boot timing is unknown.
-                if (!intro_issued_ && intro_frames>=110) {
+                // Frame count alone cut the animation off after ~2 seconds on
+                // Windows. Preserve the existing minimum-frame gate AND a
+                // minimum visible duration; not an asserted retail duration.
+                const auto intro_visible=std::chrono::steady_clock::now()-intro_first_frame;
+                if (!intro_issued_ && intro_frames>=110 && intro_reported &&
+                    intro_visible>=std::chrono::seconds(6)) {
+                    std::cout<<"METRO_INTRO control_request frames="<<intro_frames
+                             <<" visible_ms="<<std::chrono::duration_cast<std::chrono::milliseconds>(intro_visible).count()<<std::endl;
                     intro_issued_=true;
                     auto& runtime=GetTitleRuntime();
                     auto control=runtime.GetThreadRegistry().CreateTaskThread(metro_intro::kControl,1);

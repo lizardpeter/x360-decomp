@@ -27,7 +27,7 @@ fi
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
   --ui.title="Metro 17559 Native Boot" --ui.fullscreen=false \
   --ui.window_width=1280 --ui.window_height=720 \
-  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --hid.mnk_mode=true \
+  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --hid.mnk_mode=true --hid.mnk_mouse=false --hid.mnk_passthrough=false --hid.guide_button=true --hid.keybind_guide=F9 --hid.keybind_dpad_up=W,Up,Shift+Up --hid.keybind_dpad_down=S,Down,Shift+Down --hid.keybind_dpad_left=A,Left,Shift+Left --hid.keybind_dpad_right=D,Right,Shift+Right --hid.keybind_a=Space,Return --hid.keybind_b=Escape,Backspace --hid.keybind_x=X --hid.keybind_y=Y --hid.keybind_left_shoulder=Q --hid.keybind_right_shoulder=E --hid.keybind_left_trigger=1 --hid.keybind_right_trigger=3 --hid.keybind_back=Tab --hid.keybind_start=F10 --hid.keybind_lstick_up=Shift+W --hid.keybind_lstick_down=Shift+S --hid.keybind_lstick_left=Shift+A --hid.keybind_lstick_right=Shift+D --hid.keybind_rstick_up=Ctrl+Up --hid.keybind_rstick_down=Ctrl+Down --hid.keybind_rstick_left=Ctrl+Left --hid.keybind_rstick_right=Ctrl+Right \
   "${profile_args[@]}" --log.level=info --log.flush_level=info > "$out/boot.log" 2>&1 &
 pid=$!
 cleanup() {
@@ -126,7 +126,7 @@ pad_observed=0
 visual_changes=0
 reversible_pairs=0
 for axis in vertical horizontal; do
-  if [[ "$axis" == vertical ]]; then first=Down; second=Up; else first=Right; second=Left; fi
+  if [[ "$axis" == vertical ]]; then first=s; second=w; else first=Right; second=Left; fi
   pair="$out/input-$axis"
   before="$(read_frame)"
   import -window "$win" "$pair-idle-a.png"
@@ -140,11 +140,9 @@ for axis in vertical horizontal; do
     kill -0 "$pid" 2>/dev/null || exit 1
     line_start="$(wc -l < "$out/boot.log")"
     frame_before="$(read_frame)"
-    xdotool keydown Shift_L
     xdotool keydown "$key"
     sleep 0.25
     xdotool keyup "$key"
-    xdotool keyup Shift_L
     frame_after="$(wait_frames "$frame_before" 10)" || exit 1
     image="$out/input-$key.png"
     import -window "$win" "$image"
@@ -168,10 +166,10 @@ for axis in vertical horizontal; do
     cp "$prior" "$stable"
     changed="$(difference "$previous" "$stable")" || exit 1
     restored="$(difference "$pair-idle-b.png" "$stable")" || exit 1
-    printf 'input_key=Shift+%s frames_before=%s frames_after=%s settled_frame=%s idle_noise=%s changed_pixels=%s settling_pixels=%s from_pair_baseline=%s threshold=%s stable_intervals=%s\n' \
+    printf 'input_key=%s frames_before=%s frames_after=%s settled_frame=%s idle_noise=%s changed_pixels=%s settling_pixels=%s from_pair_baseline=%s threshold=%s stable_intervals=%s\n' \
       "$key" "$frame_before" "$frame_after" "$settled_frame" "$idle" "$changed" "$motion" "$restored" "$threshold" "$streak" >> "$out/receipt.txt"
     case "$key" in
-      Up) expected=0001;; Down) expected=0002;; Left) expected=0004;; Right) expected=0008;;
+      Up|w) expected=0001;; Down|s) expected=0002;; Left|a) expected=0004;; Right|d) expected=0008;;
     esac
     trace="$out/input-$key.log"
     tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_GUEST_PAD ' > "$trace" || true

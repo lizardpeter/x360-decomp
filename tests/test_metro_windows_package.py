@@ -53,9 +53,25 @@ class TestWindowsPackage(unittest.TestCase):
     def test_diagnostic_mode_is_separate_from_normal_boot(self):
         self.assertIn('if /i "%~1"=="guide" goto guide',LAUNCH)
         self.assertIn(":guide\nset X360_METRO_GUIDE_UI=1\nset X360_METRO_GUIDE_TRACE=1\nset X360_METRO_PROFILE_TRACE=1",LAUNCH)
-        self.assertIn("--hid.mnk_mode=true --hid.guide_button=true --hid.keybind_guide=F9",LAUNCH)
-        self.assertIn("set METRO_GUIDE_ARGS=\n",LAUNCH)
-        self.assertIn("%METRO_GUIDE_ARGS% --log.level",LAUNCH)
+        self.assertIn("--hid.mnk_mode=true",LAUNCH)
+        self.assertIn("--hid.guide_button=true --hid.keybind_guide=F9",LAUNCH)
+        self.assertIn("set X360_METRO_GUIDE_UI=\n",LAUNCH)
+        self.assertIn("%METRO_INPUT_ARGS% --log.level",LAUNCH)
         self.assertIn(":profilepreflight\nset X360_METRO_PROFILE_MODULE_PREFLIGHT=1",LAUNCH)
         self.assertIn("goto boot\n:guide",LAUNCH)
         self.assertNotIn("set X360_METRO_LOCAL_PROFILES=1",LAUNCH)
+
+    def test_desktop_navigation_binds_apply_to_every_boot_mode(self):
+        line=next(x for x in LAUNCH.splitlines() if x.startswith('set "METRO_INPUT_ARGS='))
+        binds=dict(x.split("=",1) for x in line.split("=",1)[1].rstrip('"').split())
+        self.assertEqual(binds["--hid.mnk_mode"],"true")
+        self.assertEqual(binds["--hid.mnk_mouse"],"false")
+        self.assertEqual(binds["--hid.mnk_passthrough"],"false")
+        self.assertEqual(binds["--hid.keybind_a"],"Space,Return")
+        self.assertEqual(binds["--hid.keybind_b"],"Escape,Backspace")
+        for direction,key in zip(("up","down","left","right"),"WSAD"):
+            self.assertIn(key,binds["--hid.keybind_dpad_"+direction].split(","))
+            self.assertNotEqual(binds["--hid.keybind_lstick_"+direction],key)
+        keys=[key for name,value in binds.items() if name.startswith("--hid.keybind_") for key in value.split(",")]
+        self.assertEqual(len(keys),len(set(keys)))
+        self.assertLess(LAUNCH.index('set "METRO_INPUT_ARGS='),LAUNCH.index('goto guide'))

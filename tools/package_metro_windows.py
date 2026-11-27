@@ -52,7 +52,11 @@ if not exist "inputs\hud.xex" goto missing
 if not exist "inputs\bootanim.xex" goto missing
 set X360_METRO_BOOT=1
 set X360_METRO_INTRO=
-set METRO_GUIDE_ARGS=
+rem Customize keyboard/controller mappings here; comma separates alternate keys.
+set "METRO_INPUT_ARGS=--hid.mnk_mode=true --hid.mnk_mouse=false --hid.mnk_passthrough=false --hid.guide_button=true --hid.keybind_guide=F9 --hid.keybind_dpad_up=W,Up,Shift+Up --hid.keybind_dpad_down=S,Down,Shift+Down --hid.keybind_dpad_left=A,Left,Shift+Left --hid.keybind_dpad_right=D,Right,Shift+Right --hid.keybind_a=Space,Return --hid.keybind_b=Escape,Backspace --hid.keybind_x=X --hid.keybind_y=Y --hid.keybind_left_shoulder=Q --hid.keybind_right_shoulder=E --hid.keybind_left_trigger=1 --hid.keybind_right_trigger=3 --hid.keybind_back=Tab --hid.keybind_start=F10 --hid.keybind_lstick_up=Shift+W --hid.keybind_lstick_down=Shift+S --hid.keybind_lstick_left=Shift+A --hid.keybind_lstick_right=Shift+D --hid.keybind_rstick_up=Ctrl+Up --hid.keybind_rstick_down=Ctrl+Down --hid.keybind_rstick_left=Ctrl+Left --hid.keybind_rstick_right=Ctrl+Right"
+set X360_METRO_GUIDE_UI=
+set X360_METRO_GUIDE_TRACE=
+set X360_METRO_PROFILE_TRACE=
 if /i "%~1"=="intro" set X360_METRO_INTRO=1
 if /i "%~1"=="guide" goto guide
 if /i "%~1"=="profile-preflight" goto profilepreflight
@@ -62,9 +66,8 @@ goto boot
 set X360_METRO_GUIDE_UI=1
 set X360_METRO_GUIDE_TRACE=1
 set X360_METRO_PROFILE_TRACE=1
-set METRO_GUIDE_ARGS=--hid.mnk_mode=true --hid.guide_button=true --hid.keybind_guide=F9
 :boot
-start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_GUIDE_ARGS% --log.level=info --log.flush_level=info > metro.log 2>&1
+start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_INPUT_ARGS% --log.level=info --log.flush_level=info > metro.log 2>&1
 set "code=%ERRORLEVEL%"
 echo Native host exit code: %code%. See metro.log.
 pause
@@ -123,7 +126,12 @@ needed to prepare the local original inputs.
 3. Run Verify Inputs.cmd for the native mapping-only diagnostic.
 4. Run Launch Metro.cmd for the original dashboard. Launch with Intro.cmd also
    runs the original boot animation on the same runtime first, with diagnostic
-   timing. The actual menu is not yet verified.
+   timing. Keyboard-to-controller mode is enabled in both launchers.
+   WASD/arrows: D-pad; Space/Enter: A; Escape/Backspace: B; Q/E: LB/RB;
+   X/Y: X/Y; 1/3: LT/RT; Tab: Back; F10: Start; F9: Guide request.
+   Shift+WASD moves the left stick; Ctrl+arrows move the right stick.
+   Edit METRO_INPUT_ARGS in launch.cmd to customize bindings. Focus the window.
+   Guide display still requires the separate diagnostic and is unverified.
 5. If it closes or crashes, retain metro.log and the build commit in
    native-package.json for diagnosis.
 
