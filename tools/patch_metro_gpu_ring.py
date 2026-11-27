@@ -59,6 +59,27 @@ def patch(sdk,tests):
     source=replace(source,'REXGPU_FAIL(false, "ExecutePacketType3 overflow (read count {:08X}, packet count {:08X})",\n                reader->GetReadCount(), count * sizeof(u32));',
         '''REXGPU_FAIL(false, "ExecutePacketType3 overflow (read count {:08X}, packet count {:08X}, header {:08X}, opcode {:02X}, data offset {:08X})",
                 reader->GetReadCount(), count * sizeof(u32),packet,opcode,data_start_offset);''')
+    # WAIT_REG_MEM deliberately returns false when Shutdown stops the worker.
+    # Unwind every enclosing stream without asserting or publishing completion
+    # for commands that were not executed. Keep live packet failures fatal.
+    source=replace(source,"    read_ptr_index_ = ExecutePrimaryBuffer(read_ptr_index_, write_ptr_index);\n\n    if (read_ptr_writeback_ptr_) {",
+        """    const auto completed_index=ExecutePrimaryBuffer(read_ptr_index_, write_ptr_index);
+    if (!worker_running_) break;
+    read_ptr_index_=completed_index;
+
+    if (read_ptr_writeback_ptr_) {""")
+    for marker in ("primary ring buffer failed to execute a packet",
+                   "indirect buffer failed to execute a packet",
+                   "ExecutePacket failed to execute a packet"):
+        source=replace(source,'    if (!ExecutePacket(&reader)) {\n      REXGPU_ERROR("'+marker+'");',
+            '    if (!worker_running_) break;\n    if (!ExecutePacket(&reader)) {\n      if (!worker_running_) {\n        REXGPU_INFO("METRO_GPU packet_stream_cancelled during shutdown");\n        break;\n      }\n      REXGPU_ERROR("'+marker+'");')
+    source=replace(source,"  OnPrimaryBufferEnd();\n\n  return write_index;",
+        """  if (!worker_running_) return read_index;
+  OnPrimaryBufferEnd();
+
+  return write_index;""")
+    source=replace(source,"  ExecuteIndirectBuffer(GPUToCPU(list_ptr), list_length);\n  return true;",
+        "  ExecuteIndirectBuffer(GPUToCPU(list_ptr), list_length);\n  return worker_running_;")
     h=sdk/"src/gpu/xenos/command_processor.h"
     header=h.read_text()
     # Match only the public method's stale asynchronous documentation.

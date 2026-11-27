@@ -59,3 +59,44 @@ REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: reinitialization does not consume 
   driver.DetachTitle();
   driver.Shutdown();
 }
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: stopping an indirect wait cancels without completing its commands",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  rex::test::FakeDriverContext context;
+  rex::gpu::null::NullXenosGraphicsDriver driver;
+  REQUIRE(driver.Initialize(context));
+  REQUIRE(driver.AttachTitle(rex::TitleInfo{},title,title,title));
+  const auto allocation=memory.SystemHeapAlloc(0x6000,0x1000,rex::kernel::kSystemHeapPhysical);
+  REQUIRE(allocation);
+  const auto ring=memory.GetPhysicalAddress(allocation);
+  const auto indirect=ring+0x1000, wb=ring+0x2000;
+  const auto entered=wb+4, condition=wb+8, forbidden=wb+12;
+  Put(memory,wb,0);Put(memory,entered,0);Put(memory,condition,0);Put(memory,forbidden,0);
+  // Publish a marker, then wait forever on an unsatisfied memory condition.
+  Put(memory,indirect,rex::xenos::BuildPacketType3(rex::xenos::PM4_MEM_WRITE,2));
+  Put(memory,indirect+4,entered|2u);Put(memory,indirect+8,0x01010101u);
+  Put(memory,indirect+12,rex::xenos::BuildPacketType3(rex::xenos::PM4_WAIT_REG_MEM,5));
+  Put(memory,indirect+16,0x13u); // memory, equality
+  Put(memory,indirect+20,condition|2u);Put(memory,indirect+24,1);
+  Put(memory,indirect+28,0xffffffffu);Put(memory,indirect+32,0);
+  Put(memory,indirect+36,rex::xenos::BuildPacketType3(rex::xenos::PM4_MEM_WRITE,2));
+  Put(memory,indirect+40,forbidden|2u);Put(memory,indirect+44,0x11111111u);
+  Put(memory,ring,rex::xenos::BuildPacketType3(rex::xenos::PM4_INDIRECT_BUFFER,2));
+  Put(memory,ring+4,indirect);Put(memory,ring+8,12);
+  Put(memory,ring+12,rex::xenos::BuildPacketType3(rex::xenos::PM4_MEM_WRITE,2));
+  Put(memory,ring+16,forbidden|2u);Put(memory,ring+20,0x22222222u);
+  driver.InitializeRingBuffer(ring,9);
+  driver.EnableReadPointerWriteBack(wb,6);
+  driver.WriteRegister(kWritePointerRegister,6);
+  const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+  while(GetBig(memory,entered)==0 && std::chrono::steady_clock::now()<end)
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  const auto reached=GetBig(memory,entered);
+  driver.DetachTitle(); // must join the worker even though the wait is unsatisfied
+  CHECK(reached!=0);
+  CHECK(GetBig(memory,forbidden)==0);
+  CHECK(GetBig(memory,wb)==0);
+  driver.Shutdown();
+}
