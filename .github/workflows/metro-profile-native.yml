@@ -48,7 +48,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: build/compiler-cache
-          key: metro-profile-clang20-ccache-${{ github.run_id }
+          key: metro-profile-clang20-ccache-${{ github.run_id }}
           restore-keys: |
             metro-profile-clang20-ccache-
             metro-clang20-ccache-
@@ -73,7 +73,7 @@ jobs:
             else
               status=$?
             fi
-            python tools/aot_receipt.py "$folder/generated" --status "$status" --output "$receipt/generated.json" || { failure=1; continue; }
+            python tools/aot_receipt.py "$folder/generated" --status "$status" --output "$receipt/generated.json" || failure=1
             if [ "$status" -ne 0 ]; then
               tail -n 40 "$folder/codegen.log"
               failure=1
@@ -104,5 +104,5 @@ jobs:
         if: always()
         with:
           path: build/compiler-cache
-          key: metro-profile-clang20-ccache-${{ github.run_id }
+          key: metro-profile-clang20-ccache-${{ github.run_id }}
         continue-on-error: true
