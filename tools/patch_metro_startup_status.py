@@ -63,9 +63,6 @@ def patch_object_contracts(source):
     return source
 
 def patch_io_trace(source):
-    anchor="REX_EXPORT(__imp__IoDismountVolumeByName,\n           rex::kernel::xboxkrnl::IoDismountVolumeByName_entry)"
-    if source.count(anchor)!=1:raise ValueError("dismount trace anchor")
-    source=source.replace(anchor,"REX_EXPORT(__imp__IoDismountVolumeByName, rex::kernel::xboxkrnl::IoDismountVolumeByName_entry)",1)
     for name in ("IoDismountVolumeByName","NtQueryFullAttributesFile","NtOpenFile","NtCreateFile"):
         source=trace_export(source,name)
     return source
