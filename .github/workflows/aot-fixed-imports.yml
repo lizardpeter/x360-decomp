@@ -34,6 +34,8 @@ on:
       - 'tools/native/metro_aot_boot.hpp'
       - 'tools/capture_metro_boot.sh'
       - 'tools/symbolize_metro_crash.py'
+      - 'tools/patch_metro_guest_pc.py'
+      - 'tests/test_metro_fault_localization.py'
       - 'tools/stage_dashboard_runtime.py'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
@@ -65,6 +67,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_entries.py
           python -m unittest discover -s tests -p test_metro_kernel_variables.py
           python -m unittest discover -s tests -p test_metro_boot_evidence.py
+          python -m unittest discover -s tests -p test_metro_fault_localization.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
@@ -92,6 +95,7 @@ jobs:
           python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
           python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp
           python tools/patch_metro_module_identity.py build/sdk-source
+          python tools/patch_metro_guest_pc.py build/sdk-source
       - uses: actions/checkout@v4
         with:
           repository: fabegalo/x360-native
@@ -130,7 +134,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/linux-amd64
-          key: rexglue-linux-amd64-debug-release-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/patch_metro_boot_contracts.py', 'tools/patch_metro_io_runtime.py', 'tests/sdk/metro_io_runtime.cpp', 'tools/patch_metro_xex_views.py', 'tests/sdk/metro_xex_isolation.cpp', 'tools/patch_metro_input_runtime.py', 'tests/sdk/metro_input_bridge.cpp', 'tools/patch_metro_module_identity.py') }}
+          key: rexglue-linux-amd64-debug-release-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/patch_metro_boot_contracts.py', 'tools/patch_metro_io_runtime.py', 'tests/sdk/metro_io_runtime.cpp', 'tools/patch_metro_xex_views.py', 'tests/sdk/metro_xex_isolation.cpp', 'tools/patch_metro_input_runtime.py', 'tests/sdk/metro_input_bridge.cpp', 'tools/patch_metro_module_identity.py', 'tools/patch_metro_guest_pc.py') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
@@ -169,7 +173,7 @@ jobs:
       - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
-          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -g0' -DCMAKE_PREFIX_PATH="$SDK"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gline-tables-only' -DCMAKE_PREFIX_PATH="$SDK"
           set +e
           cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
           status=$?

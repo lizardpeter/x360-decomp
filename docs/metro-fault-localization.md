@@ -1,0 +1,9 @@
+# Verified Metro boot fault localization
+
+Run 45940767928 passes all 521 callable original XAM bindings, the original data binding, kernel-variable checks and XAM attach. It dispatches the original dashboard entry but then faults on a worker read of guest address zero before a genuine frame. SDK test runs 45940767949 and 45941015580 passed 109 and 121 assertions respectively.
+
+The previous symbolization assumed the Linux crash reporter's module-relative number was an ELF virtual address. In fact the pinned SDK computes address - mapping.start + mapping.offset (the file offset). On an ELF with nonidentity PT_LOAD offsets, this is wrong. Translate through the exact executable ELF segment first, preserve the original file offset, and distinguish actual fault, unwind and speculative stack candidates. The previous source and function associations must be rechecked; no claim is made that they were all wrong. Codegen now annotates generated source with original PPC PCs and uses line tables for local diagnosis. The comments do not alter guest instructions. The resolver reports a candidate guest PC only for the same generated function, and does not upload source or binary bytes. Exact instruction attribution still needs verification if the compiler coalesces lines or emits a fused operation.
+
+A separate defect was found in the shell navigation probe: its frame expressions and repeated shell blocks were malformed. Replace the entire affected section, test Bash syntax, require four distinct real frame-counter samples, and require actual pad transitions with advancing frame counters for both Left and Right probes. Neither a changed image nor these automated checks constitute verified menu navigation. The visual verification flags remain false.
+
+Existing build branches stay independent; these changes require a fresh validation run.
