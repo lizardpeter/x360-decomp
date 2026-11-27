@@ -11,8 +11,11 @@ on:
       - 'tools/filter_zero_aot_mappings.py'
       - 'tools/patch_rexglue_function_tables.py'
       - 'tools/patch_metro_import_slots.py'
+      - 'tools/patch_metro_device_control.py'
+      - 'tests/test_metro_device_control.py'
       - 'tools/native/metro_aot_boot.hpp'
       - 'tools/capture_metro_boot.sh'
+      - 'tools/symbolize_metro_crash.py'
       - 'tools/stage_dashboard_runtime.py'
       - 'tools/native/metro_aot_preflight.cpp'
       - 'tests/test_metro_preflight.py'
@@ -37,6 +40,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_xam_aot.py
           python -m unittest discover -s tests -p test_metro_preflight.py
           python -m unittest discover -s tests -p test_metro_sdk_patches.py
+          python -m unittest discover -s tests -p test_metro_device_control.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
@@ -57,6 +61,7 @@ jobs:
           python tools/stage_metro_xam_aot.py patch build/sdk-source
           python tools/patch_rexglue_function_tables.py build/sdk-source
           python tools/patch_metro_import_slots.py build/sdk-source
+          python tools/patch_metro_device_control.py build/sdk-source
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -66,7 +71,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/linux-amd64
-          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py') }}
+          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
@@ -140,7 +145,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/fixed-imports/dash_17559"
+          set +e
           timeout --kill-after=15s 120s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > build/receipts/metro-boot-exit-code.txt
+          log="$folder/native/metro-capture/boot.log"
+          if [ -f "$log" ]; then
+            cp "$log" build/receipts/metro-boot.log
+            python tools/symbolize_metro_crash.py "$log" "$folder/native" > build/receipts/metro-symbolized.txt
+            cat build/receipts/metro-symbolized.txt
+          fi
+          exit "$status"
       - name: Upload actual frame candidates (not menu verification)
         if: always()
         uses: actions/upload-artifact@v4
