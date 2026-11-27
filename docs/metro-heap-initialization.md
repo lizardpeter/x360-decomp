@@ -78,3 +78,23 @@ is retained in the startup dependency evidence; no thread priority or
 scheduling behavior is guessed.
 
 Pointer-returning threads also exposed a general SDK identity error: current-thread pseudo handles were translated to the original numeric creation handle even after that handle was closed. The numeric slot can be reused for another object. Pseudo-handle resolution now uses the actual calling KTHREAD identity and duplicates it via an object pin; closing a pseudo handle cannot close a reused slot. Misaligned handles are rejected rather than rounded to an existing slot. Overlapped completion records the submitting thread's monotonically assigned ID, captures it in the deferred request, and routes completion APCs by that ID rather than a stale handle or mutable guest context. The reserved XOVERLAPPED context now contains that ID. The system attach wait also owns its handle via RAII and requests cancellation on timeout. Regression tests cover a closed creation handle, a reused slot, pseudo-handle duplication, and deferred APC delivery to the correct system thread.
+
+## Confirmed live failure (run 45947379915)
+
+The actual original XAM heap initialization created backing regions
+successfully: all seven observed NtAllocateVirtualMemory calls returned
+STATUS_SUCCESS, and the seven ordinary heap creation calls returned
+nonzero heap pointers. The subsequent original 6536-byte object allocation
+normalized flags to 190000EE, dispatched 19000FEE with length 1988 hex,
+and selected the zero descriptor at 81AABFF8. The real allocator returned
+8007000E (out of memory) and the caller returned null. The original worker
+then faulted at 8169D068. This is direct live confirmation of the earlier
+static title-context selection analysis, not an inferred allocation failure.
+It also establishes that merely accepting VM region 3 does not fix the
+crash. The new system-context build must show the original allocation
+selecting an initialized descriptor and returning nonzero.
+The new lifecycle evidence report collects the original entry dispatch,
+every direct heap initialization call, and separate direct-call paths
+from dashboard and XAM entries to the relevant TLS/process/thread and
+title-loader imports. It will expose any remaining title-heap bootstrap
+dependency without inventing calls into the firmware.

@@ -8,7 +8,7 @@ firmware bytes or a decompiled original function.
 import argparse
 import json
 from pathlib import Path
-from analyze_decoded import pe_info, imports
+from analyze_decoded import pe_info, imports, ordinal_exports
 from decode_image import decode
 from pirs import parse as parse_pirs
 from prepare_recompilation import ROOT, EXPECTED, original, sha
@@ -16,6 +16,7 @@ from xex import parse as parse_xex
 from metro_import_contracts import DIGESTS, branch, setup, registers, signed, hx, sdk_catalog, library
 from metro_live_slot_and_input_evidence import read_word, owner, operand_window, executable
 from metro_heap_scalar import original_system_object_heap_selection
+from metro_module_lifecycle import lifecycle_report
 
 FRAMES=[0x816769D0,0x8167E760,0x8167E918,0x8167EB60,0x816B8B08,0x816B92C8,0x816B9668]
 FAULT_PC=0x81676A3C
@@ -494,6 +495,19 @@ def main():
             "second_fault_heap_selection":original_system_object_heap_selection(lambda pc:read_word(image,base,pc)),
             "original_xex_module_flags":{"xam":hx(int.from_bytes(raw[4:8],"big")),
                                         "dashboard_basic":hx(int.from_bytes(original("dash_basic")[4:8],"big"))}}
+    draw=original("dash_basic")
+    dash,di=decode(draw,a.lzx.resolve())
+    if di["sha256"]!=DIGESTS["dash"]:raise ValueError("dashboard decoded identity")
+    db=di["image_base"];dp=pe_info(dash,db)
+    report["module_lifecycle"]=lifecycle_report(
+        {"dash":(dash,db,dp,imports(dash,db,parse_xex(draw))),
+         "xam":(image,base,pe,imports(image,base,parse_xex(raw)))},
+        dict(ordinal_exports(image,base,raw)),catalog,stubs,
+        lambda im,b,p,pc:bounded_entry(im,b,p,pc,thunks,4096))
+    print("original lifecycle:",len(report["module_lifecycle"]["heap_constructor_calls"]),
+          "heap call sites,",len(report["module_lifecycle"]["lifecycle_import_calls"]),
+          "lifecycle import sites,",len(report["module_lifecycle"]["literal_descriptor_zero_constructors"]),
+          "literal descriptor-zero constructors")
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
