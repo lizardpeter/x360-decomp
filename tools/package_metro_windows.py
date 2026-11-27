@@ -13,7 +13,7 @@ REQUIRED={"dash_17559.exe","dash_17559_xam.dll","dash_17559_hud.dll","dash_17559
           "rexapu.dll","rexhid.dll","rexui.dll","rexgpu.dll","rexxam.dll",
           "rexgpu-xenos-vulkan.dll","rexapu-sdl3.dll","rexhid-sdl3.dll","rexui-sdl3.dll","sdl3.dll"}
 SUPPORT=("target.toml","tools/fetch_originals.py","tools/prepare_recompilation.py","tools/pirs.py",
-         "tools/stage_dashboard_runtime.py","tools/prepare_windows_inputs.py","analysis/pirs_17559/members.json")
+         "tools/stage_dashboard_runtime.py","tools/prepare_windows_inputs.py","tools/stage_metro_profile.py","docs/native-offline-profiles.md","analysis/pirs_17559/members.json")
 def pe_identity(path):
     with path.open("rb") as f:
         dos=f.read(64)
@@ -105,6 +105,14 @@ needed to prepare the local original inputs.
    timing. The actual menu is not yet verified.
 5. If it closes or crashes, retain metro.log and the build commit in
    native-package.json for diagnosis.
+
+Experimental local profile storage (not yet verified to sign in):
+stage a copy of your own original CON profile package with
+python tools\\stage_metro_profile.py <profile-file> --storage-root user\\metro-17559\\profile-storage
+then set X360_METRO_LOCAL_PROFILES=1 before launching. This only exposes the
+isolated Content directory to original XAM. It does not authenticate Xbox Live.
+If your SDK user root is customized, use that root instead. Keep profile
+packages and logs private; never upload them to GitHub or build artifacts.
 
 Direct command from cmd.exe, after preparing inputs:
 set X360_METRO_BOOT=1

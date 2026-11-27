@@ -74,6 +74,18 @@ inline bool mount_dashboard_user(rex::kernel::TitleRuntime& title) {
     return mount_writable_area(title,"dashboard-user","\\Device\\MetroDashUser","DASHUSER:");
 }
 
+inline bool mount_local_profiles(rex::kernel::TitleRuntime& title) {
+    // Opt-in only: the source package is never mounted. The staging tool
+    // creates an isolated copy under the same per-installation user root.
+    // This makes the Content directory addressable, not an invented
+    // physical storage device or a synthetic signed-in profile.
+    const auto root=REX_PATHS().user_root.Get()/"metro-17559"/"profile-storage"/"Content";
+    std::error_code ec;
+    if (!std::filesystem::is_directory(root,ec) || ec) return false;
+    return mount_writable_area(title,"profile-storage/Content","\\Device\\MetroProfileContent",
+                               "\\Device\\Harddisk0\\Partition1\\Content");
+}
+
 inline bool mount_flash(rex::kernel::TitleRuntime& title) {
     auto& fs = title.GetFileSystem();
     const auto root = title.GetTitlePaths().game_root.Get() / "flash";
@@ -358,6 +370,11 @@ protected:
         std::cout << "METRO_BOOT pass hdd_cache_mount" << std::endl;
         if (!mount_dashboard_user(title)) return fail("dashboard_user_mount");
         std::cout << "METRO_BOOT pass dashboard_user_mount" << std::endl;
+        const char* profiles=std::getenv("X360_METRO_LOCAL_PROFILES");
+        if(profiles && std::string_view(profiles)=="1") {
+            if(!mount_local_profiles(title))return fail("local_profile_content_mount");
+            std::cout<<"METRO_PROFILE content_mount=ready signin_verified=0"<<std::endl;
+        }
         auto& registry = title.GetModuleRegistry();
         const auto executable = registry.GetExecutable();
         if (!executable) return fail("dashboard_handle");

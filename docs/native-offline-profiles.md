@@ -50,3 +50,5 @@ is imposed until feature requirements and hardware support are established.
 
 At this stage only staging is implemented; original enumeration and sign-in
 remain unverified. Test fixtures use synthetic package headers, not real accounts.
+
+The experimental mount is now opt-in via `X360_METRO_LOCAL_PROFILES=1`. It maps the staged `Content` directory at `\\Device\\Harddisk0\\Partition1\\Content` before original XAM attach. The usual SDK user-root default is the application root's `user` directory. It does not model a physical partition/device enumeration or establish signed-in state; actual guest discovery is still required. The launch package includes the staging tool. No profile input is staged by CI.
