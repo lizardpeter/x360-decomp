@@ -132,6 +132,8 @@ def scan(label,raw,image,meta,catalog,stubs):
     roots|=extra
     lifecycle_refs=[]
     data_refs=[]
+    nonadjacent_refs=[]
+    startup_arguments=[]
     if label=="xam":
         targets=SYSREQ_OWNERS|extra|{0x816F0E70,0x816F0DE0,0x816F0AE0,0x816F3C48,0x816F0400,0x816F0F28,0x816CE8B0}
         global_slots={0x81AAC260,0x81AAC264}
@@ -147,7 +149,48 @@ def scan(label,raw,image,meta,catalog,stubs):
                       "neighbor_pointer_candidates":[{"slot":hx(base+j),"target":hx(v)}
                        for j in range(max(lo,off-24),min(hi-3,off+28),4)
                        if executable(pe,base,(v:=struct.unpack_from(">I",image,j)[0]))]})
-        slot_targets={int(r["slot"],16) for r in data_refs}
+        slot_targets={int(r["slot"],16) for r in data_refs if r["section"]!=".pdata"}
+        # Unwind records are not callback registration tables. Search for
+        # actual computed code pointers across intervening instructions and
+        # CFG edges, with the existing conservative register transfer model.
+        focus={0x816CE8B0,0x816F0F28,0x816F0DE0}
+        for a,n in sorted(funcs.items()):
+            words=body_words(image,base,a,n)
+            lows={v&65535 for v in focus}
+            his={((v+0x8000)>>16)&65535 for v in focus}|{v>>16 for v in focus}
+            if not any(w>>26==15 and ((w>>16)&31)==0 and (w&65535) in his for w in words):continue
+            if not any(w>>26 in (14,24) and (w&65535) in lows for w in words):continue
+            _,states=flow(words,a)
+            for i,w in enumerate(words):
+                pc=a+4*i
+                if pc not in states or w>>26 not in (14,24) or (w&65535) not in lows:continue
+                rt,ra,_=registers(w)
+                regs=states[pc][0]
+                v=regs.get(ra if w>>26==14 else rt)
+                if not v or v[0]!="const":continue
+                low=w&65535
+                if w>>26==14 and low&0x8000:low-=65536
+                address=((v[1]+low) if w>>26==14 else (v[1]|low))&0xffffffff
+                if address in focus:
+                    nonadjacent_refs.append({"owner":hx(a),"site":hx(pc),"target":hx(address),
+                        "register":rt if w>>26==14 else ra,"prior_constant":hx(v[1]&0xffffffff)})
+                    roots.add(a)
+        # Recover the actual original XAM startup work items, which are
+        # registered through the common 816BA440 queue instead of called.
+        for owner in (0x816968A8,0x816F0DF0,0x816CE8B0):
+            words=body_words(image,base,owner,funcs[owner])
+            _,states=flow(words,owner)
+            for i,w in enumerate(words):
+                pc=owner+4*i
+                b=branch(pc,w)
+                if not b or b[0]!=0x816BA440:continue
+                regs=states.get(pc,({},{}))[0]
+                startup_arguments.append({"owner":hx(owner),"site":hx(pc),
+                    "registers":{f"r{k}":render(regs.get(k)) for k in range(3,7)}})
+                for v in regs.values():
+                    if v and v[0]=="const" and executable(pe,base,v[1]&0xffffffff):
+                        roots.add(v[1]&0xffffffff)
+
         for a,n in sorted(funcs.items()):
             words=body_words(image,base,a,n)
             for i in range(1,len(words)):
@@ -194,6 +237,12 @@ def scan(label,raw,image,meta,catalog,stubs):
                   0x816F0710,0x816F0724,0x816F0734,0x816F0760,0x816F0764,0x816F0794,0x816F0C8C,0x816F0C90,
                   0x816F0D08,0x816F0DAC,0x816F0DCC,0x816F03F0):
             mark(a,"guide_lifecycle_"+hx(a),"observed")
+        for row in nonadjacent_refs:
+            mark(int(row["owner"],16),"guide_init_registrar","entry")
+            mark(int(row["site"],16),"guide_init_callback_materialized","observed")
+        for row in startup_arguments:
+            mark(int(row["site"],16),"startup_work_item","call")
+            mark(int(row["site"],16)+4,"startup_work_item","return")
         # The sole original direct caller of the init wrapper is the UI
         # subsystem initializer. Probe every direct call/return in that
         # bounded original body to locate the first failing stage.
@@ -224,7 +273,7 @@ def scan(label,raw,image,meta,catalog,stubs):
     if label=="hud":mark(0x913F8D00,"HUD","entry")
     return {"exports":{k:hx(v) for k,v in exports.items()},"sysreq_registrations":callbacks,
       "input_and_ui_calls":call_sites,"possible_guide_bit_tests":mask_sites,
-      "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"callback_candidates":[hx(a) for a in sorted(extra)],
+      "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"computed_callback_refs":nonadjacent_refs,"startup_work_items":startup_arguments,"callback_candidates":[hx(a) for a in sorted(extra)],
       "reverse_graph":ancestors(roots,inbound,max_depth=3,max_nodes=1000),
       "forward_graph":{"nodes":{hx(a):n for a,n in chosen.items()},"truncated":truncated},
       "bodies":bodies,"trace_points":trace}
@@ -247,6 +296,7 @@ def main():
             "trace points",len(row["trace_points"]),"bodies",len(row["bodies"]))
         for c in row["sysreq_registrations"]:print(c["site"],c["argument_provenance"],c["nearby_code_address_constructions"])
         print("lifecycle pointer references",row["data_pointer_refs"],"code refs",len(row["lifecycle_refs"]))
+        print("computed callback refs",row["computed_callback_refs"],"startup work items",row["startup_work_items"])
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
 if __name__=="__main__":main()
