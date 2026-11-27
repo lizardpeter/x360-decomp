@@ -8,6 +8,7 @@ namespace x360::machine {
 // contiguous access range; holes or incompatible permissions fail atomically.
 struct RegionMapping {abi::Address base;std::span<const std::uint8_t> bytes;bool writable;};
 struct Reservation {abi::Address base;std::uint32_t size,page_size;};
+struct PageRange {abi::Address base;std::uint32_t size;std::optional<bool> writable;};
 class AddressSpace final : public abi::GuestMemory {
 public:
     bool map(abi::Address base,std::span<const std::uint8_t> bytes,bool writable);
@@ -21,6 +22,8 @@ public:
     std::optional<Reservation> reservation(abi::Address address) const noexcept;
     bool commit(abi::Address base,std::uint32_t size,bool writable);
     // Change access only on a fully committed range within one reservation.
+    // Maximal run of equal commitment and protection within a reservation.
+    std::optional<PageRange> query_pages(abi::Address address) const noexcept;
     std::optional<bool> page_writable(abi::Address address) const noexcept;
     bool protect(abi::Address base,std::uint32_t size,bool writable);
     bool decommit(abi::Address base,std::uint32_t size);

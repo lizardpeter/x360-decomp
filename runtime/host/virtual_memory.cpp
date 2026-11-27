@@ -107,4 +107,25 @@ ImportCallResult VirtualMemory::protect(abi::GuestCall& s,abi::GuestMemory& memo
        (op&&!memory.store_be32(op,*old?4:2)))return ImportCallResult::fault;
     return status(s,0);
 }
+ImportCallResult VirtualMemory::query(abi::GuestCall& s,abi::GuestMemory& memory){
+    if(&memory!=&memory_||static_cast<std::uint32_t>(s.gpr[5])!=0)return ImportCallResult::unsupported;
+    const auto address=static_cast<abi::Address>(s.gpr[3]),out=static_cast<abi::Address>(s.gpr[4]);
+    constexpr std::uint32_t bytes=28;
+    if((out&3u)||!memory_.writable_range(out,bytes))return ImportCallResult::fault;
+    const auto r=memory_.reservation(address);
+    if(!r||!in_arena(*r))return ImportCallResult::unsupported;
+    const auto run=memory_.query_pages(address);
+    if(!run)return status(s,0xc000000du);
+    // All selector-zero reservations in this hosted arena are created with
+    // PAGE_READWRITE. Current protection is distinct from allocation protection.
+    const std::array<std::uint32_t,7> fields{
+        run->base,r->base,4,run->size,run->writable.has_value()?0x1000u:0x2000u,
+        run->writable.has_value()?(*run->writable?4u:2u):0u,0x20000u
+    };
+    std::array<std::uint8_t,bytes> result{};
+    for(std::size_t i=0;i<fields.size();++i)
+        for(unsigned j=0;j<4;++j)result[i*4+j]=static_cast<std::uint8_t>(fields[i]>>(24-8*j));
+    if(!memory.write(out,result))return ImportCallResult::fault;
+    return status(s,0);
+}
 }

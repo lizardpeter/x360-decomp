@@ -7,6 +7,7 @@ static void check(bool b,const char* why){if(!b){std::cerr<<why<<'\n';std::exit(
 int main(){
     machine::AddressSpace m;
     std::array<std::uint8_t,16> words{};check(m.map(0x1000,words,true),"out params");
+    std::array<std::uint8_t,28> query_buffer{};check(m.map(0x1100,query_buffer,true),"query output");
     check(m.reserve(0x20000,0x30000,65536),"reserve");
     std::uint32_t n=42;check(!m.load_be32(0x20000,n)&&n==42,"uncommitted read");
     check(!m.map(0x30000,words,true),"reserved map collision");
@@ -49,6 +50,25 @@ int main(){
     s.gpr[3]=0x1000;s.gpr[5]=0x60001000;check(m.store_be32(0x1004,0x10000),"commit size");
     check(service.allocate(s,m)==ImportCallResult::completed&&!s.gpr[3],"commit syscall");
     check(m.load_be32(address,n)&&!n&&m.store_be32(address,0x11223344),"committed page");
+    auto query=[&](std::uint32_t at,std::array<std::uint32_t,7> expected){
+        abi::GuestCall q{};q.gpr[3]=at;q.gpr[4]=0x1100;
+        check(service.query(q,m)==ImportCallResult::completed&&!q.gpr[3],"query syscall");
+        for(unsigned i=0;i<expected.size();++i){
+            std::uint32_t value{};
+            check(m.load_be32(0x1100+i*4,value)&&value==expected[i],"query field");
+        }
+    };
+    query(address+5,{address,address,4,65536,0x1000,4,0x20000});
+    query(address+65536+9,{address+65536,address,4,0x100000,0x2000,0,0x20000});
+    check(m.commit(address+65536,65536,true),"adjacent commit for query");
+    query(address+65536,{address,address,4,131072,0x1000,4,0x20000});
+    check(m.protect(address+65536,65536,false),"split query protections");
+    query(address+65536,{address+65536,address,4,65536,0x1000,2,0x20000});
+    check(m.decommit(address+65536,65536),"restore prior state");
+    abi::GuestCall bad_query{};bad_query.gpr[3]=address;bad_query.gpr[4]=0x1104;
+    auto before_query=bad_query;
+    check(service.query(bad_query,m)==ImportCallResult::fault&&bad_query==before_query,"short query output");
+    query(address+5,{address,address,4,65536,0x1000,4,0x20000});
     check(!m.load_be32(address+65536,n),"uncommitted rest");
     s.gpr[3]=0x1000;s.gpr[7]=2;auto snapshot=s;
     check(service.allocate(s,m)==ImportCallResult::unsupported&&s==snapshot,"unknown memory selector");

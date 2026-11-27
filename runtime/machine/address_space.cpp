@@ -109,6 +109,17 @@ std::optional<bool> AddressSpace::page_writable(abi::Address address) const noex
     if(std::uint64_t(address)-it->first>=it->second.bytes.size())return {};
     return it->second.writable;
 }
+std::optional<PageRange> AddressSpace::query_pages(abi::Address address) const noexcept{
+    const auto r=reservation(address);
+    if(!r)return {};
+    const auto base=address-address%r->page_size;
+    const auto end=std::uint64_t(r->base)+r->size;
+    const auto state=page_writable(base);
+    std::uint64_t lo=base,hi=std::uint64_t(base)+r->page_size;
+    while(lo>r->base&&page_writable(static_cast<abi::Address>(lo-r->page_size))==state)lo-=r->page_size;
+    while(hi<end&&page_writable(static_cast<abi::Address>(hi))==state)hi+=r->page_size;
+    return PageRange{static_cast<abi::Address>(lo),static_cast<std::uint32_t>(hi-lo),state};
+}
 bool AddressSpace::protect(abi::Address base,std::uint32_t size,bool writable){
     auto r=reservation(base);
     if(!r||!valid_pages(base,size,r->page_size)||
