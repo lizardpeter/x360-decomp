@@ -57,7 +57,7 @@ def patch(sdk,tests):
   // on its stack. The verified callback at 819A5878 copies r3 into r31,
   // then accesses object+304 and writes object+300 with no indirection.
   // Scope the ABI correction to this exact original registration path.
-  const auto* thread = KernelThread::GetCallingThread();
+  auto* thread = KernelThread::GetCallingThread();
   const u32 lr = thread && thread->GetThreadState()
       ? static_cast<u32>(thread->GetThreadState()->GetContext()->lr) : 0;
   const bool direct_context = callback == 0x819A5878u && lr == 0x819AC5A0u &&
