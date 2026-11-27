@@ -4,11 +4,20 @@
 #include <rex/kernel/function_dispatcher.h>
 #include <rex/kernel/object/kernel_thread.h>
 #include <rex/kernel/types/thread.h>
+#include <rex/kernel/heap.h>
 #include <rex/kernel/title_runtime.h>
 
 REX_TEST_CASE("metro_system_attach: DLL entry receives real system process and isolated TLS",
               "[kernel][metro_system_attach]") {
   rex::test::KernelFixture fixture;
+  // A tool-mode title has no TLS header. Configure a real title TLS slot
+  // layout before creating the test caller, just like the SDK TLS suite.
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& state=StateOf(c.GetRuntime());
+    auto* process=state.GetAddressSpace()->TranslateVirtual<rex::kernel::X_KPROCESS*>(state.GetTitleProcess());
+    process->tls_slot_size=128;
+    process->tls_slot_bitmap[0]=0xffffffffu;
+  });
   fixture.RunOnGuestThread([](rex::test::Caller& c) {
     auto& runtime=c.GetRuntime();
     auto& state=StateOf(runtime);
@@ -45,7 +54,7 @@ REX_TEST_CASE("metro_system_attach: DLL entry receives real system process and i
     CHECK(c.Load32(output)==rex::kernel::kXProcTypeSystem);
     CHECK(c.Load32(output+4)==state.GetSystemProcess());
     CHECK(c.Load32(output+4)!=caller_process);
-    CHECK(c.Load32(output+8)!=0xffffffff);
+    CHECK(c.Load32(output+8)==slot);
     CHECK(c.Load32(output+12)==0);
     CHECK(c.Kernel("KeGetCurrentProcessType")==rex::kernel::kXProcTypeUser);
     CHECK(c.Kernel("KeTlsGetValue",{slot})==0x12345678);
