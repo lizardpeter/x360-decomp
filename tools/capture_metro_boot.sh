@@ -15,11 +15,18 @@ export XDG_RUNTIME_DIR="$out/xdg"
 mkdir -p "$XDG_RUNTIME_DIR"
 chmod 700 "$XDG_RUNTIME_DIR"
 cd "$native"
+profile_args=()
+if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
+  # Synthetic input only: never mount a real local profile in CI.
+  unset X360_METRO_LOCAL_PROFILES
+  export X360_METRO_PROFILE_TRACE=1
+  profile_args=(--hid.guide_button=true --hid.keybind_guide=F9)
+fi
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
   --ui.title="Metro 17559 Native Boot" --ui.fullscreen=false \
   --ui.window_width=1280 --ui.window_height=720 \
   --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --hid.mnk_mode=true \
-  --log.level=info --log.flush_level=info > "$out/boot.log" 2>&1 &
+  "${profile_args[@]}" --log.level=info --log.flush_level=info > "$out/boot.log" 2>&1 &
 pid=$!
 cleanup() {
   if kill -0 "$pid" 2>/dev/null; then
@@ -197,3 +204,46 @@ if ((reversible_pairs<1)); then
   echo "No stable reversible visual navigation candidate yet." >&2; exit 1
 fi
 echo "Captured real guest input and reversible visual candidates; menu/navigation still require visual inspection."
+
+# The optional original Guide test runs only after the four reversible
+# dashboard directions. No sign-in API is injected, no account is created.
+if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
+  line_start="$(wc -l < "$out/boot.log")"
+  baseline="$(read_frame)"
+  import -window "$win" "$out/input-profile-before.png"
+  xdotool keydown F9
+  sleep 0.25
+  xdotool keyup F9
+  after="$(wait_frames "$baseline" 10)" || exit 1
+  for n in $(seq 1 4); do
+    after="$(wait_frames "$after" 5)" || exit 1
+    import -window "$win" "$out/input-profile-guide-$n.png"
+  done
+  change="$(difference "$out/input-profile-before.png" "$out/input-profile-guide-4.png")" || exit 1
+  tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=' > "$out/profile-guide.log" || true
+  # B is a cancel request. Never send A/confirm at an unknown account dialog.
+  xdotool keydown BackSpace
+  sleep 0.25
+  xdotool keyup BackSpace
+  after="$(wait_frames "$after" 10)" || exit 1
+  for n in $(seq 1 3); do
+    after="$(wait_frames "$after" 5)" || exit 1
+    import -window "$win" "$out/input-profile-cancel-$n.png"
+  done
+  restore="$(difference "$out/input-profile-before.png" "$out/input-profile-cancel-3.png")" || exit 1
+  tail -n "+$((line_start+1))" "$out/boot.log" | grep -E 'METRO_GUEST_PAD|METRO_PROFILE_TRACE|METRO_PROFILE module=' > "$out/profile-guide.log" || true
+  cat "$out/profile-guide.log" >> "$out/receipt.txt"
+  guide=0
+  cancel=0
+  if awk '/context=10000001 user=0/ {if (index(tolower($0),"buttons=0x0400")) p=1;else if (p && index(tolower($0),"buttons=0x0000")) r=1} END {exit !(p && r)}' "$out/profile-guide.log"; then guide=1; fi
+  if awk '/context=10000001 user=0/ {if (index(tolower($0),"buttons=0x2000")) p=1;else if (p && index(tolower($0),"buttons=0x0000")) r=1} END {exit !(p && r)}' "$out/profile-guide.log"; then cancel=1; fi
+  printf 'profile_guide_pad_transition=%s\nprofile_cancel_pad_transition=%s\nprofile_guide_changed_pixels=%s\nprofile_cancel_from_baseline=%s\nprofile_guest_ui_visually_verified=false\nprofile_signed_in=false\n' "$guide" "$cancel" "$change" "$restore" >> "$out/receipt.txt"
+  for file in "$out"/input-profile-*.png; do
+    (cd "$out" && sha256sum "$(basename "$file")") >> "$out/receipt.txt"
+  done
+  tail -n 8 "$out/receipt.txt"
+  if ((guide!=1 || cancel!=1)); then
+    echo "Guide or cancel did not reach original guest." >&2
+    exit 1
+  fi
+fi

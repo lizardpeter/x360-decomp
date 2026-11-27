@@ -16,6 +16,7 @@ HEAP=re.compile(r"METRO_HEAP pc=([0-9A-Fa-f]+) stage=(\w+) r3=([0-9A-Fa-f]+) r4=
 VM=re.compile(r"METRO_VM (\w+) lr=([0-9a-fA-F]+) region=(\d+) base=([0-9a-fA-F]+) size=([0-9a-fA-F]+) flags=([0-9a-fA-F]+) protect=([0-9a-fA-F]+) status=([0-9a-fA-F]+)")
 UI=re.compile(r"METRO_UI pc=([0-9A-Fa-f]+) label=(\w+) phase=(\w+) count=(\d+) r3=([0-9A-Fa-f]+) r4=([0-9A-Fa-f]+) r5=([0-9A-Fa-f]+) r6=([0-9A-Fa-f]+) r7=([0-9A-Fa-f]+) r8=([0-9A-Fa-f]+)")
 TEXT=re.compile(r"METRO_TEXT pc=([0-9A-Fa-f]+) label=(\w+) phase=(\w+) count=(\d+) kind=(\w+) result=(\w+)")
+PROFILE_TRACE=re.compile(r"METRO_PROFILE_TRACE module=(\w+) pc=([0-9A-Fa-f]{8}) api=(\w+) phase=(\w+) count=(\d+) result=(\w+)")
 FONT=re.compile(r"METRO_FONT pc=([0-9A-Fa-f]+) label=(\w+) kind=(\w+) status=([0-9A-Fa-f]+) path=(\w+) units=(\d+) detail=([0-9A-Fa-f]+|unmapped)")
 RESOURCE_READ=re.compile(r"METRO_UI_FILE name=(\S+) size=(\d+) offset=(\d+) requested=(\d+) actual=(\d+) status=([0-9A-Fa-f]+) count=(\d+)")
 RESOURCE_OPEN=re.compile(r"METRO_UI_OPEN name=(\S+) status=([0-9A-Fa-f]+) handle=([0-9A-Fa-f]+) count=(\d+) share=([0-9A-Fa-f]+) options=([0-9A-Fa-f]+)")
@@ -41,12 +42,18 @@ def summarize(lines, inventories):
         return "unclassified",None
     gates=[];stubs=collections.Counter();sites={};pad=[];guest_pad=[];frames=[];variables=[];errors=[];heap=[];vm=[];failed_paths=collections.Counter()
     ui={};baseline=None;counter_resets=[];intro_frames=[];handoff_frames=[]
-    fonts=[];resource_reads=[];resource_opens=[];gpu_cancellations=0;text_traces={}
+    fonts=[];resource_reads=[];resource_opens=[];gpu_cancellations=0;text_traces={};profile_traces={}
     for line in lines:
         if "METRO_GPU packet_stream_cancelled during shutdown" in line:gpu_cancellations+=1
         if m:=RESOURCE_OPEN.search(line):
             if len(resource_opens)<512:resource_opens.append({"name":m[1],"status":m[2].upper(),
                 "handle":m[3].upper(),"count":int(m[4]),"share":m[5].upper(),"options":m[6].upper()})
+        if m:=PROFILE_TRACE.search(line):
+            key=(m[1],m[2].upper(),m[3],m[4])
+            record=profile_traces.setdefault(key,{"module":key[0],"pc":key[1],"api":key[2],"phase":key[3],
+                "count_lower_bound":0,"observed_categories":{}})
+            record["count_lower_bound"]=max(record["count_lower_bound"],int(m[5]))
+            record["observed_categories"][m[6]]=record["observed_categories"].get(m[6],0)+1
         if m:=TEXT.search(line):
             key=(m[1].upper(),m[2],m[3])
             record=text_traces.setdefault(key,{"pc":key[0],"label":key[1],"phase":key[2],
@@ -112,6 +119,7 @@ def summarize(lines, inventories):
             "font_probes":fonts,"resource_reads":resource_reads,"resource_opens":resource_opens,
             "font_call_results":font_results,"gpu_shutdown_cancellations":gpu_cancellations,
             "text_trace_results":list(text_traces.values()),
+            "profile_trace_results":list(profile_traces.values()),
             "heap_probes":heap,"ui_probes":list(ui.values()),"virtual_memory_calls":vm,
             "virtual_memory_failures":[v for v in vm if int(v["status"],16)&0x80000000],
             "menu_visually_verified":False,"navigation_visually_verified":False}

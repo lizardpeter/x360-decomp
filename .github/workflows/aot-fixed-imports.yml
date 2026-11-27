@@ -237,6 +237,11 @@ jobs:
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           python tools/verify_metro_profile_generated.py "$folder" --receipt build/receipts/profile-generated.json
+      - name: Instrument original offline profile and storage trace
+        if: inputs.profile_modules == true
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          python tools/instrument_metro_profile.py "$folder" --receipt build/receipts/profile-trace-coverage.json
       - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
@@ -281,16 +286,21 @@ jobs:
             grep -Fxq "METRO_PROFILE_PREFLIGHT total cycles=10 xam_bindings=1420 guest_executed=false" build/receipts/profile-preflight.txt
           fi
       - name: Attempt original graphical boot and capture actual presented title frame
+        env:
+          X360_METRO_PROFILE_PROBE: ${{ inputs.profile_modules && '1' || '0' }}
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/fixed-imports/dash_17559"
           set +e
-          timeout --kill-after=15s 150s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+          timeout --kill-after=15s 200s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
           status=$?
           set -e
           printf '%s\n' "$status" > build/receipts/metro-boot-exit-code.txt
           log="$folder/native/metro-capture/boot.log"
+          if [ -f "$folder/native/metro-capture/profile-guide.log" ]; then
+            cp "$folder/native/metro-capture/profile-guide.log" build/receipts/profile-guide.log
+          fi
           if [ -f "$log" ]; then
             cp "$log" build/receipts/metro-boot.log
             python tools/symbolize_metro_crash.py "$log" "$folder/native" "$SDK" > build/receipts/metro-symbolized.txt

@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'tools/verify_metro_profile_generated.py'
+      - 'tools/instrument_metro_profile.py'
+      - 'tools/capture_metro_boot.sh'
       - 'tools/stage_metro_profile_modules.py'
       - 'tools/patch_metro_retail_routing.py'
       - 'tools/native/metro_profile_mapping.hpp'

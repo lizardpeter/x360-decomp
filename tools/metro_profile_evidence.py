@@ -150,7 +150,8 @@ def main():
     for r in rows(ROOT/"analysis/xam_17559/exports.tsv"):
         name,kind=catalog.get(("xam",int(r["ordinal"],16)),("", "unknown"))
         if kind=="kFunction" and is_focus(name):export_map[name]=int(r["address"],16)
-    if len(export_map)<15:raise ValueError("incomplete original export join")
+    from instrument_metro_profile import verify_export_join
+    verify_export_join(export_map)
     members=parse(original("pirs"))
     xam=members["$flash_xam.xex"]["payload"]
     if sha(xam)!=EXPECTED["xam_17559"]:raise ValueError("wrong XAM source")

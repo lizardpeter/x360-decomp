@@ -64,3 +64,15 @@ module's bare and flash alias across two cycles, verifies every original import
 slot and native thunk, and checks 1,420 XAM bindings in ten real loader cycles.
 It does not execute DllMain, alter the user's profile, or claim actual sign-in.
 The ordinary build remains independent of this opt-in gate.
+
+The isolated native module registration gate passed on run 46024434000.
+The expanded original storage audit (46026155953) recovered 20 import
+ordinals and 1,394 bounded leaf/tail wrappers. No direct path from the 41
+local profile exports reaches a storage import: the original APIs cross
+an indirect app-message/object dispatch boundary. The new integrated-only
+Guide/cancel test uses the SDK's actual Guide button setting and the normal
+guest pad bridge. It does not invoke sign-in or create an account. Status-only
+trace markers identify local API entry, original UI module entry and storage
+return categories without logging original account bytes or identities.
+Screenshots and original frame progress are independent evidence; no visual
+verification or sign-in result is claimed by the input test itself.

@@ -200,6 +200,8 @@ def main():
     if meta["sha256"]!=json.loads((ROOT/"analysis/xam_17559/decoded.json").read_text())["sha256"]:
         raise ValueError("wrong decoded XAM image")
     report=audit(raw,image,meta,catalog,stubs,exports)
+    from instrument_metro_profile import verify_storage_join
+    verify_storage_join(report)
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("Storage census",len(report["storage_imports"]),"imports;",
