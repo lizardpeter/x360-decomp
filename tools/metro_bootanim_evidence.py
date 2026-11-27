@@ -239,7 +239,32 @@ def lifecycle_report(raw,image,meta,thunks):
         flags.append(absolute_slot(hi_pc,store_pc))
     if flags!=[0x98077760,0x98077761]:raise ValueError("original control flag identity")
     references=control_flag_references(image,base,pe,set(flags))
-    return {"control_export":{"address":"98020EC8","tail":"9800E910",
+    # Check the original initial-update notification and graceful flag path.
+    ready=by_pc["9800FDDC"]["value"]+by_pc["9800FDE4"]["value"]
+    ready &= 0xffffffff
+    checks={
+        "9800FDCC":{"kind":"branch","target":"9800FCB0","linked":True},
+        "9800FDD8":{"kind":"conditional_branch","target":"9800FEF0"},
+        "9800FDE4":{"kind":"register_offset","base":11,"writes":3,"value":-28484},
+        "9800FDEC":{"kind":"branch","target":"98057CA4","linked":True},
+        "9800EB28":{"kind":"memory_load","base":11,"offset":30561,"width":1},
+        "9800EB30":{"kind":"conditional_branch","target":"9800EB70"},
+        "9800EB68":{"kind":"memory_store","base":10,"offset":30560,"source":11,"width":1},
+        "9800EB70":{"kind":"memory_load","base":10,"offset":30560,"width":1},
+        "9800EB90":{"kind":"branch","target":"9800E6F0","linked":True},
+    }
+    for pc,expected in checks.items():
+        if any(by_pc[pc].get(k)!=v for k,v in expected.items()):
+            raise ValueError("animation lifecycle operand changed: "+pc)
+    if ready!=0x980590BC or by_pc["9800FDEC"]["import"]["name"]!="KeSetEvent":
+        raise ValueError("initial-update notification identity")
+    return {"initial_update_notification":{"event":hx(ready),"signal_site":"9800FDEC",
+               "initial_update_call":"9800FDCC","event_header_hex":image[ready-base:ready-base+16].hex(),
+               "scope":"Original signal after successful first update, not retail caller policy."},
+            "graceful_control":{"argument":0,"flag_b":"98077761","original_flag_a_publication":"9800EB68",
+                "original_phase_gate":["9800EB30","9800EB3C","9800EB4C","9800EB60"],
+                "original_exit_call":"9800EB90"},
+            "control_export":{"address":"98020EC8","tail":"9800E910",
             "flag_addresses":[hx(a) for a in flags],"exact_adjacent_references":references,
             "scope":"original control branches; retail caller policy not recovered"},
             "first_export_arguments":{"r3":"module handle (verified resource lookup flow)",

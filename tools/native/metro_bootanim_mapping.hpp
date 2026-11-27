@@ -16,6 +16,9 @@ inline constexpr rex::u32 kStart=0x98020E60u;
 inline constexpr rex::u32 kControl=0x98020EC8u;
 inline constexpr rex::u32 kControlFlagA=0x98077760u;
 inline constexpr rex::u32 kControlFlagB=0x98077761u;
+// Original 9800FDB0 signals this event at 9800FDEC after successful
+// initial update. It is not a claim of the retail kernel caller policy.
+inline constexpr rex::u32 kInitialUpdateEvent=0x980590BCu;
 inline bool verify_mapping(rex::kernel::TitleRuntime& title,rex::kernel::X_HANDLE handle) {
     auto fail=[](const char* stage) {
         std::cout<<"METRO_INTRO fail "<<stage<<std::endl;return false;

@@ -3,6 +3,7 @@
 #include <rex/app/title_app.h>
 #include <rex/kernel/function_dispatcher.h>
 #include <rex/kernel/object/kernel_thread.h>
+#include <rex/kernel/object/event_object.h>
 #include <rex/gpu/graphics_system.h>
 #include <rex/filesystem/file_system.h>
 #include <rex/path_settings.h>
@@ -306,28 +307,37 @@ struct EntryBinding {
 };
 inline EntryBinding entry;
 inline std::atomic<bool> attached{false};
-inline std::atomic<bool> intro_entered{false},intro_returned{false},intro_control_done{false};
+inline std::atomic<bool> intro_entered{false},intro_returned{false};
+// 0 not requested, 1 dispatched, 2 original control returned, 3 failed.
+inline std::atomic<unsigned> intro_control_state{0};
 
-// The isolated native test proved argument 1 to export 2 requests a clean
-// original return. Execute that original function, never write its flag.
+// Argument 0 arms flag B. Original 9800EA10 then checks its own
+// phase and animation conditions before setting flag A and exiting.
+// This hosted event-driven policy is not yet a recovered kernel caller.
 inline void intro_control(PPCContext& ctx,rex::u8* base) {
     auto* thread=rex::kernel::KernelThread::GetCallingThread();
-    if (!thread || !entry.intro_control || ctx.r3.u32!=1) {
+    if (!thread || !entry.intro_control || ctx.r3.u32!=0) {
         std::cout<<"METRO_INTRO fail control_binding"<<std::endl;
+        intro_control_state.store(3,std::memory_order_release);
+        intro_control_state.notify_all();
         if (thread)thread->Exit(1);
         return;
     }
     auto& mem=thread->GetRuntime().GetGuestMemory();
-    const auto before=mem.Load<rex::u8>(metro_intro::kControlFlagA);
+    const auto before=mem.Load<rex::u8>(metro_intro::kControlFlagB);
     entry.intro_control(ctx,base);
-    const auto after=mem.Load<rex::u8>(metro_intro::kControlFlagA);
+    const auto after=mem.Load<rex::u8>(metro_intro::kControlFlagB);
     if (!before || !after || *after!=1) {
         std::cout<<"METRO_INTRO fail original_control_flag"<<std::endl;
+        intro_control_state.store(3,std::memory_order_release);
+        intro_control_state.notify_all();
         thread->Exit(1);
+        return;
     }
-    std::cout<<"METRO_INTRO pass control_return argument=1 flag_a="
+    std::cout<<"METRO_INTRO pass control_return argument=0 flag_b="
              <<unsigned(*after)<<std::endl;
-    intro_control_done.store(true,std::memory_order_release);
+    intro_control_state.store(2,std::memory_order_release);
+    intro_control_state.notify_all();
     ctx.r3.u64=0;
 }
 
@@ -348,9 +358,14 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
             metro_intro::kStart,args,2);
         intro_returned.store(true,std::memory_order_release);
         std::cout<<"METRO_INTRO original_return result=0x"<<std::hex<<result<<std::dec<<std::endl;
-        for (int i=0;i<100 && !intro_control_done.load(std::memory_order_acquire);++i)
-            thread->GetRuntime().GetThreadRegistry().SleepCurrentThread(std::chrono::milliseconds(5));
-        if (result!=0 || !intro_control_done.load(std::memory_order_acquire)) {
+        // Join the actual control publication, not a timed sleep loop.
+        // A naturally completed original run need not have a control task.
+        unsigned state=intro_control_state.load(std::memory_order_acquire);
+        while (state==1) {
+            intro_control_state.wait(state,std::memory_order_acquire);
+            state=intro_control_state.load(std::memory_order_acquire);
+        }
+        if (result!=0 || state==3) {
             std::cout<<"METRO_INTRO fail original_completion"<<std::endl;
             thread->Exit(1);
         }
@@ -394,8 +409,7 @@ protected:
         };
         entry = {};
         attached.store(false, std::memory_order_relaxed);
-        intro_entered=false;intro_returned=false;intro_control_done=false;
-        intro_issued_=false;
+        intro_entered=false;intro_returned=false;intro_control_state=0;
         const char* option=std::getenv("X360_METRO_INTRO");
         const bool with_intro=option && std::string_view(option)=="1";
         auto& paths = title.GetTitlePaths();
@@ -470,7 +484,6 @@ protected:
     void OnRun() override {
         std::uint64_t dash_reported=0, intro_baseline=0, intro_reported=0, dash_baseline=0;
         bool intro_seen=false, dash_seen=false;
-        std::chrono::steady_clock::time_point intro_first_frame{};
         while (RunFrame()) {
             const auto frames = GetGraphics().GetFrameStats().frame_count;
             if (intro_entered.load(std::memory_order_acquire) &&
@@ -478,25 +491,31 @@ protected:
                 if (!intro_seen) {intro_seen=true;intro_baseline=frames;}
                 const auto intro_frames=frames>=intro_baseline?frames-intro_baseline:0;
                 if (intro_frames>intro_reported) {
-                    if (!intro_reported) intro_first_frame=std::chrono::steady_clock::now();
                     intro_reported=intro_frames;
                     std::cout<<"METRO_INTRO frames "<<intro_frames<<std::endl;
                 }
-                // Frame count alone cut the animation off after ~2 seconds on
-                // Windows. Preserve the existing minimum-frame gate AND a
-                // minimum visible duration; not an asserted retail duration.
-                const auto intro_visible=std::chrono::steady_clock::now()-intro_first_frame;
-                if (!intro_issued_ && intro_frames>=110 && intro_reported &&
-                    intro_visible>=std::chrono::seconds(6)) {
-                    std::cout<<"METRO_INTRO control_request frames="<<intro_frames
-                             <<" visible_ms="<<std::chrono::duration_cast<std::chrono::milliseconds>(intro_visible).count()<<std::endl;
-                    intro_issued_=true;
-                    auto& runtime=GetTitleRuntime();
-                    auto control=runtime.GetThreadRegistry().CreateTaskThread(metro_intro::kControl,1);
-                    if (!control) {
-                        std::cout<<"METRO_INTRO fail control_thread_launch"<<std::endl;
-                        rex::app::RequestShutdown(1);
-                    } else rex::kernel::CloseOwned(runtime.GetObjectTable(),*control);
+                // Observe only an existing original notification event.
+                // Do not create, reset or consume a synchronization event.
+                // Frame counts are telemetry, never a completion predicate.
+                auto& runtime=GetTitleRuntime();
+                if (intro_control_state.load(std::memory_order_acquire)==0) {
+                    rex::kernel::Pinned<rex::kernel::EventObject> ready(
+                        runtime.GetObjectTable().GetByAddress(metro_intro::kInitialUpdateEvent));
+                    rex::u32 signaled=0;
+                    if (ready && ready->manual_reset.load(std::memory_order_acquire))
+                        ready->Query(nullptr,&signaled);
+                    unsigned expected=0;
+                    if (signaled && !intro_returned.load(std::memory_order_acquire) &&
+                        intro_control_state.compare_exchange_strong(expected,1,std::memory_order_acq_rel)) {
+                        std::cout<<"METRO_INTRO original_initial_update_event signaled"<<std::endl;
+                        auto control=runtime.GetThreadRegistry().CreateTaskThread(metro_intro::kControl,0);
+                        if (!control) {
+                            intro_control_state.store(3,std::memory_order_release);
+                            intro_control_state.notify_all();
+                            std::cout<<"METRO_INTRO fail control_thread_launch"<<std::endl;
+                            rex::app::RequestShutdown(1);
+                        } else rex::kernel::CloseOwned(runtime.GetObjectTable(),*control);
+                    }
                 }
             }
             if (attached.load(std::memory_order_acquire) && !dash_seen) {
@@ -524,8 +543,6 @@ protected:
         std::cout << "METRO_BOOT guest_exit" << std::endl;
         rex::app::RequestShutdown(1);
     }
-private:
-    bool intro_issued_=false;
 };
 
 inline int run(const rex::CLIArgList& args) {
