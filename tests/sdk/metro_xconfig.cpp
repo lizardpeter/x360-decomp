@@ -8,7 +8,6 @@ REX_TEST_CASE("metro_xconfig: console preference widths and read-write round tri
               "[kernel][metro_xconfig]") {
   rex::test::KernelFixture fixture;
   fixture.RunOnGuestThread([](rex::test::Caller& c) {
-    auto& memory=c.GetRuntime().GetGuestMemory();
     const u32 buffer=c.Alloc(8), required=c.Alloc(4);
     struct Case {u32 selector,width,initial,replacement;};
     const Case cases[]={
