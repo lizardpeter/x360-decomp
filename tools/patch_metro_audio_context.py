@@ -24,6 +24,19 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 base,u32 s
   if (callback==0x9804BEA0u && base==0x98000000u && size==638976u && entry==0)
     return RetailRenderContext::kBootanim17559;
   return RetailRenderContext::kNone;
+}
+
+// The original engine provisions its scratch buffers in pairs per CPU.
+// Keep the registration CPU only if that CPU owns a complete pair; otherwise
+// a unique initialized pair is authoritative. Never invent a missing buffer.
+constexpr u8 SelectRetailRenderCPU(u8 registration_cpu,u8 initialized_mask) {
+  initialized_mask &= 0x3fu;
+  if (registration_cpu<6 && (initialized_mask & (1u<<registration_cpu)))
+    return registration_cpu;
+  if (!initialized_mask || (initialized_mask & (initialized_mask-1)))return 0xff;
+  for (u8 cpu=0;cpu<6;++cpu)
+    if (initialized_mask & (1u<<cpu))return cpu;
+  return 0xff;
 }""")
     s=replace(s,"Result<u32> RegisterClient(u32 callback, u32 callback_arg);",
         """Result<u32> RegisterClient(u32 callback, u32 callback_arg,
@@ -50,8 +63,8 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 base,u32 s
         // Pin the slot through the entire original callback, including a
         // stop exception or a callback unregistering itself.
         rex::ScopeGuard pin([this,index] { FinishCallback(index); });
-        // Preserve the processor-local state established by the retail XAM
-        // registration thread. The SDK worker is otherwise born on CPU 0.
+        // Enter the processor-local context selected from the original
+        // engine allocation state. The SDK worker is otherwise born on CPU 0.
         auto* calling=KernelThread::GetCallingThread();
         const auto previous_cpu=calling->GetActiveCPU();
         if (callback_cpu<6 && callback_cpu!=previous_cpu)
@@ -151,14 +164,36 @@ void APU::UnregisterClient(u32 index) {""")
     auto module=runtime.GetObjectTable().Get<ModuleObject>(*candidate);
     const auto* xex=module?module->GetXEX():nullptr;
     if (!xex || !xex->IsExecutableAddress(callback))continue;
-    // Live 7b97fa93: actual registered wrapper is 819AE4E8, with
-    // initialized processor-4 buffer pairs, but the worker ran on CPU 0.
-    // Retain the indirect argument ABI proven by that live trace. Select
-    // the processor of the exact original render registration, not a
-    // hard-coded global audio CPU or a synthesized buffer pointer.
+    // Both live a41ac6bc boot paths: registration on CPU 3, original
+    // constructor allocated both scratch buffers solely on CPU 4. A CPU
+    // selected from registration alone reproduces the null +0x14 fault.
+    // Original 819AE4E8 tail calls the engine at global 81B5B5E4, and
+    // 819AFF80 indexes its pair table at +12 + 8*guest CPU.
     if (callback==0x819AE4E8u && xex->GetBaseAddress()==0x815f0000u &&
-        xex->GetImageSize()==0x610000u && xex->GetEntryPoint()==0x81696af0u && thread)
-      callback_cpu=thread->GetActiveCPU();
+        xex->GetImageSize()==0x610000u && xex->GetEntryPoint()==0x81696af0u) {
+      auto& mem=runtime.GetGuestMemory();
+      const auto global=mem.Load<be_u32>(0x81B5B5E4u);
+      const u32 engine=global?static_cast<u32>(*global):0;
+      if (!thread || !engine || engine>0xffffffffu-60u ||
+          !mem.GetReadOnlySpan(engine,60))return X_E_INVALIDARG;
+      u8 initialized=0;
+      for (u8 cpu=0;cpu<6;++cpu) {
+        const auto a=mem.Load<be_u32>(engine+12+8*cpu);
+        const auto b=mem.Load<be_u32>(engine+16+8*cpu);
+        if (!a || !b)return X_E_INVALIDARG;
+        const u32 pa=*a,pb=*b;
+        if (pa && pb && mem.GetReadOnlySpan(pa,24) &&
+            mem.GetReadOnlySpan(pb,24))initialized|=static_cast<u8>(1u<<cpu);
+      }
+      const auto registration_cpu=thread->GetActiveCPU();
+      callback_cpu=kernel::SelectRetailRenderCPU(registration_cpu,initialized);
+      REXKRNL_INFO("METRO_AUDIO engine={:08X} initialized_cpu_mask={:02X} registration_cpu={} selected_cpu={}",
+          engine,static_cast<unsigned>(initialized),static_cast<unsigned>(registration_cpu),
+          static_cast<unsigned>(callback_cpu));
+      if(callback_cpu>=6)return X_E_INVALIDARG;
+      // This wrapper retains the original indirect argument ABI.
+      break;
+    }
     contract=kernel::GetRetailRenderContext(callback,xex->GetBaseAddress(),
                                             xex->GetImageSize(),xex->GetEntryPoint());
     if (contract!=kernel::RetailRenderContext::kNone)break;

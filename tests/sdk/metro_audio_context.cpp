@@ -158,7 +158,9 @@ REX_TEST_CASE("metro_audio_context: callback uses initialized processor-local re
   rex::kernel::APU apu(runtime,&fixture.GetAudio());
   REQUIRE(apu.Setup());
   metro_audio_cpu=255;metro_audio_pcr_cpu=255;metro_audio_cpu_buffer=0;
-  const auto slot=apu.RegisterClient(cb,object,false,0,4);
+  const auto selected=rex::kernel::SelectRetailRenderCPU(3,1u<<4);
+  REQUIRE(selected==4);
+  const auto slot=apu.RegisterClient(cb,object,false,0,selected);
   REQUIRE(slot);
   REQUIRE(WaitFor([]{return metro_audio_cpu.load()!=255;}));
   CHECK(metro_audio_cpu.load()==4);
@@ -166,4 +168,17 @@ REX_TEST_CASE("metro_audio_context: callback uses initialized processor-local re
   CHECK(metro_audio_cpu_buffer.load()==0x12345678u);
   apu.Shutdown();
   memory->SystemHeapFree(object);
+}
+
+REX_TEST_CASE("metro_audio_context: select original initialized CPU, not registration CPU",
+              "[kernel][metro_audio_context]") {
+  using rex::kernel::SelectRetailRenderCPU;
+  for (rex::u8 owner=0;owner<6;++owner)
+    for (rex::u8 registration=0;registration<6;++registration)
+      CHECK(SelectRetailRenderCPU(registration,1u<<owner)==owner);
+  CHECK(SelectRetailRenderCPU(3,0)==0xff);
+  CHECK(SelectRetailRenderCPU(3,(1u<<2)|(1u<<4))==0xff);
+  CHECK(SelectRetailRenderCPU(4,(1u<<2)|(1u<<4))==4);
+  CHECK(SelectRetailRenderCPU(0xff,1u<<4)==4);
+  CHECK(SelectRetailRenderCPU(0xff,0xc0)==0xff);
 }
