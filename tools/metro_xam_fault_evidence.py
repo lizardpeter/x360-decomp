@@ -55,6 +55,8 @@ def operand(pc,w):
             return {"kind":"arithmetic","operation":{266:"add",40:"subf",8:"subfc"}[xo],"writes":r,"inputs":[a,b]}
         if xo in (0,32):
             return {"kind":"compare_register","inputs":[a,b]}
+        if xo==824:
+            return {"kind":"arithmetic_shift_right_immediate","writes":a,"source":r,"shift":b,"record":bool(w&1)}
         if xo in (28,444,316):
             return {"kind":"logical","operation":{28:"and",444:"or",316:"xor"}[xo],"writes":a,"inputs":[r,b]}
         if xo in (339,467):
@@ -202,6 +204,21 @@ def direct_tail_path(image,base,pe,start,target,max_depth=4):
             queue.append((dest[0],path+[{"from":hx(current),"site":hx(pc),"to":hx(dest[0])}]))
     return None
 
+def verified_device_stats_status(image,base,thunks):
+    call=0x816F1908
+    dest=branch(call,read_word(image,base,call))
+    if not dest or not dest[1] or thunks.get(dest[0],{}).get("name")!="XInputdGetDeviceStats":
+        raise ValueError("device stats call identity changed")
+    shift=operand(call+4,read_word(image,base,call+4))
+    immediate=operand(call+8,read_word(image,base,call+8))
+    mask=operand(call+12,read_word(image,base,call+12))
+    expected_shift={"kind":"arithmetic_shift_right_immediate","writes":11,"source":3,"shift":31,"record":False}
+    if shift!=expected_shift or immediate.get("writes")!=10 or immediate.get("value")!=1167 or mask!={"kind":"logical","operation":"and","writes":3,"inputs":[11,10]}:
+        raise ValueError("device stats status conversion changed: "+str([shift,immediate,mask]))
+    return {"call":hx(call),"status_conversion":[shift,immediate,mask],
+            "examples":[{"driver_r3":hx(value),"xam_result":1167 if signed(value,32)<0 else 0}
+                        for value in (0,0x10000001,0xC000009D,0xC00000BB)]}
+
 def verified_storage_fault_details(image,base,pe,thunks):
     gates=[notification_gate(image,base,pc,0x8167ED4C,thunks)
            for pc in (0x8167EB90,0x8167ED40)]
@@ -221,11 +238,16 @@ def verified_storage_fault_details(image,base,pe,thunks):
     while length and not executable(pe,base,start+length-4):length-=4
     ops=describe(image,base,start,length,thunks)
     first=branch(start,read_word(image,base,start))
+    # This PDATA-free trampoline has an observed direct entry and a four-instruction bounded extent.
+    # Record its exact final tail branch, without treating any following bytes as part of it.
+    terminal=branch(start+length-4,read_word(image,base,start+length-4)) if length else None
+    terminal_tail=None if not terminal or terminal[1] else {"site":hx(start+length-4),"target":hx(terminal[0])}
     return {"gates":gates,
             "caller_return_pc":"8167E7A8","caller_call_site":hx(site),
             "intermediate_entry":hx(start),"intermediate_operands":ops,
             "intermediate_pdata_owners":[{"entry":hx(a),"size":size} for a,size in owners],
             "intermediate_extent_verified":exact,
+            "bounded_prefix_final_tail":terminal_tail,
             "intermediate_first_direct_branch":None if not first else {"target":hx(first[0]),"linked":first[1]},
             "intermediate_tail_path":direct_tail_path(image,base,pe,start,FRAMES[0]) if exact else None,
             "fault_load":operand(FAULT_PC,read_word(image,base,FAULT_PC))}
@@ -282,12 +304,14 @@ def main():
             "unwind_functions":functions,"adjacent_unwind_edges":edges,
             "binding_callback_operands":binding_ops,
             "observed_startup_stubs":observed_storage_report(image,base,pe,thunks),
-            "verified_storage_fault_details":verified_storage_fault_details(image,base,pe,thunks)}
+            "verified_storage_fault_details":verified_storage_fault_details(image,base,pe,thunks),
+            "verified_device_stats_status":verified_device_stats_status(image,base,thunks)}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
     print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
+    print("device stats status conversion:",json.dumps(report["verified_device_stats_status"],sort_keys=True))
     print("storage fault gates:",json.dumps(report["verified_storage_fault_details"],sort_keys=True))
     print("binding callback:",json.dumps(binding_ops,sort_keys=True))
     print("observed startup calls:",json.dumps([{k:v for k,v in x.items() if k!="operand_window"} for x in report["observed_startup_stubs"]["observed_calls"]],sort_keys=True))
