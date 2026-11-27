@@ -13,6 +13,8 @@ on:
       - 'tools/patch_metro_input_runtime.py'
       - 'tests/sdk/metro_input_bridge.cpp'
       - 'tools/patch_metro_startup_status.py'
+      - 'tools/patch_metro_audio_context.py'
+      - 'tests/sdk/metro_audio_context.cpp'
       - 'tests/sdk/metro_startup_status.cpp'
       - 'tools/patch_metro_console_config.py'
       - 'tests/sdk/metro_xconfig.cpp'
@@ -51,6 +53,7 @@ jobs:
           python tools/patch_metro_system_attach.py build/sdk-source --tests tests/sdk/metro_system_attach.cpp
           python tools/patch_metro_console_config.py build/sdk-source --tests tests/sdk/metro_xconfig.cpp
           python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
+          python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
       - name: Restore compiler cache
         uses: actions/cache/restore@v4
         with:
@@ -75,7 +78,7 @@ jobs:
           runner="$(realpath out/linux-amd64/Debug/unit_tests)"
           test -x "$runner"
           cd "$(dirname "$runner")"
-          "$runner" '[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach]' --reporter compact
+          "$runner" '[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context]' --reporter compact
       - name: Retain reusable compiler cache
         if: always()
         uses: actions/cache/save@v4
