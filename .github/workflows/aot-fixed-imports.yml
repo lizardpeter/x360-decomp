@@ -16,6 +16,8 @@ on:
       - 'tools/patch_metro_boot_contracts.py'
       - 'tools/patch_metro_io_runtime.py'
       - 'tools/patch_metro_virtual_memory.py'
+      - 'tools/instrument_metro_heap.py'
+      - 'tests/test_metro_heap_probes.py'
       - 'tests/sdk/metro_virtual_memory.cpp'
       - 'tools/patch_metro_xex_views.py'
       - 'tools/patch_metro_input_runtime.py'
@@ -74,6 +76,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_kernel_variables.py
           python -m unittest discover -s tests -p test_metro_boot_evidence.py
           python -m unittest discover -s tests -p test_metro_fault_localization.py
+          python -m unittest discover -s tests -p test_metro_heap_probes.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
@@ -177,6 +180,7 @@ jobs:
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           python tools/filter_zero_aot_mappings.py "$folder" --receipt build/receipts/zero-address-mappings.json
+          python tools/instrument_metro_heap.py "$folder/generated_xam" --receipt build/receipts/metro-heap-probes.json
           python tools/aot_receipt.py "$folder/generated" --status 0 --output build/receipts/dashboard-generated.json
           python tools/aot_receipt.py "$folder/generated_xam" --status 0 --output build/receipts/xam-generated.json
       - name: Compile and link dashboard host and XAM module
