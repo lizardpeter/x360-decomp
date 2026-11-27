@@ -56,6 +56,33 @@ def scan(label,raw,image,meta,catalog,stubs):
         name=image[ptr-base:ptr-base+128].split(b"\0",1)[0].decode("ascii")
         if not name.lower().endswith(".xex"):raise ValueError("unexpected original UI image name")
         hud_load={"site":"816CEA04","path":name,"path_address":hx(ptr)}
+        # The callback takes r4 as one-based event, r5 as payload. Decode
+        # its actual halfword dispatch table instead of assuming enum names.
+        table_hi=operand(0x816CBFF4,w(0x816CBFF4))
+        table_lo=operand(0x816CBFFC,w(0x816CBFFC))
+        target_hi=operand(0x816CC004,w(0x816CC004))
+        target_lo=operand(0x816CC008,w(0x816CC008))
+        table=(table_hi["value"]+table_lo["value"])&0xffffffff
+        target_base=(target_hi["value"]+target_lo["value"])&0xffffffff
+        if not base<=table<=base+len(image)-20:raise ValueError("graphics switch table bounds")
+        dispatch={i+1:(target_base+struct.unpack_from(">H",image,table-base+i*2)[0])&0xffffffff for i in range(10)}
+        if any(not executable(pe,base,a) for a in dispatch.values()):raise ValueError("graphics switch target outside code")
+        print("GRAPHICS_SWITCH",json.dumps({"table":hx(table),"target_base":hx(target_base),
+            "targets":{str(k):hx(v) for k,v in dispatch.items()}},sort_keys=True))
+        # Print exact operands for the registration and both observed event
+        # paths, stopping each at the first unconditional out-edge/return.
+        for event in (1,9):
+            start=dispatch[event];rows=[]
+            for pc in range(start,start+256,4):
+                d=operand(pc,w(pc));b=branch(pc,w(pc))
+                if b and b[0] in thunks:d["import"]=thunks[b[0]]
+                rows.append({"pc":hx(pc),**d})
+                if d["kind"]=="return" or b and not b[1]:break
+            print("GRAPHICS_CASE",event,json.dumps(rows,sort_keys=True))
+        for start,end,tag in ((0x816CE940,0x816CE9B0,"registration"),
+                              (0x816CE9EC,0x816CEA24,"skin_load")):
+            print("GRAPHICS_OPERANDS",tag,json.dumps([{"pc":hx(pc),**operand(pc,w(pc))} for pc in range(start,end,4)],sort_keys=True))
+
     else:hud_load={}
     for a,n in sorted(funcs.items()):
         words=[w for w, in struct.iter_unpack(">I",image[a-base:a-base+n])]
@@ -91,6 +118,14 @@ def scan(label,raw,image,meta,catalog,stubs):
         _,states=flow(words,a)
         regs=states.get(pc,({},{}))[0]
         c["arguments"]={f"r{k}":render(regs.get(k)) for k in range(3,8)}
+        if c["import"]["name"]=="VdCallGraphicsNotificationRoutines":
+            # Exact caller frame writes, including payload construction and
+            # the post-call use (or non-use) of r3.
+            start=max(a,pc-112);end=min(a+funcs[a],pc+24)
+            print("GRAPHICS_PRODUCER",label,hx(pc),json.dumps([
+                {"pc":hx(p),**operand(p,struct.unpack_from(">I",image,p-base)[0])}
+                for p in range(start,end,4)],sort_keys=True))
+
     return {"registration_callback":hx(CALLBACK) if label=="xam" else None,
             "hud_load":hud_load,"calls":calls,"data_refs":refs,"bodies":bodies}
 
