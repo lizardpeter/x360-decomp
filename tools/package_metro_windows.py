@@ -52,6 +52,7 @@ if not exist "inputs\hud.xex" goto missing
 if not exist "inputs\bootanim.xex" goto missing
 set X360_METRO_BOOT=1
 set X360_METRO_INTRO=
+set METRO_GUIDE_ARGS=
 if /i "%~1"=="intro" set X360_METRO_INTRO=1
 if /i "%~1"=="guide" goto guide
 if /i "%~1"=="profile-preflight" goto profilepreflight
@@ -60,8 +61,10 @@ goto boot
 :guide
 set X360_METRO_GUIDE_UI=1
 set X360_METRO_GUIDE_TRACE=1
+set X360_METRO_PROFILE_TRACE=1
+set METRO_GUIDE_ARGS=--hid.mnk_mode=true --hid.guide_button=true --hid.keybind_guide=F9
 :boot
-start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 --log.level=info --log.flush_level=info > metro.log 2>&1
+start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_GUIDE_ARGS% --log.level=info --log.flush_level=info > metro.log 2>&1
 set "code=%ERRORLEVEL%"
 echo Native host exit code: %code%. See metro.log.
 pause
@@ -170,7 +173,7 @@ def package(folder,output,commit,sdk_source,profile_modules=False):
         (output/name).write_bytes(text.replace("\r\n","\n").replace("\n","\r\n").encode("ascii"))
     details=README
     if profile_modules:
-        details+="\nThis diagnostic includes all five original native profile UI DLLs.\nVerify Profile Modules.cmd runs ten load/unload cycles without executing\ntheir entrypoints. Launch Guide Diagnostic.cmd enables the original Guide\nstartup hardware experiment and status traces. Neither launcher signs in\na user or proves that the Guide opens.\n"
+        details+="\nThis diagnostic includes all five original native profile UI DLLs.\nVerify Profile Modules.cmd runs ten load/unload cycles without executing\ntheir entrypoints. Launch Guide Diagnostic.cmd enables the original Guide\nstartup hardware experiment and status traces; F9 requests the Guide. Neither launcher signs in\na user or proves that the Guide opens.\n"
     (output/"README.txt").write_text(details,encoding="utf-8")
     (output/"windows-preflight.json").write_text(json.dumps({"passed":False,"status":"not_run","interactive_dashboard_verified":False},indent=2)+"\n")
     report={"commit":commit,"architecture":"Windows AMD64 PE32+","configuration":"Release",

@@ -52,7 +52,10 @@ class TestWindowsPackage(unittest.TestCase):
 
     def test_diagnostic_mode_is_separate_from_normal_boot(self):
         self.assertIn('if /i "%~1"=="guide" goto guide',LAUNCH)
-        self.assertIn(":guide\nset X360_METRO_GUIDE_UI=1\nset X360_METRO_GUIDE_TRACE=1\n:boot",LAUNCH)
+        self.assertIn(":guide\nset X360_METRO_GUIDE_UI=1\nset X360_METRO_GUIDE_TRACE=1\nset X360_METRO_PROFILE_TRACE=1",LAUNCH)
+        self.assertIn("--hid.mnk_mode=true --hid.guide_button=true --hid.keybind_guide=F9",LAUNCH)
+        self.assertIn("set METRO_GUIDE_ARGS=\n",LAUNCH)
+        self.assertIn("%METRO_GUIDE_ARGS% --log.level",LAUNCH)
         self.assertIn(":profilepreflight\nset X360_METRO_PROFILE_MODULE_PREFLIGHT=1",LAUNCH)
         self.assertIn("goto boot\n:guide",LAUNCH)
         self.assertNotIn("set X360_METRO_LOCAL_PROFILES=1",LAUNCH)
