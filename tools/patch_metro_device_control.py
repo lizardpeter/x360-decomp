@@ -21,7 +21,7 @@ NEW = '''  } else if (io_control_code == 0x4D028) {
     REXKRNL_WARN("Hosted IDE pass-through unsupported: path={} input_bytes={} output_bytes={}",
                  opened_file->GetAbsolutePath(), input_buffer_len, output_buffer_len);
     return X_STATUS_NOT_SUPPORTED;
-  }''' + OLD
+''' + OLD
 
 def corrected(source):
     if NEW in source or source.count(OLD) != 1:

@@ -14,6 +14,9 @@ class DeviceControlPatch(unittest.TestCase):
         self.assertNotIn("X_STATUS_SUCCESS", specific)
         self.assertNotIn("REX_ASSERT_ALWAYS()", specific)
         self.assertIn(OLD, updated)
+        self.assertNotIn("}  } else", NEW)
+        self.assertNotIn("}\n  } else", NEW)
+        self.assertEqual(("if (true) {\n" + NEW).count("{"), ("if (true) {\n" + NEW).count("}"))
         self.assertIn("GetAbsolutePath()", specific)
     def test_rejects_drift_and_reapplication(self):
         for bad in ("", OLD+OLD, NEW):

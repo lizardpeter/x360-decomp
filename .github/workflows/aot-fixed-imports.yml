@@ -66,6 +66,22 @@ jobs:
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
           platform: linux-amd64
+      - name: Prepare persistent compiler cache
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/compiler-cache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+      - name: Restore compiler cache across SDK and title builds
+        uses: actions/cache/restore@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+          restore-keys: |
+            metro-clang20-ccache-
+      - name: Configure compiler cache limit
+        run: ccache --max-size=3G
       - name: Restore exact patched SDK installation
         id: sdk_cache
         uses: actions/cache/restore@v4
@@ -76,7 +92,7 @@ jobs:
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
         run: |
-          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=OFF -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
           cmake --build out/build/linux-amd64 --target install --parallel 4
       - name: Select verified patched SDK installation
         run: |
@@ -110,7 +126,7 @@ jobs:
       - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
-          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -g0' -DCMAKE_PREFIX_PATH="$SDK"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -g0' -DCMAKE_PREFIX_PATH="$SDK"
           set +e
           cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
           status=$?
@@ -153,7 +169,7 @@ jobs:
           log="$folder/native/metro-capture/boot.log"
           if [ -f "$log" ]; then
             cp "$log" build/receipts/metro-boot.log
-            python tools/symbolize_metro_crash.py "$log" "$folder/native" > build/receipts/metro-symbolized.txt
+            python tools/symbolize_metro_crash.py "$log" "$folder/native" "$SDK" > build/receipts/metro-symbolized.txt
             cat build/receipts/metro-symbolized.txt
           fi
           exit "$status"
@@ -173,3 +189,10 @@ jobs:
           name: verified-metro-xam-receipt
           path: build/receipts/
           if-no-files-found: ignore
+      - name: Save reusable compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+        continue-on-error: true
