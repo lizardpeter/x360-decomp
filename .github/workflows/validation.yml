@@ -34,6 +34,11 @@ jobs:
       - run: python tools/fetch_originals.py --only dash_basic
       - run: python tools/verify_native_leaf.py
       - run: python tools/verify_lua_scalar.py build/native/x360_lua_scalar_probe
+      - name: Differential Lua 5.1 source and original-bytecode fixtures
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lua5.1
+          python tools/verify_lua_vm.py build/native/x360_lua_vm_probe --original
       - run: python tools/verify_xui_resources.py build/native/x360_resource_probe
       - name: Build pinned original LZX source adapter and audit system resources
         run: |
