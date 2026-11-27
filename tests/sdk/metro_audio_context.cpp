@@ -1,4 +1,6 @@
 
+#include <rex/kernel/object/kernel_thread.h>
+
 // Execute actual guest callbacks using both ABI modes; no original bytes.
 namespace {
 std::atomic<rex::u32> metro_audio_received{0};

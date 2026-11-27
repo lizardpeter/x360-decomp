@@ -202,7 +202,9 @@ def audit(raw,lzx,sdk):
     tables=vtable_candidates(image,base,pe,materializations)
     global_writers={a for a,rows in globals_.items() if any(r["address"]["object"] is None and r["access"]=="memory_store" for r in rows)}
     exact_object_writers={a for a,rows in globals_.items() if any(r["address"]["object"]=="audio_global_object" and r["access"].endswith("store") for r in rows)}
-    roots={CALLBACK,0x819AC540,0x819AF968,ROUTE,0x819AFF80,0x819A5878}|global_writers|exact_object_writers
+    roots={CALLBACK,0x819AC540,0x819AF968,ROUTE,0x819AFF80,0x819A5878,
+           0x819A5A98,0x819A5E40,0x819A4570,0x819A44E0,0x819AE908,
+           0x819A56B8,0x819A5780,0x819A7658}|global_writers|exact_object_writers
     for t in tables:
         roots.update(int(t[k],16) for k in ("getter_slot_72","route_slot_84"))
         roots.update(int(r["owner"],16) for r in t["materialized_by"])
@@ -223,7 +225,40 @@ def audit(raw,lzx,sdk):
     route=operand(ROUTE_CALL,read_word(image,base,ROUTE_CALL))
     if any(x["kind"]!="indirect_branch" or not x["linked"] for x in (getter,route)):
         raise ValueError("observed virtual call identity differs")
-    return {"source_runs":[45963619361,45965406811],"module_sha256":sha(raw),
+    # Validate exact original constructor calls and output-slot arithmetic.
+    def op_at(pc):
+        return operand(pc,read_word(image,base,pc))
+    for site,target in ((0x819A5C98,0x819A4570),(0x819A5DC4,0x819A44E0)):
+        if branch(site,read_word(image,base,site))!=(target,True):
+            raise ValueError("original processor initialization edge changed")
+    checks={
+        0x819A5D94:{"kind":"register_offset","writes":11,"base":1,"value":98},
+        0x819A5D98:{"kind":"indexed_load","writes":11,"base":28,"index":11,"width":1},
+        0x819A5DB0:{"kind":"arithmetic","operation":"add","writes":11,"inputs":[30,31]},
+        0x819A5DBC:{"kind":"rotate_mask","writes":11,"source":11,"shift_or_reg":2,"mask_start":0,"mask_end":29},
+        0x819A5DC0:{"kind":"arithmetic","operation":"add","writes":5,"inputs":[11,29]},
+        0x819A5DD8:{"kind":"register_offset","writes":30,"base":30,"value":2},
+        0x819A5DDC:{"kind":"register_offset","writes":28,"base":28,"value":1},
+    }
+    for site,expected in checks.items():
+        if op_at(site)!=expected:
+            raise ValueError("processor buffer argument changed at "+hx(site))
+    wrapper=[op_at(CALLBACK+4*j) for j in range(3)]
+    if not (wrapper[0].get("writes")==11 and wrapper[0].get("kind")=="immediate" and
+            wrapper[1].get("kind")=="memory_load" and wrapper[1].get("writes")==3 and
+            wrapper[1].get("base")==11 and (wrapper[0]["value"]+wrapper[1]["offset"])&MASK==GLOBAL and
+            branch(CALLBACK+8,read_word(image,base,CALLBACK+8))==(0x819A5878,False)):
+        raise ValueError("registered callback wrapper changed")
+    proof={"constructor":"819A5A98","configuration_helper":"819A4570",
+           "configuration_call":"819A5C98","processor_flags_stack_offset":98,
+           "processor_count":6,"buffer_count_per_enabled_processor":2,
+           "buffer_allocator":"819A44E0","buffer_allocator_call":"819A5DC4",
+           "output_slot_formula":"engine + 12 + 8 * processor + 4 * pair",
+           "output_slot_offsets":[[12+8*j,16+8*j] for j in range(6)],
+           "wrapper_loads_global_and_tail_calls":"819A5878",
+           "verified_operand_sites":[hx(x) for x in checks],
+           "configuration_selection_is_runtime_dependent":True}
+    return {"source_runs":[45963619361,45965406811],"processor_buffer_construction":proof,"module_sha256":sha(raw),
             "decoded_sha256":meta["sha256"],"global_slot":hx(GLOBAL),
             "initial_word":hx(read_word(image,base,GLOBAL)),
             "registered_callback":hx(CALLBACK),"getter_call":hx(GETTER_CALL),
@@ -253,5 +288,6 @@ def main():
     for k in ("global_writer_entries","global_object_writer_entries","processor_indexed_accesses","candidate_vtables","focused_functions","construction_graph_nodes","callback_address_constructions"):
         print(k,len(d[k]))
     print("Global writer entries:",d["global_writer_entries"])
+    print("Verified processor-buffer construction:",d["processor_buffer_construction"])
     print("Getter candidates:",[(r["candidate_table"],r["getter_slot_72"],r["route_slot_84"]) for r in d["candidate_vtables"]])
 if __name__=="__main__":main()

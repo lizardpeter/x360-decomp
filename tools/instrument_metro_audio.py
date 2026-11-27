@@ -13,6 +13,12 @@ from instrument_metro_heap import MARKER
 # Original operand evidence: run 45958145203. At the indirect call, r5 is
 # the selected buffer value, not the address of its stack slot.
 POINTS={
+    0x819A5A98:("engine_configuration",5),
+    0x819A5C9C:("engine_processor_flags",6),
+    0x819A5DC4:("processor_buffer_allocate",7),
+    0x819A5DC8:("processor_buffer_result",7),
+    0x819A5E28:("engine_callback_register",0),
+    0x819AE4E8:("registered_render_wrapper",0),
     0x819AC59C:("register_import",1),
     0x819AC5A0:("register_result",0),
     0x819A5878:("render_callback",2),
@@ -80,6 +86,24 @@ void metro_original_audio_probe(const char* label,unsigned pc,const PPCContext& 
         word("object300",address(ctx.r3.u32,300));
         word("object304",address(ctx.r3.u32,304));
     }
+    if (kind==5) {
+        byte("config_channels",ctx.r4.u32);
+        byte("config_voice_count",address(ctx.r4.u32,1));
+        byte("config_processor",address(ctx.r4.u32,2));
+        word("config_renderer",address(ctx.r4.u32,8));
+    }
+    if (kind==6) {
+        for (unsigned j=0;j<6;++j) {
+            char label[32];std::snprintf(label,sizeof(label),"processor_flag_%u",j);
+            byte(label,address(ctx.r1.u32,98+j));
+        }
+    }
+    if (kind==7) {
+        const auto p=ctx.r28.u32,pair=ctx.r31.u32;
+        const auto object=ctx.r29.u32;
+        std::fprintf(stderr," allocation_processor=%u allocation_pair=%u engine=%08X",p,pair,object);
+        if(p<6 && pair<2)word("allocation_slot",address(object,12+8*p+4*pair));
+    }
     if (kind==4) {
         auto vtable=mem->Load<rex::be_u32>(ctx.r3.u32);
         if(vtable)word("voice_get_buffer_target",address(*vtable,72));
@@ -100,6 +124,15 @@ void metro_original_audio_probe(const char* label,unsigned pc,const PPCContext& 
         if(cpu<6) {
             word("cpu_buffer_a",address(object,12+8*cpu));
             word("cpu_buffer_b",address(object,16+8*cpu));
+        }
+        if(kind==1 || kind==6 || (kind==7 && sample<=8)) {
+            for(unsigned j=0;j<6;++j) {
+                char a[32],b[32];
+                std::snprintf(a,sizeof(a),"buffer_%u_a",j);
+                std::snprintf(b,sizeof(b),"buffer_%u_b",j);
+                word(a,address(object,12+8*j));
+                word(b,address(object,16+8*j));
+            }
         }
     } else std::fprintf(stderr," global_object=unmapped");
     std::fprintf(stderr,"\n");
