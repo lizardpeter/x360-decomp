@@ -75,3 +75,11 @@ class TestWindowsPackage(unittest.TestCase):
         keys=[key for name,value in binds.items() if name.startswith("--hid.keybind_") for key in value.split(",")]
         self.assertEqual(len(keys),len(set(keys)))
         self.assertLess(LAUNCH.index('set "METRO_INPUT_ARGS='),LAUNCH.index('goto guide'))
+
+    def test_guest_video_mode_and_hd_diagnostics_are_independent(self):
+        self.assertIn('set "METRO_VIDEO_ARGS=--ui.video_mode_width=1280 --ui.video_mode_height=720"', LAUNCH)
+        self.assertIn('set "METRO_SCALE_ARGS="', LAUNCH)
+        self.assertIn('if /i "%~1"=="hd" (\n    set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=2 --gpu.resolution_scale_y=2"\n    set "METRO_LOG=metro-hd.log"\n)', LAUNCH)
+        self.assertIn('if /i "%~1"=="1080p" (\n    set "METRO_VIDEO_ARGS=--ui.video_mode_width=1920 --ui.video_mode_height=1080"\n    set "METRO_LOG=metro-1080p.log"\n)', LAUNCH)
+        self.assertIn('%METRO_VIDEO_ARGS% %METRO_SCALE_ARGS% %METRO_INPUT_ARGS%', LAUNCH)
+        self.assertIn('> "%METRO_LOG%" 2>&1', LAUNCH)

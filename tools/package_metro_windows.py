@@ -57,6 +57,18 @@ set "METRO_INPUT_ARGS=--hid.mnk_mode=true --hid.mnk_mouse=false --hid.mnk_passth
 set X360_METRO_GUIDE_UI=
 set X360_METRO_GUIDE_TRACE=
 set X360_METRO_PROFILE_TRACE=
+rem Keep the original guest mode independent of the desktop window size.
+set "METRO_VIDEO_ARGS=--ui.video_mode_width=1280 --ui.video_mode_height=720"
+set "METRO_SCALE_ARGS="
+set "METRO_LOG=metro.log"
+if /i "%~1"=="hd" (
+    set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=2 --gpu.resolution_scale_y=2"
+    set "METRO_LOG=metro-hd.log"
+)
+if /i "%~1"=="1080p" (
+    set "METRO_VIDEO_ARGS=--ui.video_mode_width=1920 --ui.video_mode_height=1080"
+    set "METRO_LOG=metro-1080p.log"
+)
 if /i "%~1"=="intro" set X360_METRO_INTRO=1
 if /i "%~1"=="guide" goto guide
 if /i "%~1"=="profile-preflight" goto profilepreflight
@@ -67,9 +79,9 @@ set X360_METRO_GUIDE_UI=1
 set X360_METRO_GUIDE_TRACE=1
 set X360_METRO_PROFILE_TRACE=1
 :boot
-start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_INPUT_ARGS% --log.level=info --log.flush_level=info > metro.log 2>&1
+start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_VIDEO_ARGS% %METRO_SCALE_ARGS% %METRO_INPUT_ARGS% --log.level=info --log.flush_level=info > "%METRO_LOG%" 2>&1
 set "code=%ERRORLEVEL%"
-echo Native host exit code: %code%. See metro.log.
+echo Native host exit code: %code%. See %METRO_LOG%.
 pause
 exit /b %code%
 :profilepreflight
@@ -132,6 +144,12 @@ needed to prepare the local original inputs.
    Shift+WASD moves the left stick; Ctrl+arrows move the right stick.
    Edit METRO_INPUT_ARGS in launch.cmd to customize bindings. Focus the window.
    Guide display still requires the separate diagnostic and is unverified.
+   Launch Metro HD.cmd preserves the 720p guest mode and requests 2x internal
+   rendering on both axes (nominally 2560x1440). Launch Metro 1080p Diagnostic.cmd
+   instead exposes a 1920x1080 guest mode at the default GPU scale, to distinguish
+   guest text/layout behavior from host scaling. Both bypass the intro and write
+   separate logs. These are unvalidated graphics diagnostics; normal and intro
+   launch retain the original rendering-scale default.
 5. If it closes or crashes, retain metro.log and the build commit in
    native-package.json for diagnosis.
 
@@ -171,6 +189,8 @@ def package(folder,output,commit,sdk_source,profile_modules=False):
             if (root/name).is_file():shutil.copy2(root/name,licenses/f"{label}-{name}")
     launchers={"Prepare Inputs.cmd":PREPARE,"launch.cmd":LAUNCH,
                       "Launch Metro.cmd":'@echo off\ncall "%~dp0launch.cmd"\n',
+                      "Launch Metro HD.cmd":'@echo off\ncall "%~dp0launch.cmd" hd\n',
+                      "Launch Metro 1080p Diagnostic.cmd":'@echo off\ncall "%~dp0launch.cmd" 1080p\n',
                       "Launch with Intro.cmd":'@echo off\ncall "%~dp0launch.cmd" intro\n',
                       "Verify Inputs.cmd":'@echo off\ncall "%~dp0launch.cmd" preflight\n'}
     if profile_modules:
