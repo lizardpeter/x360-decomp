@@ -6,8 +6,13 @@ Header analysis is not function decompilation. Import slots are not unique impor
 
 | Build | XEX import slots | Resources | .pdata functions | Distinct imports | Authored function records | Matches+ |
 |---|---:|---:|---:|---:|---:|---:|
-| dash_17559 | 1628 | 36 | 28350 | 822 | 0 | 0 |
+| dash_17559 | 1628 | 36 | 28350 | 822 | 52 | 0 |
 | xam_17559 | 906 | 11 | 13799 | 463 | 0 | 0 |
 | dash_17559_basic | 1628 | 36 | 28350 | 822 | 0 | 0 |
 
-Native executable and differential parity are not established. .pdata is a partial function inventory, not Ghidra decompilation.
+## Ghidra Xenon analysis
+
+Verified boundaries: 49,542/49,542; successful C exports: 51,084/51,084; unresolved heuristic candidates: 10,076.
+
+
+Native dashboard boot and full differential parity are not established. .pdata is a partial function inventory. Pseudocode exports are not authored reconstruction.
