@@ -73,13 +73,69 @@ Result<TitleRuntime::HostedSystemAttach> TitleRuntime::AttachHostedSystemModule(
 }
 '''
 
+
+def patch_thread_creation(source):
+    source=replace(source,"#include <rex/kernel/types/thread.h>",
+                   "#include <rex/kernel/types/thread.h>\n#include <rex/kernel/guest_memory.h>")
+    start=source.index("u32 ExCreateThread_entry(")
+    end=source.index("u32 ExTerminateThread_entry(",start)
+    body=source[start:end]
+    body=replace(body,"  auto& runtime = kernel::GetCurrent();",
+        """  auto& runtime = kernel::GetCurrent();
+  auto& memory = runtime.GetGuestMemory();
+  const u32 handle_out = handle_ptr.GetGuestAddress();
+  const u32 id_out = thread_id_ptr.GetGuestAddress();
+  if ((handle_out && !memory.GetWritableSpan(handle_out,4)) ||
+      (id_out && !memory.GetWritableSpan(id_out,4)))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (handle_out && id_out && u64{handle_out}<u64{id_out}+4 &&
+      u64{id_out}<u64{handle_out}+4)
+    return X_STATUS_INVALID_PARAMETER;""")
+    body=replace(body,"  KernelThread* raw = thread.get();\n\n","")
+    a=body.index("  const u32 thread_id = raw->GetThreadID();")
+    b=body.index("  REXKRNL_TRACE(",a)
+    body=body[:a]+"""  auto& table=runtime.GetObjectTable();
+  auto created=runtime.GetThreadRegistry().FindByHandle(handle);
+  if (!created) {
+    CloseOwned(table,handle);
+    return X_STATUS_INVALID_HANDLE;
+  }
+  const u32 thread_id=created->GetThreadID();
+  if (handle_out && (creation_flags & 0x80)) {
+    // The retail kernel returns an owned KTHREAD pointer, not a handle,
+    // for this creation flag. The hidden creation handle must not keep
+    // the object alive after the guest releases its pointer reference.
+    auto object=table.Get(handle);
+    if (!object || object.GetGuestAddress()!=created->GetGuestObject()) {
+      CloseOwned(table,handle);
+      return X_STATUS_INVALID_HANDLE;
+    }
+    auto referenced=table.Reference(object);
+    if (!referenced) {
+      CloseOwned(table,handle);
+      return ToXStatus(referenced);
+    }
+    *handle_ptr=created->GetGuestObject();
+    CloseOwned(table,handle);
+  } else if (handle_out) {
+    *handle_ptr=handle;
+  } else {
+    CloseOwned(table,handle);
+  }
+  if (id_out) *thread_id_ptr=thread_id;
+"""+body[b:]
+    return source[:start]+body+source[end:]
+
+
 def patch_sources(sdk,tests):
     header=sdk/"include/rex/kernel/object/kernel_thread.h"
     thread=sdk/"src/kernel/kernel_thread.cpp"
     public=sdk/"include/rex/kernel/title_runtime.h"
     runtime=sdk/"src/kernel/title_runtime.cpp"
     test=sdk/"tests/unit/kernel/xam_input_test.cpp"
+    exports=sdk/"src/kernel/xboxkrnl/xboxkrnl_threading.cpp"
     out={}
+    out[exports]=patch_thread_creation(exports.read_text())
     out[header]=replace(header.read_text(),
         "               rex::MoveOnlyFunction<int()> host_fn);",
         "               rex::MoveOnlyFunction<int()> host_fn, u32 process = 0,\n               bool guest_thread = false);")

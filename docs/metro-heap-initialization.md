@@ -60,3 +60,19 @@ isolation and original return semantics.
 ### Subsequent recovery-state checks
 
 The original worker at `81696558` compares the return of `DumpGetRawDumpInfo` (call at `816965D4`) with zero and only reads byte 5 of its output structure when it is nonzero. A generic void stub leaves the output pointer in r3, incorrectly suggesting that a console crash dump exists. The hosted implementation returns false without writing the unknown structure. At `81696628`, `HalGetNotedArgonErrors` returns a recorded error bitmask; the caller tests bits 0–2 to select its recovery state. Since this runtime has no persisted Argon hardware-error record, it returns the empty bitmask rather than stale r3. Neither implementation claims physical hardware support or suppresses a reported host failure. Actual boot confirmation remains necessary.
+
+### Kernel-thread ownership contract
+
+At original XAM PC 816A16A4, the object initializer calls ExCreateThread
+with creation flags 040000A2 (system process and object-pointer return).
+The SDK formerly returned the guest KTHREAD address but retained a hidden
+creation handle and omitted the guest-owned pointer reference. This
+invalidates the object's lifetime when the guest calls ObDereferenceObject.
+The patch transfers creation ownership from the handle to a real pointer
+reference, closes unreturned handles, checks output spans and overlapping
+outputs before creating a thread, and uses a pinned thread instead of the
+raw pointer after launch. Tests exercise the original flag combination
+with suspension, actual guest execution, pointer-to-handle reopening,
+waiting, and reference release. The exact original instruction sequence
+is retained in the startup dependency evidence; no thread priority or
+scheduling behavior is guessed.

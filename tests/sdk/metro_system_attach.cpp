@@ -79,3 +79,60 @@ REX_TEST_CASE("metro_system_attach: actual zero return remains a failed DLL atta
     CHECK(result->bound_pads==0);
   });
 }
+
+#include <rex/kernel/object/object_table.h>
+#include <rex/kernel/thread_registry.h>
+#include <chrono>
+#include <thread>
+
+REX_TEST_CASE("metro_system_attach: pointer-returning system thread owns a reference not a hidden handle",
+              "[kernel][metro_system_attach]") {
+  using namespace rex::kernel;
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& table=c.GetRuntime().GetObjectTable();
+    const u32 out=c.Alloc(4), id=c.Alloc(4), seen=c.Alloc(8), handle_out=c.Alloc(4);
+    const u32 context=rex::test::Caller::RegisterBody([seen](rex::test::Caller& worker) {
+      worker.Store32(seen,worker.Kernel("KeGetCurrentProcessType"));
+      worker.Store32(seen+4,0x1234abcd);
+    });
+    REQUIRE(c.Kernel("ExCreateThread",{out,0,id,0,rex::test::Caller::start_thunk,
+                                     context,0x040000a3})==0);
+    const u32 pointer=c.Load32(out), thread_id=c.Load32(id);
+    REQUIRE(pointer!=0);
+    REQUIRE(thread_id!=0);
+    REQUIRE(table.GetByAddress(pointer));
+    CHECK(c.Kernel("NtClose",{pointer})==X_STATUS_INVALID_HANDLE);
+    REQUIRE(c.Kernel("ObOpenObjectByPointer",{pointer,handle_out})==0);
+    const u32 handle=c.Load32(handle_out);
+    REQUIRE(c.Kernel("KeResumeThread",{pointer})==0);
+    REQUIRE(c.Kernel("NtWaitForSingleObjectEx",{handle,1,0,c.AllocQuad(-50000000)})==0);
+    CHECK(c.Load32(seen)==kXProcTypeSystem);
+    CHECK(c.Load32(seen+4)==0x1234abcd);
+    REQUIRE(c.Kernel("NtClose",{handle})==0);
+    REQUIRE(table.GetByAddress(pointer));
+    c.Kernel("ObDereferenceObject",{pointer});
+    const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(2);
+    while (table.GetByAddress(pointer) && std::chrono::steady_clock::now()<deadline)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    CHECK_FALSE(table.GetByAddress(pointer));
+  });
+}
+
+REX_TEST_CASE("metro_system_attach: invalid thread output is rejected before starting guest code",
+              "[kernel][metro_system_attach]") {
+  using namespace rex::kernel;
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    const u32 out=c.Alloc(8);
+    c.Store32(out,0xdeadbeef);
+    const auto context=rex::test::Caller::RegisterBody([](rex::test::Caller&) {});
+    CHECK(c.Kernel("ExCreateThread",{0x7f100000,0,out,0,rex::test::Caller::start_thunk,
+                                    context,0x80})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ExCreateThread",{out,0,0x7f100000,0,rex::test::Caller::start_thunk,
+                                    context,0x80})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ExCreateThread",{out,0,out+2,0,rex::test::Caller::start_thunk,
+                                    context,0x80})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Load32(out)==0xdeadbeef);
+  });
+}
