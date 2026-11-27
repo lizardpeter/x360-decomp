@@ -1,0 +1,108 @@
+name: Metro original profile UI native modules
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/stage_metro_profile_modules.py'
+      - 'tools/native/metro_profile_module_probe.cpp'
+      - 'tests/test_metro_profile_modules.py'
+      - '.github/workflows/metro-profile-native.yml'
+permissions:
+  contents: read
+jobs:
+  profile-native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify module census
+        run: |
+          python -m unittest discover -s tests -p test_metro_profile_modules.py
+          python tools/fetch_originals.py --only pirs
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Stage independently reverified profile UI modules
+        run: |
+          source=build/sdk-source/thirdparty/libmspack/libmspack/mspack
+          cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+          python tools/patch_rexglue_imports.py build/sdk-source
+          python tools/stage_metro_profile_modules.py --folder build/profile-native --lzx build/lzx_adapter.so --sdk build/sdk-source --receipt build/receipts/profile-modules.json
+      - uses: ./build/sdk-source/.github/actions/setup-toolchain
+        with:
+          platform: linux-amd64
+      - name: Prepare compiler cache
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/compiler-cache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+      - uses: actions/cache/restore@v4
+        with:
+          path: build/compiler-cache
+          key: metro-profile-clang20-ccache-${{ github.run_id }
+          restore-keys: |
+            metro-profile-clang20-ccache-
+            metro-clang20-ccache-
+      - run: ccache --max-size=3G
+      - name: Build isolated profile codegen SDK
+        working-directory: build/sdk-source
+        run: |
+          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 '-DCMAKE_CONFIGURATION_TYPES=Debug' -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --build out/build/linux-amd64 --target install --parallel 4
+          test -x out/install/linux-amd64/bin/rexglue
+          echo "SDK=$(realpath out/install/linux-amd64)" >> "$GITHUB_ENV"
+      - name: Generate, compile and register all five isolated native modules
+        run: |
+          set -uo pipefail
+          failure=0
+          for name in signin deviceselector vk gamerprofile createprofile; do
+            folder="$GITHUB_WORKSPACE/build/profile-native/$name"
+            receipt="$GITHUB_WORKSPACE/build/receipts/$name"
+            mkdir -p "$receipt"
+            if (cd "$folder" && "$SDK/bin/rexglue" --log-file "$folder/codegen-detail.log" codegen "metro_${name}_manifest.toml") > "$folder/codegen.log" 2>&1; then
+              status=0
+            else
+              status=$?
+            fi
+            python tools/aot_receipt.py "$folder/generated" --status "$status" --output "$receipt/generated.json" || { failure=1; continue; }
+            if [ "$status" -ne 0 ]; then
+              tail -n 40 "$folder/codegen.log"
+              failure=1
+              continue
+            fi
+            python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output "$receipt/codegen-diagnostics.json" || { failure=1; continue; }
+            if ! cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gline-tables-only' -DCMAKE_PREFIX_PATH="$SDK"; then
+              failure=1
+              continue
+            fi
+            if cmake --build "$folder/native" --parallel 3 > "$folder/build.log" 2>&1; then status=0; else status=$?; fi
+            python tools/aot_diagnostics.py "$folder/build.log" --output "$receipt/build-diagnostics.json" || { failure=1; continue; }
+            if [ "$status" -ne 0 ]; then
+              tail -n 60 "$folder/build.log"
+              failure=1
+              continue
+            fi
+            (cd "$folder/native" && LD_LIBRARY_PATH="$SDK/lib:${LD_LIBRARY_PATH:-}" ./metro_profile_probe) | tee "$receipt/registration.txt" || failure=1
+          done
+          exit "$failure"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metro-profile-native-receipts
+          path: build/receipts/
+          if-no-files-found: error
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: build/compiler-cache
+          key: metro-profile-clang20-ccache-${{ github.run_id }
+        continue-on-error: true

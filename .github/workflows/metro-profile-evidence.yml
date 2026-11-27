@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'tools/stage_metro_profile_modules.py'
       - 'tools/metro_profile_evidence.py'
       - 'tests/test_metro_profile_evidence.py'
       - '.github/workflows/metro-profile-evidence.yml'
@@ -35,6 +36,7 @@ jobs:
           python tools/fetch_originals.py --only pirs --only dash_basic
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+          python tools/stage_metro_profile_modules.py --receipt build/receipts/profile-module-inventory.json
           python tools/metro_profile_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-profile-evidence.json
       - uses: actions/upload-artifact@v4
         with:

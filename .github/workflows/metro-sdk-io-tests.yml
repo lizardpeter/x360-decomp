@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'tools/patch_metro_public_verification.py'
+      - 'tools/verify_retail_firmware.py'
       - 'tools/patch_metro_io_runtime.py'
       - 'tools/patch_metro_virtual_memory.py'
       - 'tools/patch_metro_system_attach.py'

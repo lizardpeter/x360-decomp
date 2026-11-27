@@ -73,8 +73,11 @@ def main():
     if any(x["removed_zero_address_mappings"] for x in results):
         raise ValueError("corrected loader unexpectedly emitted address-zero mappings")
     a.receipt.parent.mkdir(parents=True, exist_ok=True)
-    a.receipt.write_text(json.dumps({"files": results}, indent=2) + "\n")
-    print(json.dumps({"files": results}, indent=2))
+    from stage_metro_profile_modules import inventory, mapping_coverage
+    coverage = mapping_coverage(xam.read_text(), inventory())
+    report = {"files": results, "profile_xam_mapping_coverage": coverage}
+    a.receipt.write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
 
 if __name__ == "__main__":
     main()

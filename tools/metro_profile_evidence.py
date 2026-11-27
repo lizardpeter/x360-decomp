@@ -36,12 +36,8 @@ PROFILE={
 }
 def is_focus(name):
     return name in PROFILE
-PROFILE_MODULES={
-    "gamerprofile":("a99fb2ae20c4b3ffab9fa5f6a73e5766b49fbed5716e8b4d3752d1b97b83aad4",
-                    "25975c0c2fad9bb3ee66ca89f0a7bd5ab64b32b3051ccce1fa0a762ec697c3b7"),
-    "createprofile":("c5dae66e2e7b408ef6d84d659a2232ad89f01d78fa38c365d8732f2e0a221bbd",
-                     "caafb8f9056fa2b16ba5711325b975da06f5965ec2105c3a5f8202e67f59b9d3"),
-}
+from stage_metro_profile_modules import SPECS
+PROFILE_MODULES={name:spec[:2] for name,spec in SPECS.items()}
 def grouped_paths(groups, edges, calls, limit=1000, depth=3):
     # A separate bounded traversal per API prevents high-frequency identity
     # calls from crowding out storage or notification paths in the union.
