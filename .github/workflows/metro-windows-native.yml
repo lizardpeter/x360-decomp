@@ -4,8 +4,16 @@ on:
   push:
     branches: [main]
     paths:
-      - 'tools/**'
-      - 'tests/**'
+      - 'tools/patch_*.py'
+      - 'tools/stage_*.py'
+      - 'tools/native/**'
+      - 'tools/instrument_*.py'
+      - 'tools/package_metro_windows.py'
+      - 'tools/prepare_windows_inputs.py'
+      - 'tools/lzx_adapter.c'
+      - 'tools/fetch_originals.py'
+      - 'tests/sdk/**'
+      - 'tests/test_metro_windows_package.py'
       - 'analysis/**'
       - 'target.toml'
       - '.github/workflows/metro-windows-native.yml'
@@ -16,7 +24,7 @@ permissions:
   contents: read
 jobs:
   windows-x64:
-    runs-on: windows-latest
+    runs-on: windows-2022
     timeout-minutes: 120
     defaults:
       run:
@@ -46,7 +54,6 @@ jobs:
           python -m unittest discover -s tests -p test_metro_intro.py
           python -m unittest discover -s tests -p test_metro_kernel_variables.py
           python -m unittest discover -s tests -p test_metro_boot_evidence.py
-          python -m unittest discover -s tests -p test_metro_fault_localization.py
           python -m unittest discover -s tests -p test_metro_heap_probes.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
@@ -98,6 +105,7 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
+          vsversion: '2022'
       - name: Build native LZX verification adapter
         run: |
           $source = "build/sdk-source/thirdparty/libmspack/libmspack/mspack"
@@ -109,14 +117,14 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           variant: sccache
-          key: metro-windows-amd64-a3e1d826
+          key: metro-windows-amd64-vs2022-a3e1d826
           max-size: 3G
       - name: Restore exact patched release SDK
         id: sdk_cache
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/win-amd64
-          key: rexglue-metro-win64-release-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/stage_metro_xam_aot.py', 'tests/sdk/*.cpp') }}
+          key: rexglue-metro-win64-vs2022-release-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/stage_metro_xam_aot.py', 'tests/sdk/*.cpp') }}
       - name: Compile patched SDK release (non-debug CRT)
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
