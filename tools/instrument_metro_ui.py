@@ -294,7 +294,7 @@ def insert(source,points):
         prefix=m[1]
         args=", ".join(f"static_cast<unsigned>(ctx.r{i}.u32)" for i in range(3,9))
         if pc in HEADER_KIND:
-            result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_header_observe(0x{pc:08X}u,"{phase}",ctx,{HEADER_KIND[pc]}u);\\n')
+            result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_header_observe(0x{pc:08X}u,"{phase}",ctx,{HEADER_KIND[pc]}u);\n')
             continue
         result.append(prefix+'if (std::getenv("X360_METRO_BOOT")) {\n')
         result.append(prefix+'  static std::atomic<unsigned> metro_ui_samples{0};\n')

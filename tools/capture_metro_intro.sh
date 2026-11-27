@@ -8,7 +8,7 @@ out="$(realpath -m "$3")"
 mkdir -p "$out/xdg"
 chmod 700 "$out/xdg"
 export XDG_RUNTIME_DIR="$out/xdg" SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=x11
-export X360_METRO_BOOT=1 X360_METRO_INTRO=1
+export X360_METRO_BOOT=1 X360_METRO_INTRO=1 X360_METRO_LOCAL_PROFILES=0
 mode_width="${METRO_CAPTURE_WIDTH:-1280}"
 mode_height="${METRO_CAPTURE_HEIGHT:-720}"
 cd "$native"

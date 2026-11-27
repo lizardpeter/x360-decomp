@@ -54,7 +54,7 @@ class MetroUIProbes(unittest.TestCase):
         self.assertLess(out.index("phase=call"),out.index("original_call();"))
         self.assertLess(out.index("phase=return"),out.index("original_next();"))
     def test_header_classifier_uses_only_known_labels_and_checked_reads(self):
-        source="// METRO_GUEST_PC 921CB758\\noriginal();\\n// METRO_GUEST_PC 921F2800\\nstore();\\n// METRO_GUEST_PC 921E3B48\\nnext();\\n"
+        source="// METRO_GUEST_PC 921CB758\noriginal();\n// METRO_GUEST_PC 921F2800\nstore();\n// METRO_GUEST_PC 921E3B48\nnext();\n"
         out,hits=insert(source,probes("generated"))
         self.assertEqual(sum(hits.values()),3)
         self.assertIn('metro_header_observe(0x921CB758u,"entry",ctx,4u)',out)

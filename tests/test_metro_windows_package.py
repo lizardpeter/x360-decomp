@@ -96,6 +96,6 @@ class TestWindowsPackage(unittest.TestCase):
         self.assertIn('placeholder_draw_frames=',capture)
 
     def test_local_profile_import_isolated(self):
-        self.assertIn('tools\\\\stage_metro_profile.py', IMPORT_PROFILE)
-        self.assertIn('--storage-root "%CD%\\\\user\\\\metro-17559\\\\profile-storage"', IMPORT_PROFILE)
+        self.assertIn('tools\\stage_metro_profile.py', IMPORT_PROFILE)
+        self.assertIn('--storage-root "%CD%\\user\\metro-17559\\profile-storage"', IMPORT_PROFILE)
         self.assertNotIn("X360_METRO_LOCAL_PROFILES=1", LAUNCH)
