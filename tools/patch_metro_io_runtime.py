@@ -265,6 +265,21 @@ def patch_file(source):
     source=replace(source,WRITE_CURSOR_OLD,WRITE_CURSOR_NEW)
     return replace(source,VIRTUAL_READ_OLD,VIRTUAL_READ_NEW)
 
+NOTIFICATION_STUB = "REX_EXPORT_STUB(__imp__DrvGetContentStorageNotification);"
+NOTIFICATION_ENTRY = """namespace rex::kernel::xboxkrnl {
+u32 DrvGetContentStorageNotification_entry(u32 notification_address) {
+  // Retail XAM treats any nonnegative return as a populated notification.
+  // The hosted provider does not implement this stream. Do not return the
+  // incoming r3 pointer or write an invented notification structure.
+  return notification_address ? X_STATUS_NOT_SUPPORTED : X_STATUS_INVALID_PARAMETER;
+}
+}  // namespace rex::kernel::xboxkrnl
+REX_EXPORT(__imp__DrvGetContentStorageNotification,
+           rex::kernel::xboxkrnl::DrvGetContentStorageNotification_entry)"""
+
+def patch_storage_notifications(source):
+    return replace(source, NOTIFICATION_STUB, NOTIFICATION_ENTRY)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -273,11 +288,13 @@ def main():
     if subprocess.check_output(["git","-C",str(a.sdk),"rev-parse","HEAD"],text=True).strip()!=REVISION:
         raise ValueError("unexpected SDK revision")
     io=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_io.cpp"
+    hid=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_hid.cpp"
     file=a.sdk/"src/kernel/object/file_object.cpp"
     test=a.sdk/"tests/unit/kernel/files_test.cpp"
     tests=a.tests.read_text()
     if "metro_io_runtime" in test.read_text():raise ValueError("test already installed")
     outputs={io:patch_io(io.read_text()),file:patch_file(file.read_text()),
+             hid:patch_storage_notifications(hid.read_text()),
              test:test.read_text()+"\n"+tests}
     for path,content in outputs.items():path.write_text(content)
     subprocess.run(["git","-C",str(a.sdk),"diff","--check"],check=True)

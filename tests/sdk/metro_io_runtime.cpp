@@ -180,3 +180,22 @@ REX_TEST_CASE("metro_io_runtime: checked create arguments and honest dismount st
     CHECK(c.Kernel("NtClose",{handle})==0);
   });
 }
+
+REX_TEST_CASE("metro_io_runtime: unsupported storage stream never reports a fabricated event",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture;
+  fixture.RunOnGuestThread([](Caller& c) {
+    const u32 notification = c.Alloc(32);
+    for (u32 offset = 0; offset < 32; offset += 4)
+      c.Store32(notification + offset, 0x12340000u + offset);
+    for (int attempt = 0; attempt < 2; ++attempt) {
+      const u32 status = c.Kernel("DrvGetContentStorageNotification", {notification});
+      CHECK(status == rex::kernel::X_STATUS_NOT_SUPPORTED);
+      CHECK((status & 0x80000000u) != 0);
+      for (u32 offset = 0; offset < 32; offset += 4)
+        CHECK(c.Load32(notification + offset) == 0x12340000u + offset);
+    }
+    CHECK(c.Kernel("DrvGetContentStorageNotification", {0}) ==
+          rex::kernel::X_STATUS_INVALID_PARAMETER);
+  });
+}

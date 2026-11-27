@@ -38,4 +38,11 @@ class IoRuntime(unittest.TestCase):
         self.assertIn(WRITE_CURSOR_NEW,result)
         self.assertIn("GetWritableSpan",result)
         with self.assertRaises(ValueError):patch_file(result)
+    def test_storage_notification_contract(self):
+        result=patch_storage_notifications(NOTIFICATION_STUB)
+        self.assertIn(NOTIFICATION_ENTRY,result)
+        self.assertNotIn(NOTIFICATION_STUB,result)
+        self.assertIn("X_STATUS_NOT_SUPPORTED",result)
+        self.assertNotIn("X_STATUS_SUCCESS",result)
+        with self.assertRaises(ValueError):patch_storage_notifications(result)
 if __name__=="__main__":unittest.main()
