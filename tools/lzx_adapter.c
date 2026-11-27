@@ -23,6 +23,9 @@ static int write_buffer(struct mspack_file *f, void *src, int n) {
 static void *alloc_buffer(struct mspack_system *s,size_t n) { (void)s; return calloc(1,n); }
 static void copy_buffer(void *src,void *dst,size_t n) { memcpy(dst,src,n); }
 static void message(struct mspack_file *f,const char *fmt,...) {(void)f;(void)fmt;}
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
 int x360_lzx(unsigned char *src,size_t src_size,unsigned char *dst,size_t dst_size,int window_bits) {
     struct buffer a={src,src_size,0}, b={dst,dst_size,0};
     struct mspack_system sys={0};

@@ -1,0 +1,202 @@
+name: Metro native Windows x64 package
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/**'
+      - 'tests/**'
+      - 'analysis/**'
+      - 'target.toml'
+      - '.github/workflows/metro-windows-native.yml'
+concurrency:
+  group: metro-win64-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: read
+jobs:
+  windows-x64:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate Windows package scripts
+        run: python -m unittest discover -s tests -p test_metro_windows_package.py
+      - name: Verify original input and patch tests
+        run: |
+          python -m unittest discover -s tests -p test_rexglue_import_patch.py
+          python -m unittest discover -s tests -p test_metro_xam_aot.py
+          python -m unittest discover -s tests -p test_metro_preflight.py
+          python -m unittest discover -s tests -p test_metro_sdk_patches.py
+          python -m unittest discover -s tests -p test_metro_device_control.py
+          python -m unittest discover -s tests -p test_metro_retail_routing.py
+          python -m unittest discover -s tests -p test_metro_boot_contracts.py
+          python -m unittest discover -s tests -p test_metro_io_runtime.py
+          python -m unittest discover -s tests -p test_metro_entries.py
+          python -m unittest discover -s tests -p test_metro_ui_probes.py
+          python -m unittest discover -s tests -p test_metro_audio_probes.py
+          python -m unittest discover -s tests -p test_metro_intro.py
+          python -m unittest discover -s tests -p test_metro_kernel_variables.py
+          python -m unittest discover -s tests -p test_metro_boot_evidence.py
+          python -m unittest discover -s tests -p test_metro_fault_localization.py
+          python -m unittest discover -s tests -p test_metro_heap_probes.py
+          python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
+          python tools/verify_repeated_imports.py
+          python tools/stage_metro_xam_aot.py stage build/fixed-imports
+          python tools/stage_metro_preflight.py build/fixed-imports/dash_17559
+          New-Item -ItemType Directory -Force build/receipts | Out-Null
+          python -m unittest discover -s tests -p test_dashboard_runtime.py
+          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json --flash-tree --fetch-fonts --require-fonts
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Correct import record walker
+        run: |
+          python tools/patch_rexglue_imports.py build/sdk-source
+          python tools/stage_metro_xam_aot.py patch build/sdk-source
+          python tools/patch_rexglue_function_tables.py build/sdk-source
+          python tools/patch_metro_import_slots.py build/sdk-source
+          python tools/patch_metro_device_control.py build/sdk-source
+          python tools/patch_metro_retail_routing.py build/sdk-source --receipt build/receipts/retail-routing.json
+          python tools/patch_metro_boot_contracts.py build/sdk-source
+          python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
+          python tools/patch_metro_virtual_memory.py build/sdk-source --tests tests/sdk/metro_virtual_memory.cpp
+          python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
+          python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp
+          python tools/patch_metro_system_attach.py build/sdk-source --tests tests/sdk/metro_system_attach.cpp
+          python tools/patch_metro_module_identity.py build/sdk-source
+          python tools/patch_metro_guest_pc.py build/sdk-source
+          python tools/patch_metro_console_config.py build/sdk-source --tests tests/sdk/metro_xconfig.cpp
+          python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
+          python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
+      - uses: actions/checkout@v4
+        with:
+          repository: fabegalo/x360-native
+          ref: 7361a8a164c9d2af4a5c3107868b0a6712fd25a4
+          path: build/metro-reference
+          persist-credentials: false
+          sparse-checkout: |
+            titles/dash_17559/analysis
+      - name: Set up pinned SDK Windows toolchain
+        uses: ./build/sdk-source/.github/actions/setup-toolchain
+        with:
+          platform: win-amd64
+      - name: Set up MSVC x64 environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Build native LZX verification adapter
+        run: |
+          $source = "build/sdk-source/thirdparty/libmspack/libmspack/mspack"
+          clang -shared -O2 "-I$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.dll
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/verify_metro_entries.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.dll --reference build/metro-reference/titles/dash_17559/analysis/dash_17559_pointer_targets.toml --receipt build/receipts/metro-entry-hints.json
+          python tools/stage_metro_intro.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.dll --receipt build/receipts/metro-intro-input.json
+      - name: Set up persistent native compiler cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          variant: sccache
+          key: metro-windows-amd64-a3e1d826
+          max-size: 3G
+      - name: Restore exact patched release SDK
+        id: sdk_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/sdk-source/out/install/win-amd64
+          key: rexglue-metro-win64-release-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/stage_metro_xam_aot.py', 'tests/sdk/*.cpp') }}
+      - name: Compile patched SDK release (non-debug CRT)
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        working-directory: build/sdk-source
+        run: |
+          cmake --preset win-amd64 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CONFIGURATION_TYPES=Release -DCMAKE_DEFAULT_BUILD_TYPE=Release -DCMAKE_DEFAULT_CONFIGS=Release -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build out/build/win-amd64 --config Release --target install --parallel 4
+      - name: Select patched SDK
+        run: |
+          $sdk = (Resolve-Path build/sdk-source/out/install/win-amd64).Path
+          if (!(Test-Path "$sdk/bin/rexglue.exe")) { throw "Missing Windows native recompiler" }
+          "SDK=$sdk" >> $env:GITHUB_ENV
+      - name: Cache successful SDK build
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/sdk-source/out/install/win-amd64
+          key: ${{ steps.sdk_cache.outputs.cache-primary-key }}
+        continue-on-error: true
+      - name: Generate four original native modules
+        run: |
+          $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
+          Push-Location $folder
+          & "$env:SDK/bin/rexglue.exe" --log-file "$folder/codegen-detail.log" codegen dash_17559_manifest.toml *> codegen.log
+          $status = $LASTEXITCODE
+          Pop-Location
+          python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/windows-codegen-diagnostics.json
+          foreach ($module in @("generated","generated_xam","generated_hud","generated_bootanim")) {
+            python tools/aot_receipt.py "$folder/$module" --status $status --output "build/receipts/windows-$module.json"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          if ($status -ne 0) { exit $status }
+          python tools/filter_zero_aot_mappings.py "$folder" --receipt build/receipts/windows-zero-address-mappings.json
+          python tools/instrument_metro_heap.py "$folder/generated_xam" --receipt build/receipts/windows-heap-probes.json
+          python tools/instrument_metro_ui.py "$folder" --receipt build/receipts/windows-ui-probes.json
+          python tools/instrument_metro_audio.py "$folder/generated_xam" --receipt build/receipts/windows-audio-probes.json
+      - name: Compile native Windows EXE and all three guest DLLs
+        run: |
+          $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_COMPILER_LAUNCHER=sccache "-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG" "-DCMAKE_PREFIX_PATH=$env:SDK"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build "$folder/native" --parallel 3 *> "$folder/build.log"
+          $status = $LASTEXITCODE
+          python tools/aot_diagnostics.py "$folder/build.log" --output build/receipts/windows-build.json
+          if ($status -ne 0) { Get-Content "$folder/build.log" -Tail 80; exit $status }
+      - name: Package validated PE32+ native runtime
+        id: package
+        run: |
+          python tools/package_metro_windows.py build/fixed-imports/dash_17559/native --output build/metro-win64 --commit "${{ github.sha }}" --sdk-source build/sdk-source
+      - name: Native Windows headless mapping preflight
+        if: steps.package.outcome == 'success'
+        run: |
+          $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
+          $package = (Resolve-Path build/metro-win64).Path
+          Remove-Item Env:X360_METRO_BOOT -ErrorAction SilentlyContinue
+          Remove-Item Env:X360_METRO_INTRO -ErrorAction SilentlyContinue
+          $arguments = @("--title.game_root=`"$folder/inputs`"","--title.entry=dash.xex")
+          $p = Start-Process -FilePath "$package/dash_17559.exe" -WorkingDirectory $package -ArgumentList $arguments -RedirectStandardOutput "$package/preflight.log" -RedirectStandardError "$package/preflight-stderr.log" -PassThru
+          $timedOut = !$p.WaitForExit(90000)
+          if ($timedOut) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; $p.WaitForExit() }
+          $status = $p.ExitCode
+          $log = Get-Content "$package/preflight.log" -Raw
+          $gates = @("dashboard_load","flash_mount","dashboard_identity","xam_registry","xam_load","xam_data_mapping","all_retail_export_mappings","kernel_variables","dynamic_xam_identity","custom_object_callbacks","hud_retail_mapping","original_resource_integrity","bootanim_native_mapping","clean_unload")
+          $missing = @($gates | Where-Object { $log -notmatch "(?m)^METRO_PREFLIGHT pass $($_)\r?$" })
+          $passed = (!$timedOut -and $status -eq 0 -and $missing.Count -eq 0)
+          [ordered]@{passed=$passed;exit_code=$status;timed_out=$timedOut;missing_gates=$missing;interactive_dashboard_verified=$false} | ConvertTo-Json -Depth 4 | Set-Content "$package/windows-preflight.json"
+          Get-Content "$package/windows-preflight.json"
+          if (!$passed) { throw "Windows native mapping not verified; package is diagnostic only" }
+      - name: Upload native Windows binaries (even if mapping preflight fails)
+        if: always() && steps.package.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-windows-x64-${{ github.sha }}
+          path: build/metro-win64/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Windows build and verification receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-windows-receipts-${{ github.sha }}
+          path: build/receipts/
+          if-no-files-found: ignore

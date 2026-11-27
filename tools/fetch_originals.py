@@ -59,6 +59,8 @@ def acquire(item, output, origin, archive=None):
             f.close()
             tmp.replace(dest)
         finally:
+            # Windows cannot unlink a still-open NamedTemporaryFile.
+            f.close()
             tmp.unlink(missing_ok=True)
     return dest
 
