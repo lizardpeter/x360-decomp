@@ -11,7 +11,11 @@ class IoRuntime(unittest.TestCase):
                        "                            MappedU32 segment_array, u32 length, MappedU64 byte_offset_ptr) {\n  X_STATUS result = X_STATUS_SUCCESS;",
                        "byte_offset_ptr ? static_cast<u64>(*byte_offset_ptr) : -1",
                        "byte_offset_ptr ? static_cast<u64>(*byte_offset_ptr) : -1",
-                       "byte_offset_ptr ? static_cast<u64>(*byte_offset_ptr) : -1"])
+                       "byte_offset_ptr ? static_cast<u64>(*byte_offset_ptr) : -1",
+                       "u32 NtCreateFile_entry(",
+                       CREATE_START_OLD,
+                       "if (object_attrs->root_directory != 0 && object_attrs->root_directory != 1) use(object_attrs->root_directory);",
+                       CREATE_END_OLD, "u32 NtOpenFile_entry(", DISMOUNT_OLD])
         result=patch_io(text)
         self.assertIn(IO_BODY,result)
         self.assertNotIn("REX_ASSERT_ALWAYS",IO_BODY)
@@ -19,6 +23,12 @@ class IoRuntime(unittest.TestCase):
         self.assertLess(IO_BODY.index("GetWritableSpan"),IO_BODY.index("memory.Store"))
         self.assertEqual(result.count("guest_memory.Load<be_u64>"),3)
         self.assertNotIn("*byte_offset_ptr",result)
+        self.assertIn(CREATE_HELPER,result)
+        self.assertIn(CREATE_START_NEW,result)
+        self.assertIn(CREATE_END_NEW,result)
+        self.assertIn(DISMOUNT_NEW,result)
+        self.assertNotIn("object_attrs->root_directory",result)
+        self.assertNotIn(DISMOUNT_OLD,result)
         with self.assertRaises(ValueError):patch_io(result)
     def test_file_cursor(self):
         source="\n".join(['#include <rex/kernel/title_runtime.h>',READ_CURSOR_OLD,
