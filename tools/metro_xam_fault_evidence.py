@@ -435,6 +435,117 @@ def global_object_report(image,base,pe,thunks):
             "construction_call_graph":list(visited.values()),"traversal_truncated":bool(queue)}
 
 
+
+# Live run 45949049905 reached the background, not the full menu. Restrict
+# this report to the actual failing paths and observed peripheral services.
+BACKGROUND_LR={
+ "xam":{0x816A8B5C:"ObCreateObject",0x8175E160:"NicGetLinkState",
+        0x8174CC68:"NicGetLinkState",0x8175F83C:"NicGetLinkState",
+        0x81749AFC:"NicAttach",0x81749B18:"NicGetOpt",0x81740864:"NicGetOpt",
+        0x817FC5DC:"UsbdGetNatalHardwareVersion",0x816F4394:"XInputdGetFailedConnectionOrBind",
+        0x816AF49C:"HalRegisterHdDvdRomNotification",0x816FB150:"HalGetCurrentAVPack"},
+ "dash":{0x9217FF50:"HalGetCurrentAVPack",0x9226FDF0:"VdReadEEDIDBlock",
+         0x9226FDFC:"VdReadEEDIDBlock",0x92370F8C:"VdSetStudioRGBMode"}
+}
+BACKGROUND_STRINGS=("HdDvdRom","DASHUSER:","ThematicSkin","VisionEffect",
+                    "XenonJKLatin.xtt","XenonCLatin.xtt","hud.xex","shrdres.xzp")
+BACKGROUND_IMPORTS={"ObCreateObject","ObInsertObject","ObDereferenceObject",
+                    "ObTranslateSymbolicLink","HalRegisterHdDvdRomNotification",
+                    "IoSynchronousDeviceIoControlRequest","NicAttach","NicGetLinkState",
+                    "NicGetOpt","UsbdGetNatalHardwareVersion","XInputdGetFailedConnectionOrBind",
+                    "HalGetCurrentAVPack","VdReadEEDIDBlock","VdSetStudioRGBMode"}
+
+def background_dependencies(label,image,base,pe,rows,catalog,stubs):
+    from collections import defaultdict
+    imports_by_pc={}
+    for row in rows:
+        lib=library(row["library"]); ordinal=int(row["ordinal"],16)
+        name,kind=catalog.get((lib,ordinal),("", "unknown"))
+        for pc in row["thunk_slots"]:
+            imports_by_pc[pc]={"library":lib,"name":name,"ordinal":f"{ordinal:04X}","sdk_stub":name in stubs}
+    observations=[observed_call(image,base,pe,lr,name,imports_by_pc)
+                  for lr,name in BACKGROUND_LR[label].items()]
+    # Find direct literal starts and full strings containing the observed
+    # names. Also join references through verified aligned data words.
+    literal_hits=defaultdict(set)
+    folded=image.lower()
+    for value in BACKGROUND_STRINGS:
+        for encoding,unit in (("ascii",1),("utf-16-be",2),("utf-16-le",2)):
+            needle=value.encode(encoding); cursor=0
+            while (offset:=folded.find(needle.lower(),cursor))>=0:
+                cursor=offset+len(needle)
+                literal_hits[base+offset].add(value)
+                start=offset
+                while start>=unit and offset-start<96*unit:
+                    prev=image[start-unit:start]
+                    try:char=prev.decode(encoding)
+                    except UnicodeDecodeError:break
+                    if not char.isascii() or not 32<=ord(char)<=126:break
+                    start-=unit
+                literal_hits[base+start].add(value)
+    # Data pointer references only; never claim a random word in a code
+    # section is a legitimate static pointer.
+    data_refs=defaultdict(set)
+    for section in pe["sections"]:
+        if section["flags"]&0x20000000:continue
+        start=section["rva"];end=start+section["loaded_bytes"]
+        for offset in range(start,end-3,4):
+            value=read_word(image,base,base+offset)
+            if value in literal_hits:data_refs[base+offset].update(literal_hits[value])
+    lookup={k:v for k,v in literal_hits.items()}
+    lookup.update(data_refs)
+    refs=[];groups=set();calls=[]
+    for start,size,_ in pe["functions"]:
+        known={}
+        for pc in range(start,start+size,4):
+            word=read_word(image,base,pc);op=word>>26
+            dest=branch(pc,word)
+            if dest and dest[0] in imports_by_pc and imports_by_pc[dest[0]]["name"] in BACKGROUND_IMPORTS:
+                calls.append({"owner":hx(start),"site":hx(pc),"import":imports_by_pc[dest[0]],"linked":dest[1]})
+                if imports_by_pc[dest[0]]["name"]!="ObDereferenceObject":groups.add(start)
+            if op in (16,17,18,19):
+                known.clear();continue
+            d=operand(pc,word)
+            kind=d["kind"]
+            value=None
+            if kind=="immediate":value=d["value"]
+            elif kind=="register_offset" and d["base"] in known:value=known[d["base"]]+d["value"]
+            elif kind=="or_immediate" and d["source"] in known:value=known[d["source"]]|d["value"]
+            elif kind=="register_copy":value=known.get(d["source"])
+            elif kind in ("memory_load","memory_store") and d["base"] in known:
+                address=(known[d["base"]]+d["offset"])&0xffffffff
+                if address in lookup:
+                    refs.append({"owner":hx(start),"site":hx(pc),"kind":kind,"address":hx(address),
+                                 "matched_names":sorted(lookup[address]),"indirect":address in data_refs})
+                    groups.add(start)
+                if kind=="memory_load" and d["width"]==4 and address in data_refs:
+                    value=read_word(image,base,address)
+            if value is not None:
+                value&=0xffffffff
+                if value in lookup:
+                    refs.append({"owner":hx(start),"site":hx(pc),"kind":kind,"address":hx(value),
+                                 "matched_names":sorted(lookup[value]),"indirect":value in data_refs})
+                    groups.add(start)
+                if "writes" in d:known[d["writes"]]=value
+            elif "writes" in d:known.pop(d["writes"],None)
+            elif kind=="memory_store" and not d.get("update"):pass
+            elif kind in ("compare_register","compare_immediate"):pass
+            else:known.clear()
+    groups.update(int(row["function"],16) for row in observations)
+    incoming=[]
+    for start,size,_ in pe["functions"]:
+        for pc in range(start,start+size,4):
+            dest=branch(pc,read_word(image,base,pc))
+            if dest and dest[0] in groups:
+                incoming.append({"owner":hx(start),"site":hx(pc),"target":hx(dest[0]),"linked":dest[1]})
+    functions=[bounded_entry(image,base,pe,a,imports_by_pc,8192) for a in sorted(groups)]
+    return {"live_run":45949049905,"observed_calls":observations,
+            "literal_locations":[{"address":hx(k),"names":sorted(v)} for k,v in sorted(literal_hits.items())],
+            "literal_pointer_slots":[{"address":hx(k),"names":sorted(v)} for k,v in sorted(data_refs.items())],
+            "literal_references":refs,"focused_import_calls":calls,"incoming_calls":incoming,
+            "function_groups":functions,
+            "scope":"direct original operand and literal-reference evidence; no inferred device or object ABI"}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -508,6 +619,12 @@ def main():
           "heap call sites,",len(report["module_lifecycle"]["lifecycle_import_calls"]),
           "lifecycle import sites,",len(report["module_lifecycle"]["literal_descriptor_zero_constructors"]),
           "literal descriptor-zero constructors")
+    report["background_dependencies"]={
+        "dash":background_dependencies("dash",dash,db,dp,imports(dash,db,parse_xex(draw)),catalog,stubs),
+        "xam":background_dependencies("xam",image,base,pe,imports(image,base,parse_xex(raw)),catalog,stubs)}
+    for label,details in report["background_dependencies"].items():
+        print("background dependencies",label,"observed sites",len(details["observed_calls"]),
+              "literal refs",len(details["literal_references"]),"focused functions",len(details["function_groups"]))
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
