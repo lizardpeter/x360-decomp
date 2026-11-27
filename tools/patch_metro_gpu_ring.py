@@ -90,7 +90,48 @@ def patch(sdk,tests):
     t=sdk/"tests/unit/gpu/fence_endianness_test.cpp"
     test=t.read_text()
     if "metro_gpu_ring" in test:raise ValueError("already staged")
+    # Opt-in bounded diagnostics for guest text clipping at 720p.  No draw
+    # state is modified and no vertex data, textures or strings are logged.
+    vk=sdk/"src/gpu/xenos/vulkan/command_processor.cpp"
+    v=vk.read_text()
+    v=replace(v,"#include <cstdint>","#include <cstdint>\n#include <cstdlib>\n#include <set>")
+    v=replace(v,"  UpdateDynamicState(viewport_info, primitive_polygonal, normalized_depth_control);",r"""  UpdateDynamicState(viewport_info, primitive_polygonal, normalized_depth_control);
+
+  // This is after guest scissor conversion, before the actual draw.
+  // Keep a bounded census of distinct draw states intersecting the top UI band.
+  static const bool metro_clip_trace = [] {
+    const char* v = std::getenv("X360_METRO_TEXT_CLIP_TRACE");
+    return v && v[0] == '1' && !v[1];
+  }();
+  if (metro_clip_trace && draw_resolution_scale_x == 1 && draw_resolution_scale_y == 1) {
+    draw_state::Scissor clip;
+    draw_state::GetScissor(regs, clip);
+    if (clip.offset[1] < 180 && clip.offset[1] + clip.extent[1] > 80) {
+      const auto wt = regs.Get<xenos::reg::PA_SC_WINDOW_SCISSOR_TL>().value;
+      const auto wb = regs.Get<xenos::reg::PA_SC_WINDOW_SCISSOR_BR>().value;
+      const auto st = regs.Get<xenos::reg::PA_SC_SCREEN_SCISSOR_TL>().value;
+      const auto sb = regs.Get<xenos::reg::PA_SC_SCREEN_SCISSOR_BR>().value;
+      const auto wo = regs.Get<xenos::reg::PA_SC_WINDOW_OFFSET>().value;
+      const auto vs = vertex_shader->GetUcodeDataHash();
+      const u64 ps = pixel_shader ? pixel_shader->GetUcodeDataHash() : 0;
+      const auto key = std::array<u64, 16>{
+        vs, ps, index_count, static_cast<u32>(prim_type), wt, wb, st, sb, wo,
+        clip.offset[0], clip.offset[1], clip.extent[0], clip.extent[1],
+        viewport_info.xy_offset[0], viewport_info.xy_extent[0],
+        regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch};
+      static thread_local std::set<std::array<u64, 16>> seen;
+      if (seen.size() < 512 && seen.insert(key).second) {
+        REXGPU_INFO("METRO_TEXT_CLIP seq={} vs={:016X} ps={:016X} indices={} prim={} window_tl={:08X} window_br={:08X} screen_tl={:08X} screen_br={:08X} window_offset={:08X} x={} y={} w={} h={} viewport_x={} viewport_y={} viewport_w={} viewport_h={} pitch={}",
+          seen.size(), vs, ps, index_count, static_cast<u32>(prim_type), wt, wb, st, sb, wo,
+          clip.offset[0], clip.offset[1], clip.extent[0], clip.extent[1],
+          viewport_info.xy_offset[0], viewport_info.xy_offset[1],
+          viewport_info.xy_extent[0], viewport_info.xy_extent[1],
+          regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch);
+      }
+    }
+  }""")
     p.write_text(source);h.write_text(header);t.write_text(test+"\n"+tests.read_text())
+    vk.write_text(v)
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)

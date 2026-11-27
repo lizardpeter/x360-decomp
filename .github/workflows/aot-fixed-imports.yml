@@ -318,6 +318,11 @@ jobs:
             cat build/receipts/metro-symbolized.txt
             python tools/analyze_metro_boot.py "$log" --output build/receipts/metro-boot-analysis.json
           fi
+          # Metadata-only visual localization; always preserve failed observations.
+          python tools/metro_720p_text_probe.py "$folder/native/metro-capture" --output build/receipts/metro-text-720p.json
+          if [ -f "$log" ]; then
+            grep 'METRO_TEXT_CLIP ' "$log" > build/receipts/metro-text-clip.log || true
+          fi
           exit "$status"
       - name: Attempt same-runtime original boot animation to Metro transition
         if: always() && steps.preflight.outcome == 'success'

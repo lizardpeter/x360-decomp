@@ -9,6 +9,7 @@ out="$native/metro-capture"
 mkdir -p "$out"
 rm -f "$out"/candidate-*.png "$out"/input-*.png "$out/next.png" "$out/receipt.txt" "$out/boot.log"
 export X360_METRO_BOOT=1
+export X360_METRO_TEXT_CLIP_TRACE=1
 export SDL_AUDIODRIVER=dummy
 export SDL_VIDEODRIVER=x11
 export XDG_RUNTIME_DIR="$out/xdg"
@@ -261,3 +262,18 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
     exit 1
   fi
 fi
+
+# Separate, non-destructive tab-style sampling. Shoulder buttons switch
+# pages on the original UI; record actual visual outcome, not an assumed state.
+for tab in 1 2 3 4 5; do
+  before="$(read_frame)"
+  xdotool keydown e
+  sleep 0.25
+  xdotool keyup e
+  if ! wait_frames "$before" 15 >/dev/null; then
+    printf 'tab_probe_incomplete=%s\n' "$tab" >> "$out/receipt.txt"
+    break
+  fi
+  import -window "$win" "$out/input-tab-$tab.png" || break
+  (cd "$out" && sha256sum "input-tab-$tab.png") >> "$out/receipt.txt"
+done
