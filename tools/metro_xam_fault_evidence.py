@@ -349,6 +349,66 @@ def second_fault_report(image,base,pe,thunks):
             "fault_operand":fault,"unwind_functions":frames,"direct_incoming_edges":incoming,
             "related_startup_functions":related,"direct_call_target_prefixes":wrappers}
 
+
+def xam_global_references(image,base,pe,thunks,slot):
+    """Find exact absolute accesses via a bounded local constant propagation pass.
+    Do not infer a writer through an unknown pointer or interprocedural alias."""
+    records=[]
+    for start,size,_ in pe["functions"]:
+        known={}
+        for pc in range(start,start+size,4):
+            w=read_word(image,base,pc);op=w>>26
+            r,a,b=registers(w)
+            d=operand(pc,w)
+            if d["kind"] in ("memory_load","memory_store"):
+                addr=(known.get(a,0)+d["offset"])&0xffffffff if a==0 or a in known else None
+                if addr==slot:
+                    records.append({"owner":hx(start),"site":hx(pc),"access":d,
+                                    "operands":describe(image,base,max(start,pc-64),
+                                      min(start+size,pc+100)-max(start,pc-64),thunks)})
+            if op in (16,17,18,19):
+                known.clear();continue
+            if d["kind"]=="immediate":known[d["writes"]]=d["value"]&0xffffffff
+            elif d["kind"]=="register_offset":
+                dst=d["writes"];v=known.get(d["base"])
+                if v is None:known.pop(dst,None)
+                else:known[dst]=(v+d["value"])&0xffffffff
+            elif d["kind"]=="or_immediate":
+                dst=d["writes"];v=known.get(d["source"])
+                if v is None:known.pop(dst,None)
+                else:known[dst]=(v|d["value"])&0xffffffff
+            elif d["kind"]=="register_copy":
+                dst=d["writes"];v=known.get(d["source"])
+                if v is None:known.pop(dst,None)
+                else:known[dst]=v
+            elif "writes" in d:known.pop(d["writes"],None)
+            elif d["kind"]=="memory_store" and not d.get("update"):pass
+            elif d["kind"] in ("compare_immediate","compare_register"):pass
+            else:known.clear()
+    return records
+
+def global_object_report(image,base,pe,thunks):
+    load=operand(0x8169D064,read_word(image,base,0x8169D064))
+    high=operand(0x8169D060,read_word(image,base,0x8169D060))
+    if high.get("kind")!="immediate" or load.get("kind")!="memory_load" or high["writes"]!=load["base"]:
+        raise ValueError("global object pointer sequence changed")
+    slot=(high["value"]+load["offset"])&0xffffffff
+    if slot!=0x81A9F850:raise ValueError("global object identity changed")
+    refs=xam_global_references(image,base,pe,thunks,slot)
+    writers=[r for r in refs if r["access"]["kind"]=="memory_store"]
+    owner_entries=sorted({int(r["owner"],16) for r in writers})
+    producers=[bounded_entry(image,base,pe,a,thunks,4096) for a in owner_entries]
+    incoming=[]
+    for start,size,_ in pe["functions"]:
+        for pc in range(start,start+size,4):
+            dest=branch(pc,read_word(image,base,pc))
+            if dest and dest[0] in owner_entries:
+                lo=max(start,pc-64);hi=min(start+size,pc+64)
+                incoming.append({"owner":hx(start),"site":hx(pc),"target":hx(dest[0]),
+                                 "linked":dest[1],"operands":describe(image,base,lo,hi-lo,thunks)})
+    return {"address":hx(slot),"original_initial_word":hx(read_word(image,base,slot)),
+            "references":refs,"writer_functions":producers,"writer_incoming_edges":incoming}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -404,12 +464,14 @@ def main():
             "verified_storage_fault_details":verified_storage_fault_details(image,base,pe,thunks),
             "verified_device_stats_status":verified_device_stats_status(image,base,thunks),
             "startup_contract_inventory":startup_contract_inventory(image,base,pe,thunks),
-            "second_native_fault":second_fault_report(image,base,pe,thunks)}
+            "second_native_fault":second_fault_report(image,base,pe,thunks),
+            "second_fault_global":global_object_report(image,base,pe,thunks)}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
     print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
+    print("second fault global:",json.dumps({k:v for k,v in report["second_fault_global"].items() if k in ("address","original_initial_word")},sort_keys=True), "writers",len(report["second_fault_global"]["writer_functions"]))
     print("second native fault:",json.dumps({k:v for k,v in report["second_native_fault"].items() if k in ("source_run","guest_fault_address","fault_pc","fault_operand")},sort_keys=True))
     print("startup contract wrappers:",len(report["startup_contract_inventory"]["function_groups"]))
     print("device stats status conversion:",json.dumps(report["verified_device_stats_status"],sort_keys=True))
