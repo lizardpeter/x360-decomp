@@ -6,7 +6,7 @@ from pathlib import Path
 from patch_rexglue_imports import REVISION
 
 def replace(source,old,new):
-    if source.count(old)!=1 or new in source:
+    if source.count(old)!=1 or (new and new in source):
         raise ValueError("unexpected system process anchor: "+old[:100])
     return source.replace(old,new,1)
 
