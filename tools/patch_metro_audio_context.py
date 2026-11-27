@@ -16,18 +16,18 @@ def patch(sdk,tests):
         """class XMADecoder;
 
 enum class RetailRenderContext { kNone, kXam17559, kBootanim17559 };
-// Match both callback entry and registration return address. An ordinary
-// title at either individual address is not sufficient evidence.
-constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 lr) {
-  if (callback==0x819A5878u && lr==0x819AC5A0u)
+// Match callback entry and exact loaded retail image layout. Generated direct
+// calls need not preserve the guest LR at a host kernel export.
+constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 base,u32 size,u32 entry) {
+  if (callback==0x819A5878u && base==0x815f0000u && size==0x610000u && entry==0x81696af0u)
     return RetailRenderContext::kXam17559;
-  if (callback==0x9804BEA0u && lr==0x980517C8u)
+  if (callback==0x9804BEA0u && base==0x98000000u && size==638976u && entry==0)
     return RetailRenderContext::kBootanim17559;
   return RetailRenderContext::kNone;
 }""")
     s=replace(s,"Result<u32> RegisterClient(u32 callback, u32 callback_arg);",
         """Result<u32> RegisterClient(u32 callback, u32 callback_arg,
-                             bool direct_context = false);""")
+                             bool direct_context = false, u32 driver_out = 0);""")
     s=replace(s,"    bool refused_logged = false;",
         "    bool refused_logged = false;\n    bool direct_context = false;")
     files[p]=s
@@ -37,7 +37,7 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 lr) {
                                   ? clients_[index].callback_arg
                                   : clients_[index].wrapped_callback_arg;""")
     s=replace(s,"Result<u32> APU::RegisterClient(u32 callback, u32 callback_arg) {",
-        "Result<u32> APU::RegisterClient(u32 callback, u32 callback_arg, bool direct_context) {")
+        "Result<u32> APU::RegisterClient(u32 callback, u32 callback_arg, bool direct_context, u32 driver_out) {")
     old="""  semaphore->Release(static_cast<i32>(queued_frames_), nullptr);
   const u32 ptr = StateOf(runtime_).GetAddressSpace()->SystemHeapAlloc(0x4);
   *StateOf(runtime_).GetAddressSpace()->TranslateVirtual<be_u32*>(ptr) = callback_arg;
@@ -57,6 +57,9 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 lr) {
     *StateOf(runtime_).GetAddressSpace()->TranslateVirtual<be_u32*>(ptr) = callback_arg;
   }
   *free = {*stream, callback, callback_arg, ptr, true, false, direct_context};
+  // Publish the driver handle while the worker still holds off on the slot.
+  if (driver_out)
+    *StateOf(runtime_).GetAddressSpace()->TranslateVirtual<be_u32*>(driver_out) = 0x41550000u | index;
   // Publish the fully initialized slot before making credits available.
   semaphore->Release(static_cast<i32>(queued_frames_), nullptr);"""
     s=replace(s,old,new)
@@ -73,13 +76,31 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 lr) {
   auto* thread = KernelThread::GetCallingThread();
   const u32 lr = thread && thread->GetThreadState()
       ? static_cast<u32>(thread->GetThreadState()->GetContext()->lr) : 0;
-  const auto contract=kernel::GetRetailRenderContext(callback,lr);
+  auto& runtime=kernel::GetCurrent();
+  auto& registry=runtime.GetModuleRegistry();
+  auto contract=kernel::RetailRenderContext::kNone;
+  // The live 394ea8ba run reached the original callback but the LR-gated
+  // correction never selected direct mode. Use actual mapped module identity,
+  // not an assumed LR value at a compiled host import.
+  for (const auto candidate : {registry.FindUserModule("xam.xex"),registry.GetExecutable()}) {
+    if (!candidate)continue;
+    auto module=runtime.GetObjectTable().Get<ModuleObject>(*candidate);
+    const auto* xex=module?module->GetXEX():nullptr;
+    if (!xex || !xex->IsExecutableAddress(callback))continue;
+    contract=kernel::GetRetailRenderContext(callback,xex->GetBaseAddress(),
+                                            xex->GetImageSize(),xex->GetEntryPoint());
+    if (contract!=kernel::RetailRenderContext::kNone)break;
+  }
   const bool direct_context=contract!=kernel::RetailRenderContext::kNone;
+  const u32 output=driver_ptr.GetGuestAddress();
+  if (!output || !runtime.GetGuestMemory().GetWritableSpan(output,4))
+    return X_E_INVALIDARG;
+  REXKRNL_INFO("METRO_AUDIO registration callback={:08X} argument={:08X} lr={:08X} direct={} output={:08X}",
+                callback,callback_arg,lr,direct_context,output);
   if (direct_context) {
     // Both independently verified original callbacks access the direct object
     // through +304 and write +300. Refuse invalid contexts before queuing
     // any audio work; don't silently substitute the legacy wrapper.
-    auto& runtime=kernel::GetCurrent();
     if (!runtime.FindFunction(callback) || !callback_arg ||
         callback_arg>0xffffffffu-308u ||
         !runtime.GetGuestMemory().GetReadOnlySpan(callback_arg,308) ||
@@ -88,8 +109,9 @@ constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 lr) {
     REXKRNL_INFO("METRO_AUDIO direct_context module={} callback={:08X} object={:08X}",
         contract==kernel::RetailRenderContext::kXam17559?"xam":"bootanim",callback,callback_arg);
   }
-  auto index = apu->RegisterClient(callback, callback_arg, direct_context);""")
-    s=replace(s,"#include <rex/kernel/title_runtime.h>","#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>")
+  auto index = apu->RegisterClient(callback, callback_arg, direct_context, output);""")
+    s=replace(s,"#include <rex/kernel/title_runtime.h>","#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>\n#include <rex/kernel/module.h>\n#include <rex/kernel/object/module_object.h>\n#include <rex/kernel/object/object_table.h>")
+    s=replace(s,"  *driver_ptr = 0x41550000 | (*index & 0x0000FFFF);","  // APU publishes the output before scheduling the first callback.")
     files[p]=s
     p="tests/unit/kernel/apu_test.cpp";s=(sdk/p).read_text()
     if "metro_audio_context" in s:raise ValueError("test already staged")
