@@ -113,7 +113,7 @@ for key in Right Left; do
   import -window "$win" "$out/input-$key.png"
   printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
   if [[ "$frame_before" =~ ^[1-9][0-9]*$ && "$frame_after" =~ ^[1-9][0-9]*$ ]] && [ "$frame_after" -gt "$frame_before" ]; then
-    if tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_PAD ' >> "$out/receipt.txt"; then
+    if tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_GUEST_PAD ' >> "$out/receipt.txt"; then
       pad_observed=$((pad_observed+1))
     fi
   fi
@@ -124,7 +124,7 @@ done
 printf 'input_probes_with_frame_progress_and_pad_transition=%s\n' "$pad_observed" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
 if [ "$pad_observed" -ne 2 ]; then
-  echo "Real pad transitions and frame progress have not been established for both probes." >&2
+  echo "Guest-consumed pad transitions and frame progress have not been established for both probes." >&2
   exit 1
 fi
 echo "Captured actual guest-frame and input candidates; visual menu inspection is still required."
