@@ -247,16 +247,27 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
         !entry.dispatcher || !entry.xam_handle)
         throw std::runtime_error("missing Metro guest startup binding");
     std::cout << "METRO_BOOT pass guest_thread" << std::endl;
-    // Use the real process-attach ABI and preserve the result.
-    rex::u64 args[] = {entry.xam_handle, 1, 0};
+    // XAM is a system DLL. Its original initializer explicitly chooses
+    // a different heap for system and title threads. Run attach with the
+    // actual system KPROCESS/TLS, not a forced return from a kernel export.
     std::cout << "METRO_BOOT xam_attach_begin" << std::endl;
-    const auto result = entry.dispatcher->Execute(thread->GetThreadState(), kXamEntry, args, 3);
+    auto attached_xam=thread->GetRuntime().AttachHostedSystemModule(kXamEntry,entry.xam_handle);
+    if (!attached_xam) {
+        std::cout << "METRO_BOOT fail system_attach " << attached_xam.error().GetDescription() << std::endl;
+        thread->Exit(1);
+    }
+    const auto result=attached_xam->entry_result;
+    auto& memory=thread->GetRuntime().GetGuestMemory();
+    auto object=memory.Load<rex::be_u32>(0x81A9F850);
+    std::cout << "METRO_BOOT system_object=0x" << std::hex
+              << (object ? static_cast<rex::u32>(*object) : 0u)
+              << " readable=" << static_cast<bool>(object) << std::dec << std::endl;
     std::cout << "METRO_BOOT xam_attach_result=0x" << std::hex << result << std::dec << std::endl;
     if (static_cast<std::uint32_t>(result) == 0 || result == 0xDEADBABE) {
         std::cout << "METRO_BOOT fail xam_attach" << std::endl;
         thread->Exit(1);
     }
-    const auto bound_pads = thread->GetRuntime().AnnounceHostedPads();
+    const auto bound_pads=attached_xam->bound_pads;
     std::cout << "METRO_BOOT hosted_pads=" << bound_pads << std::endl;
     attached.store(true, std::memory_order_release);
     std::cout << "METRO_BOOT pass xam_attach\nMETRO_BOOT pass dashboard_entry" << std::endl;

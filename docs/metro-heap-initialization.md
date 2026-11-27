@@ -34,3 +34,25 @@ verified heap/constructor PCs. Generated instrumentation is bounded,
 environment-gated, and leaves original instructions and image bytes
 unchanged. Missing required markers abort instrumenting before writing.
 The generated source stays local; only metadata and boot logs are retained.
+
+## System process attachment
+
+Original scalar execution evidence (run 45947941331) confirms that the
+same 6536-byte system-object allocation selects descriptor 0 (81AABFF8)
+when the thread is a user/title process with no per-thread object, but
+descriptor 1 (81AAC014) when it belongs to the system process with no
+per-thread object. The original initializer explicitly clears descriptor
+0 and constructs descriptor 1. This explains why running the system DLL's
+process-attach on the dashboard title thread is an invalid boot context.
+The precise live allocator return still requires the instrumented boot.
+
+The hosted SDK already has distinct idle, title and system KPROCESS
+objects and per-process TLS allocation bitmaps. XAM attach now runs the
+unmodified original entry in a real system-process kernel worker with its
+own guest stack, KPCR, KTHREAD and TLS; the dashboard entry remains on
+its original title thread. The title waits for actual attach completion,
+retains the original return value and fails on a timeout or zero return.
+Controller binding notifications use the same system context. No process
+type export is overridden and no missing heap pointer is manufactured.
+Regression tests exercise the actual dispatcher, process identity, TLS
+isolation and original return semantics.
