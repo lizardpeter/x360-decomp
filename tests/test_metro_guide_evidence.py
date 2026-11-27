@@ -24,3 +24,23 @@ class GuideInstrumentation(unittest.TestCase):
         code,hits=insert("  // METRO_GUEST_PC 816F0E84\n","xam",{})
         self.assertEqual(code,"  // METRO_GUEST_PC 816F0E84\n")
         self.assertFalse(hits)
+
+from metro_guide_evidence import deferred_trace_plan
+class DeferredStartup(unittest.TestCase):
+    def test_continuations_and_actual_compares(self):
+        rows=[{"pc":"00001000","kind":"branch","linked":True,"target":"00002000"},
+              {"pc":"00001004","kind":"compare_immediate","register":3,"value":0},
+              {"pc":"00001008","kind":"conditional_branch","target":"00001014"},
+              {"pc":"0000100C","kind":"branch","linked":True,"target":"00003000"},
+              {"pc":"00001010","kind":"branch","linked":True,"target":"00004000"},
+              {"pc":"00001014","kind":"return"}]
+        plan=deferred_trace_plan(rows)
+        self.assertEqual(plan["00001004"]["result_kind"],"r3_class")
+        self.assertEqual(plan["00001010"]["name"],"deferred_after_00003000")
+        self.assertIn("00001014",plan)
+        code,_=insert("  // METRO_GUEST_PC 00001004\n", "xam",plan)
+        self.assertIn("ctx.r3.u32",code)
+        self.assertNotIn("r4.u32",code)
+    def test_unknown_class_rejected(self):
+        with self.assertRaises(ValueError):
+            insert("  // METRO_GUEST_PC 00001004\n","xam",{"00001004":{"name":"deferred_bad","phase":"compare","result_kind":"r4_class"}})

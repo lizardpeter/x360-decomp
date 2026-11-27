@@ -50,6 +50,31 @@ def literal_mask(w):
             return {"kind":"single_original_bit_10","shift":shift,"mask_start":mb,"mask_end":me}
     return None
 
+def deferred_trace_plan(rows):
+    """Trace all bounded direct calls, actual compares, and branch exits.
+
+    A continuation may coincide with the next call: keep its return marker
+    first. Only classify registers at an actual original comparison.
+    """
+    by_pc={int(r["pc"],16):r for r in rows}
+    if not by_pc:return {}
+    plan={}
+    def add(pc,name,phase,result_kind="observed"):
+        if pc in by_pc:plan.setdefault(hx(pc),{"name":name,"phase":phase,"result_kind":result_kind})
+    for pc,r in by_pc.items():
+        if r["kind"]=="compare_immediate" and r.get("value")==0 and r.get("register") in (3,29,30):
+            add(pc,"deferred_compare_"+hx(pc),"compare","r"+str(r["register"])+"_class")
+    for pc,r in by_pc.items():
+        if r["kind"]=="branch" and r.get("linked"):
+            add(pc+4,"deferred_after_"+r["target"],"continuation")
+    for pc,r in by_pc.items():
+        if r["kind"]=="branch" and r.get("linked"):
+            add(pc,"deferred_call_"+r["target"],"call")
+        elif r["kind"]=="conditional_branch":
+            add(pc+4,"deferred_branch_"+hx(pc),"fallthrough")
+            add(int(r["target"],16),"deferred_branch_"+hx(pc),"target")
+    return plan
+
 def scan(label,raw,image,meta,catalog,stubs):
     base=meta["image_base"];pe=pe_info(image,base);thunks={}
     for row in imports(image,base,parse_xex(raw)):
@@ -298,6 +323,17 @@ def scan(label,raw,image,meta,catalog,stubs):
         for row in startup_arguments:
             mark(int(row["site"],16),"startup_work_item","call")
             mark(int(row["site"],16)+4,"startup_work_item","return")
+        # Live run 46033912824 entered this worker but did not reach the
+        # hardware gate or registrar. Preserve earlier named gate markers.
+        for pc,entry in deferred_trace_plan(bodies[hx(0x81696558)]["operands"]).items():
+            trace.setdefault(pc,entry)
+        # Verify the last observed import, and record a return only if the
+        # original call actually returns. No key bytes or output are logged.
+        site=0x8189956C
+        b=branch(site,struct.unpack_from(">I",image,site-base)[0])
+        if b and b[1] and thunks.get(b[0],{}).get("name")=="XeKeysExGetKey":
+            mark(site,"deferred_key_service","call")
+            mark(site+4,"deferred_key_service","return")
         # The sole original direct caller of the init wrapper is the UI
         # subsystem initializer. Probe every direct call/return in that
         # bounded original body to locate the first failing stage.

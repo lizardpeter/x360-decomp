@@ -34,6 +34,13 @@ def insert(source,module,plan):
         if pc in STATUS or (phase=='return' and name.startswith(('ui_init_','guide_boot_'))):result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if phase=="return" and name=="hud_skin_load":result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if name=="hw_gate":result='((ctx.r11.u32&0x200u)?"bit_set":"bit_clear")'
+        kind=entry.get("result_kind","observed")
+        if kind not in {"observed","r3_class","r29_class","r30_class"}:raise ValueError("unknown trace result category")
+        if kind!="observed":
+            reg=kind.split("_")[0]
+            result=f'(ctx.{reg}.u32==0?"zero":(ctx.{reg}.u32&0x80000000u?"negative":"positive"))'
+        if name=="deferred_key_service" and phase=="return":
+            result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if pc in INIT_OBJECT:result='(ctx.r3.u32?"nonzero_object":"null_object")'
         out.extend([p+'if (std::getenv("X360_METRO_GUIDE_TRACE")) {\n',
           p+'  static std::atomic<unsigned> metro_guide_count{0};\n',

@@ -81,4 +81,12 @@ class BootEvidence(unittest.TestCase):
         self.assertEqual(a["sample_counts"],{"positive":1,"negative":1})
         self.assertEqual(b["observed_categories"],{"zero":1})
         self.assertFalse(result["menu_visually_verified"])
+    def test_deferred_sequence_preserves_order_and_categories(self):
+        result=summarize([
+            "METRO_GUIDE_TRACE module=xam pc=81696558 name=guide_boot_81696558 phase=entry count=1 result=observed",
+            "METRO_GUIDE_TRACE module=xam pc=8169667C name=deferred_compare_8169667C phase=compare count=1 result=negative",
+            "METRO_GUIDE_TRACE module=xam pc=816967A0 name=deferred_branch_81696680 phase=target count=1 result=observed"],{"xam":[]})
+        self.assertEqual([r["pc"] for r in result["deferred_startup_sequence"]],["81696558","8169667C","816967A0"])
+        self.assertEqual(result["deferred_startup_sequence"][1]["result"],"negative")
+        self.assertFalse(result["menu_visually_verified"])
 if __name__=="__main__":unittest.main()
