@@ -7,6 +7,7 @@ on:
       - 'tools/metro_live_slot_and_input_evidence.py'
       - 'tools/metro_xam_fault_evidence.py'
       - 'tools/metro_heap_scalar.py'
+      - 'tools/metro_hud_dependencies.py'
       - 'tools/metro_module_lifecycle.py'
       - 'tests/test_metro_module_lifecycle.py'
       - 'tests/test_metro_heap_scalar.py'
@@ -46,6 +47,7 @@ jobs:
           python tools/metro_import_contracts.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-import-contracts.json
           python tools/metro_live_slot_and_input_evidence.py --lzx build/lzx_adapter.so --output build/receipts/metro-live-slot-and-input-evidence.json
           python tools/metro_xam_fault_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-xam-fault-evidence.json
+          python tools/metro_hud_dependencies.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-hud-dependencies.json
       - uses: actions/upload-artifact@v4
         with:
           name: metro-import-contracts
@@ -53,4 +55,5 @@ jobs:
             build/receipts/metro-import-contracts.json
             build/receipts/metro-live-slot-and-input-evidence.json
             build/receipts/metro-xam-fault-evidence.json
+            build/receipts/metro-hud-dependencies.json
           if-no-files-found: error
