@@ -82,12 +82,19 @@ inline bool verify_live_binding(rex::kernel::TitleRuntime& title,
     }
     const rex::u32 old = *current;
     if (old == expected) return true;
-    // Only a still-unresolved original import descriptor can be relocated.
-    // The middle byte is the original import library index.
+    // The hosted loader can leave verified imports unbound (observed zero in
+    // the live 17559 preflight). Relocate that state as well as an original
+    // descriptor or the SDK's exact missing-variable marker. This is after
+    // validating the unique import metadata, exact retail export and mapped
+    // function/data target above; never accept a conflicting nonzero pointer.
+    const bool unbound = old == 0;
     const bool raw_record = (old & 0xFF00FFFFu) == binding.ordinal;
     const bool data_marker = data &&
         old == (0xD000BEEFu | (static_cast<rex::u32>(binding.ordinal) & 0xFFFu) << 16);
-    if (!raw_record && !data_marker) return false;
+    if (!unbound && !raw_record && !data_marker) return false;
+    std::cout << "METRO_BINDING pending_relocation ordinal=0x" << std::hex
+              << binding.ordinal << " old=0x" << old
+              << " target=0x" << expected << std::dec << std::endl;
     const bool writable = bool(memory.GetWritableSpan(binding.value_slot, sizeof(rex::u32)));
     if (!writable && !memory.Protect(binding.value_slot, sizeof(rex::u32),
                                     rex::kernel::GuestProtect::kReadWrite)) return false;
