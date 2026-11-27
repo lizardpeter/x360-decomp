@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reject unimplemented retail event tracing registration with its real status contract."""
+"""Implement the hosted startup status contracts without fabricated output."""
 import argparse
 import subprocess
 from pathlib import Path
@@ -24,8 +24,23 @@ def main():
     tests=a.sdk/"tests/unit/kernel/xam_input_test.cpp"
     old=tests.read_text()
     if "metro_startup_status" in old:raise ValueError("tests already installed")
-    updated=patch_status(source.read_text())
-    source.write_text(updated)
+    replacements={
+        source:patch_status(source.read_text()),
+    }
+    # Original XAM treats these as value-returning APIs, not NTSTATUS.
+    # This hosted runtime has no persisted console raw dump or Argon
+    # hardware-error record. Never populate unknown output layouts.
+    for filename,symbol in (
+        ("xboxkrnl_debug.cpp","DumpGetRawDumpInfo"),
+        ("xboxkrnl_hal.cpp","HalGetNotedArgonErrors"),
+    ):
+        path=source.parent/filename
+        original=path.read_text()
+        anchor=f"REX_EXPORT_STUB(__imp__{symbol});"
+        if original.count(anchor)!=1:raise ValueError(f"unexpected {symbol} stub")
+        replacements[path]=original.replace(anchor,f"REX_EXPORT_STUB_RETURN(__imp__{symbol}, 0);")
+    for path,updated in replacements.items():
+        path.write_text(updated)
     tests.write_text(old+"\n"+a.tests.read_text())
     subprocess.run(["git","-C",str(a.sdk),"diff","--check"],check=True)
 if __name__=="__main__":main()

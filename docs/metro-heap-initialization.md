@@ -56,3 +56,7 @@ Controller binding notifications use the same system context. No process
 type export is overridden and no missing heap pointer is manufactured.
 Regression tests exercise the actual dispatcher, process identity, TLS
 isolation and original return semantics.
+
+### Subsequent recovery-state checks
+
+The original worker at `81696558` compares the return of `DumpGetRawDumpInfo` (call at `816965D4`) with zero and only reads byte 5 of its output structure when it is nonzero. A generic void stub leaves the output pointer in r3, incorrectly suggesting that a console crash dump exists. The hosted implementation returns false without writing the unknown structure. At `81696628`, `HalGetNotedArgonErrors` returns a recorded error bitmask; the caller tests bits 0–2 to select its recovery state. Since this runtime has no persisted Argon hardware-error record, it returns the empty bitmask rather than stale r3. Neither implementation claims physical hardware support or suppresses a reported host failure. Actual boot confirmation remains necessary.

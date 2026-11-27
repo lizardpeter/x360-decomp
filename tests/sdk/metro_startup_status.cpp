@@ -14,3 +14,19 @@ REX_TEST_CASE("metro_startup_status: absent ETX producer cannot create a fake su
     CHECK(c.Kernel("EtxProducerRegister",{0,0,0,0,0,0})==rex::kernel::X_STATUS_NOT_SUPPORTED);
   });
 }
+
+REX_TEST_CASE("metro_startup_status: unavailable raw dump and empty recorded hardware-error state",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    const u32 output=c.Alloc(64);
+    for (u32 i=0;i<64;i+=4)c.Store32(output+i,0x5A5A0000u+i);
+    CHECK(c.Kernel("DumpGetRawDumpInfo",{output,1})==0);
+    CHECK(c.Kernel("DumpGetRawDumpInfo",{0,0})==0);
+    for (u32 i=0;i<64;i+=4)CHECK(c.Load32(output+i)==0x5A5A0000u+i);
+    // The original call consumes no parameters; the result must not
+    // inherit whatever was left in r3 by the previous call.
+    CHECK(c.Kernel("HalGetNotedArgonErrors",{0xFFFFFFFFu})==0);
+    CHECK(c.Kernel("HalGetNotedArgonErrors",{7})==0);
+  });
+}
