@@ -15,6 +15,8 @@ on:
       - 'tools/stage_metro_profile_modules.py'
       - 'tools/patch_metro_retail_routing.py'
       - 'tools/patch_metro_import_slots.py'
+      - 'tools/patch_metro_graphics_notifications.py'
+      - 'tests/sdk/metro_graphics_notifications.cpp'
       - 'tests/test_metro_sdk_patches.py'
       - 'tools/native/metro_profile_mapping.hpp'
       - 'tools/patch_metro_public_verification.py'

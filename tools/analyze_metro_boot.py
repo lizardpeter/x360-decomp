@@ -43,7 +43,15 @@ def summarize(lines, inventories):
     gates=[];stubs=collections.Counter();sites={};pad=[];guest_pad=[];frames=[];variables=[];errors=[];heap=[];vm=[];failed_paths=collections.Counter()
     ui={};baseline=None;counter_resets=[];intro_frames=[];handoff_frames=[]
     fonts=[];resource_reads=[];resource_opens=[];gpu_cancellations=0;text_traces={};profile_traces={}
+    guide_counts=collections.Counter();graphics_counts=collections.Counter();skin_counts=collections.Counter()
     for line in lines:
+        if m:=re.search(r"METRO_GUIDE_TRACE module=(\w+) pc=([0-9A-Fa-f]+) name=(\w+) phase=(\w+) count=(\d+) result=(\w+)",line):
+            key=":".join((m[1],m[2].upper(),m[3],m[4],m[6]))
+            guide_counts[key]=max(guide_counts[key],int(m[5]))
+        if m:=re.search(r"METRO_GFX_NOTIFY (dispatch|returned) event=(\d+)",line):graphics_counts[m[1]+":"+m[2]]+=1
+        if "METRO_GFX_NOTIFY registration callback=" in line:graphics_counts["registration"]+=1
+        if "METRO_HUD_SKIN resource-only image mapped" in line:skin_counts["mapped"]+=1
+        if "METRO_HUD_SKIN registered original resource image" in line:skin_counts["registered"]+=1
         if "METRO_GPU packet_stream_cancelled during shutdown" in line:gpu_cancellations+=1
         if m:=RESOURCE_OPEN.search(line):
             if len(resource_opens)<512:resource_opens.append({"name":m[1],"status":m[2].upper(),
@@ -120,6 +128,7 @@ def summarize(lines, inventories):
             "font_call_results":font_results,"gpu_shutdown_cancellations":gpu_cancellations,
             "text_trace_results":list(text_traces.values()),
             "profile_trace_results":list(profile_traces.values()),
+            "guide_trace_count_lower_bounds":dict(guide_counts),"graphics_notification_counts":dict(graphics_counts),"hud_skin_counts":dict(skin_counts),
             "heap_probes":heap,"ui_probes":list(ui.values()),"virtual_memory_calls":vm,
             "virtual_memory_failures":[v for v in vm if int(v["status"],16)&0x80000000],
             "menu_visually_verified":False,"navigation_visually_verified":False}

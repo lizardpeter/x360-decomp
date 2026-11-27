@@ -92,6 +92,7 @@ jobs:
           python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
           python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
           python tools/patch_metro_gpu_ring.py build/sdk-source --tests tests/sdk/metro_gpu_ring.cpp
+          python tools/patch_metro_graphics_notifications.py build/sdk-source --tests tests/sdk/metro_graphics_notifications.cpp
       - uses: actions/checkout@v4
         with:
           repository: fabegalo/x360-native

@@ -271,6 +271,13 @@ def scan(label,raw,image,meta,catalog,stubs):
             mark(site,name,"call")
             mark(site+4,name,"return")
         mark(0x816CBFD8,"graphics_notification_callback","entry")
+        # Verify original halfword switch entries before instrumenting the
+        # two independently observed producers. The callback event is r4.
+        for event,target in ((1,0x816CC01C),(9,0x816CC358)):
+            entry=struct.unpack_from(">H",image,0x815FA3F0-base+2*(event-1))[0]
+            if 0x816CC01C+entry!=target:
+                raise ValueError("original graphics switch case mismatch")
+            mark(target,"graphics_notification_event_"+str(event),"entry")
         for pc in (0x816C9EA0,0x81696558,0x816CEBD8):
             mark(pc,"guide_boot_"+hx(pc),"entry")
         for pc in (0x81696714,0x81696724,0x816CEC28,0x816CEC38,0x816CEC70,0x816CEC78):

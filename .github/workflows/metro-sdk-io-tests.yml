@@ -18,6 +18,11 @@ on:
       - 'tools/patch_metro_startup_status.py'
       - 'tools/patch_metro_audio_context.py'
       - 'tools/patch_metro_gpu_ring.py'
+      - 'tools/patch_metro_graphics_notifications.py'
+      - 'tests/sdk/metro_graphics_notifications.cpp'
+      - 'tools/stage_metro_hud_skin_fixture.py'
+      - 'tools/patch_metro_import_slots.py'
+      - 'tools/patch_metro_module_identity.py'
       - 'tests/sdk/metro_gpu_ring.cpp'
       - 'tests/sdk/metro_audio_context.cpp'
       - 'tests/sdk/metro_startup_status.cpp'
@@ -60,6 +65,9 @@ jobs:
           python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
           python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
           python tools/patch_metro_gpu_ring.py build/sdk-source --tests tests/sdk/metro_gpu_ring.cpp
+          python tools/patch_metro_module_identity.py build/sdk-source
+          python tools/patch_metro_import_slots.py build/sdk-source
+          python tools/patch_metro_graphics_notifications.py build/sdk-source --tests tests/sdk/metro_graphics_notifications.cpp
       - uses: actions/checkout@v4
         with:
           repository: kyz/libmspack
@@ -72,6 +80,7 @@ jobs:
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
           python tools/metro_font_signature_evidence.py --lzx build/lzx_adapter.so --output build/font-native-evidence.json --native-fixtures build/font-native-fixtures
+          python tools/stage_metro_hud_skin_fixture.py --lzx build/lzx_adapter.so --output build/hud-skin-native-fixtures
           cat tests/sdk/metro_original_fonts.cpp >> build/sdk-source/tests/unit/kernel/files_test.cpp
       - name: Restore compiler cache
         uses: actions/cache/restore@v4
@@ -98,7 +107,8 @@ jobs:
           test -x "$runner"
           cd "$(dirname "$runner")"
           export METRO_ORIGINAL_FONT_FIXTURES="$GITHUB_WORKSPACE/build/font-native-fixtures"
-          "$runner" '[metro_original_fonts],[metro_profile_mount],[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context],[metro_gpu_ring]' --reporter compact
+          export METRO_ORIGINAL_HUD_SKIN_FIXTURES="$GITHUB_WORKSPACE/build/hud-skin-native-fixtures"
+          "$runner" '[metro_graphics_notification],[metro_original_fonts],[metro_profile_mount],[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context],[metro_gpu_ring]' --reporter compact
       - name: Retain reusable compiler cache
         if: always()
         uses: actions/cache/save@v4

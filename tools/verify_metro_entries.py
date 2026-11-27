@@ -324,7 +324,7 @@ def main():
         raise ValueError("original graphics callback registration branch missing")
     # The import is independently joined in metro_guide_graphics_evidence;
     # here require a genuine kernel import thunk rather than a nearby branch.
-    if not any(r["library"]=="xboxkrnl.exe" and call[0] in r["thunk_slots"]
+    if call[0]!=0x81A72EA4 or not any(r["library"]=="xboxkrnl.exe" and int(r["ordinal"],16)==0x1CE and call[0] in r["thunk_slots"]
                for r in original_imports(xi,xb,original_xex(xam_raw))):
         raise ValueError("original graphics callback registration import missing")
     if not inside(graphics_callback,sections(xpe,xb,True)) or (
