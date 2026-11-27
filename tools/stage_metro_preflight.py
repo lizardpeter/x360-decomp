@@ -6,6 +6,7 @@ from pathlib import Path
 from prepare_recompilation import ROOT, EXPECTED, sha
 from stage_aot_host import write_exact
 from stage_metro_xam_aot import BINDINGS, rows, manifest
+from patch_metro_retail_routing import original_inventory, header as retail_header
 from patch_metro_import_slots import (VALUE_SLOTS, VARIABLE_ORDINAL, VARIABLE_SLOT,
                                       VARIABLE_THUNK_SLOT, VARIABLE_TARGET, verify_slots)
 
@@ -74,6 +75,7 @@ def stage(folder):
     cmake = folder/"CMakeLists.txt"
     updated = cmake_preflight(cmake.read_text())
     write_exact(folder/"src/metro_preflight_bindings.hpp", bindings)
+    write_exact(folder/"src/metro_retail_bindings.hpp", retail_header(original_inventory()))
     write_exact(folder/"src/metro_aot_preflight.cpp",
                 (ROOT/"tools/native/metro_aot_preflight.cpp").read_text())
     write_exact(folder/"src/metro_aot_boot.hpp",

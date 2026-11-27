@@ -129,17 +129,15 @@ public:
             return fail("xam_identity");
         std::cout << "METRO_PREFLIGHT pass xam_load" << std::endl;
 
-        bool mapped = true;
-        for (const auto& binding : kBindings)
-            if (!metro_boot::verify_live_binding(title_, *dash_xex, *xam, binding, false))
-                mapped = false;
-        if (!mapped) return fail("dashboard_import_value");
+        if (!metro_boot::verify_retail_routes(title_, *dash_xex, *xam))
+            return fail("retail_export_mapping");
+        std::cout << "METRO_PREFLIGHT pass all_retail_export_mappings" << std::endl;
         if (!metro_boot::verify_live_binding(title_, *dash_xex, *xam, kXamDataBinding, true))
             return fail("dashboard_data_import");
         std::cout << "METRO_PREFLIGHT pass xam_data_mapping" << std::endl;
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
-        std::cout << "METRO_PREFLIGHT pass five_export_mappings" << std::endl;
+
         return true;
     }
 

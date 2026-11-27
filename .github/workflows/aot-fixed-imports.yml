@@ -12,6 +12,8 @@ on:
       - 'tools/patch_rexglue_function_tables.py'
       - 'tools/patch_metro_import_slots.py'
       - 'tools/patch_metro_device_control.py'
+      - 'tools/patch_metro_retail_routing.py'
+      - 'tests/test_metro_retail_routing.py'
       - 'tests/test_metro_device_control.py'
       - 'tools/native/metro_aot_boot.hpp'
       - 'tools/capture_metro_boot.sh'
@@ -41,6 +43,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_preflight.py
           python -m unittest discover -s tests -p test_metro_sdk_patches.py
           python -m unittest discover -s tests -p test_metro_device_control.py
+          python -m unittest discover -s tests -p test_metro_retail_routing.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
@@ -62,6 +65,7 @@ jobs:
           python tools/patch_rexglue_function_tables.py build/sdk-source
           python tools/patch_metro_import_slots.py build/sdk-source
           python tools/patch_metro_device_control.py build/sdk-source
+          python tools/patch_metro_retail_routing.py build/sdk-source --receipt build/receipts/retail-routing.json
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -87,7 +91,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/linux-amd64
-          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py') }}
+          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
@@ -148,12 +152,13 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+$' "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
           grep -E '^METRO_BINDING ' "$folder/preflight.log" > build/receipts/metro-binding-values.txt || true
-          cat build/receipts/metro-preflight.txt build/receipts/metro-binding-values.txt
+          grep -E '^METRO_RETAIL_' "$folder/preflight.log" > build/receipts/metro-retail-routing.txt || true
+          cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt
           if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping five_export_mappings clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame

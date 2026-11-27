@@ -12,6 +12,7 @@
 #include <rex/kernel/module.h>
 #include <stdexcept>
 #include "metro_preflight_bindings.hpp"
+#include "metro_retail_bindings.hpp"
 
 namespace metro_boot {
 inline constexpr char kXamPath[] = "game:\\xam.xex";
@@ -110,6 +111,33 @@ inline bool verify_live_binding(rex::kernel::TitleRuntime& title,
     return true;
 }
 
+// Validate the entire routing plan before invoking either original module.
+// The five-entry baseline did not prove that the rest of the dashboard calls
+// shared the same XAM instance. Report every missing mapping, not only the first.
+inline bool verify_retail_routes(rex::kernel::TitleRuntime& title,
+                                 const rex::kernel::XEXModule& dash,
+                                 const rex::kernel::XEXModule& xam) {
+    std::size_t passed=0, missing_thunk=0, missing_target=0, failed_binding=0;
+    for (const auto& binding : kRetailFunctionBindings) {
+        const bool thunk = bool(title.FindFunction(binding.thunk));
+        const bool target = bool(title.FindFunction(binding.target));
+        if (!thunk || !target) {
+            missing_thunk += !thunk;
+            missing_target += !target;
+            std::cout << "METRO_RETAIL_MISSING ordinal=0x" << std::hex << binding.ordinal
+                      << " thunk=0x" << binding.thunk << " target=0x" << binding.target
+                      << std::dec << " thunk_mapped=" << thunk << " target_mapped=" << target << std::endl;
+            continue;
+        }
+        if (verify_live_binding(title, dash, xam, binding, false)) ++passed;
+        else ++failed_binding;
+    }
+    std::cout << "METRO_RETAIL_ROUTES passed=" << passed << " expected="
+              << kRetailFunctionBindings.size() << " missing_thunk=" << missing_thunk
+              << " missing_target=" << missing_target << " failed_binding=" << failed_binding << std::endl;
+    return passed == kRetailFunctionBindings.size();
+}
+
 struct EntryBinding {
     PPCFunc* dashboard{};
     rex::kernel::FunctionDispatcher* dispatcher{};
@@ -175,9 +203,7 @@ protected:
         if (!xx || xx->GetBaseAddress() != kXamBase || xx->GetImageSize() != kXamSize ||
             xx->GetEntryPoint() != kXamEntry || !xam->user.is_dll_module ||
             !xam->hmodule_ptr || !title.FindFunction(kXamEntry)) return fail("xam_identity");
-        for (const auto& b : kBindings)
-            if (!verify_live_binding(title, *dx, *xx, b, false))
-                return fail("export_mapping");
+        if (!verify_retail_routes(title, *dx, *xx)) return fail("retail_export_mapping");
         if (!verify_live_binding(title, *dx, *xx, kXamDataBinding, true))
             return fail("data_mapping");
         const auto original = title.FindFunction(kDashEntry);
