@@ -1,0 +1,28 @@
+name: Metro original font container metadata
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/metro_font_container_evidence.py'
+      - 'tests/test_metro_font_container_evidence.py'
+      - '.github/workflows/metro-font-container-evidence.yml'
+permissions:
+  contents: read
+jobs:
+  font-metadata:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify pinned font container metadata only
+        run: |
+          python -m unittest discover -s tests -p test_metro_font_container_evidence.py
+          python tools/fetch_originals.py --only pirs
+          python tools/metro_font_container_evidence.py --output build/receipts/metro-font-container-evidence.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metro-font-container-evidence
+          path: build/receipts/metro-font-container-evidence.json
+          if-no-files-found: error
