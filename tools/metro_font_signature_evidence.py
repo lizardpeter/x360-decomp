@@ -191,7 +191,11 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--lzx",type=Path,required=True)
     p.add_argument("--output",type=Path,required=True)
+    p.add_argument("--native-fixtures",type=Path,
+                   help="write local-only original signed ranges for native regression; never upload")
     a=p.parse_args()
+    if a.native_fixtures and not a.native_fixtures.resolve().is_relative_to(ROOT/"build"):
+        p.error("native fixtures must remain under build")
     if not a.output.resolve().is_relative_to(ROOT/"build"):p.error("output under build only")
     members=parse(original("pirs"))
     census=json.loads((ROOT/"analysis/pirs_17559/members.json").read_text())
@@ -212,6 +216,14 @@ def main():
         passed=verify_original_range(name,data,modulus(),3,ds)
         report["fonts"][name]["exact_original_range_and_mutation_rejection"]=passed
         if not passed:raise ValueError("original signed range or mutation check failed: "+name)
+        if a.native_fixtures:
+            start,length=ORIGINAL_SIGNED_RANGES[name]
+            payload=data[start:start+length]
+            # Local test input only: signature, padded salt, expected digest,
+            # exact original authenticated byte range. No private data.
+            a.native_fixtures.mkdir(parents=True,exist_ok=True)
+            (a.native_fixtures/(name+".bin")).write_bytes(
+                data[4:260]+ds+b"\0\0"+rotsum_sha(payload)+payload)
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     for name,item in report["fonts"].items():

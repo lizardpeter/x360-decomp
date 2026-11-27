@@ -29,3 +29,7 @@ The independently recovered public signature encoding and the original matching 
 ## Exact signed payloads (run 46028136171)
 
 The follow-up evidence run independently authenticated the exact contiguous range of each original signed font: SegoeXbox-Light.xtt offset 260 length 3836; XenonCLatin.xtt offset 260 length 48892; XenonJKLatin.xtt offset 260 length 98044. The regression now pins those independently recovered ranges and requires rejection of a one-bit payload modification. No runtime signature bypass or alternative key is used. This evidence establishes authentication of the signed ranges, not the entire font file or readable dashboard text.
+
+## Native original-font regression
+
+A separate real-data test now stages the exact verified original signed payloads only inside the disposable CI workspace. The guest-thread test uses the actual XeKeysGetKey, XeCryptRotSumSha and XeCryptBnQwBeSigVerify exports on all three originals, compares the digest privately with the independent Python result, rejects an in-memory one-bit mutation, and accepts the restored data. No original signed font data is committed, printed or uploaded. This complements the earlier 1,832-assertion synthetic and kernel regression pass; the new real-data test remains pending.
