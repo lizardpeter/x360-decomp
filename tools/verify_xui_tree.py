@@ -17,6 +17,7 @@ def main():
     p.add_argument("probe",type=Path)
     p.add_argument("schema_root",type=Path)
     p.add_argument("--strict",action="store_true")
+    p.add_argument("--header-layout",type=Path,help="Write authored header/social geometry metadata (TSV)")
     args=p.parse_args()
     raw=source("dash_basic")
     image,info=decode(raw)
@@ -36,10 +37,23 @@ def main():
         (t/"image").write_bytes(image)
         (t/"manifest").write_text("".join(manifest))
         (t/"schema").write_text(compile_schema(args.schema_root),encoding="utf-8")
-        result=subprocess.run([str(args.probe.resolve()),str(t/"schema"),str(t/"image"),str(t/"manifest")],text=True,stdout=subprocess.PIPE)
-        print(result.stdout,flush=True)
+        command=[str(args.probe.resolve()),str(t/"schema"),str(t/"image"),str(t/"manifest")]
+        if args.header_layout:command.append("--header-layout")
+        result=subprocess.run(command,text=True,stdout=subprocess.PIPE)
         if result.returncode==2:raise RuntimeError("schema or probe failure")
-        counts=dict(x.split("=") for x in result.stdout.split())
+        rows=result.stdout.splitlines()
+        if not rows or not rows[-1].startswith("total="):raise RuntimeError("missing probe summary")
+        print(rows[-1],flush=True)
+        if args.header_layout:
+            layout=rows[:-1]
+            if not layout or not any(x.startswith('node\t"epix"\t') for x in layout):
+                raise RuntimeError("no original header scene nodes recovered")
+            if not any(x.startswith('property\t"epix"\t') for x in layout):
+                raise RuntimeError("no original header properties recovered")
+            args.header_layout.parent.mkdir(parents=True,exist_ok=True)
+            args.header_layout.write_text("\n".join(layout)+"\n",encoding="utf-8")
+            print(f"Authored layout records: {len(layout)}",flush=True)
+        counts=dict(x.split("=") for x in rows[-1].split())
         assert int(counts["total"])==363
         assert int(counts["parsed"])>0
         if args.strict:assert result.returncode==0

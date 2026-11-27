@@ -1,0 +1,37 @@
+name: Metro original header layout evidence
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - tools/native/xui_tree_probe.cpp
+      - tools/verify_xui_tree.py
+      - .github/workflows/metro-header-layout.yml
+permissions:
+  contents: read
+jobs:
+  layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/checkout@v4
+        with:
+          repository: SGCSam/XUIHelper
+          ref: c0d083036c6b0e3cdec5a3df0abfca0e58973117
+          path: build/xui-reference
+          persist-credentials: false
+      - run: cmake -S . -B build/native -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build/native --target x360_xui_tree_probe --parallel
+      - run: python tools/fetch_originals.py --only dash_basic
+      - run: python tools/verify_xui_tree.py build/native/x360_xui_tree_probe build/xui-reference/XUIHelper.Core/Assets/Extensions/V8 --header-layout build/evidence/metro-authored-header-layout.tsv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metro-authored-header-layout
+          path: build/evidence/metro-authored-header-layout.tsv
+          if-no-files-found: error
+          retention-days: 7
