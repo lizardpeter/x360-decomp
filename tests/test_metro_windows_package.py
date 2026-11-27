@@ -78,8 +78,19 @@ class TestWindowsPackage(unittest.TestCase):
 
     def test_guest_video_mode_and_hd_diagnostics_are_independent(self):
         self.assertIn('set "METRO_VIDEO_ARGS=--ui.video_mode_width=1280 --ui.video_mode_height=720"', LAUNCH)
-        self.assertIn('set "METRO_SCALE_ARGS="', LAUNCH)
+        self.assertIn('set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=1 --gpu.resolution_scale_y=1"', LAUNCH)
         self.assertIn('if /i "%~1"=="hd" (\n    set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=2 --gpu.resolution_scale_y=2"\n    set "METRO_LOG=metro-hd.log"\n)', LAUNCH)
         self.assertIn('if /i "%~1"=="1080p" (\n    set "METRO_VIDEO_ARGS=--ui.video_mode_width=1920 --ui.video_mode_height=1080"\n    set "METRO_LOG=metro-1080p.log"\n)', LAUNCH)
         self.assertIn('%METRO_VIDEO_ARGS% %METRO_SCALE_ARGS% %METRO_INPUT_ARGS%', LAUNCH)
         self.assertIn('> "%METRO_LOG%" 2>&1', LAUNCH)
+
+    def test_dashboard_never_requests_async_placeholder_draws(self):
+        self.assertIn('set "METRO_RENDER_ARGS=--gpu.xenos.async_shader_compilation=false"', LAUNCH)
+        self.assertIn('%METRO_RENDER_ARGS% %METRO_VIDEO_ARGS%', LAUNCH)
+        self.assertNotIn('--gpu.xenos.async_shader_compilation=true', LAUNCH)
+        capture=(Path(__file__).resolve().parents[1]/"tools"/"capture_metro_boot.sh").read_text()
+        for flag in ('--ui.video_mode_width=1280','--ui.video_mode_height=720',
+                     '--gpu.resolution_scale_x=1','--gpu.resolution_scale_y=1',
+                     '--gpu.xenos.async_shader_compilation=false'):
+            self.assertIn(flag,capture)
+        self.assertIn('placeholder_draw_frames=',capture)

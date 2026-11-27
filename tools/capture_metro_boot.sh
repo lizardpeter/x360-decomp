@@ -26,7 +26,8 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
 fi
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
   --ui.title="Metro 17559 Native Boot" --ui.fullscreen=false \
-  --ui.window_width=1280 --ui.window_height=720 \
+  --ui.window_width=1280 --ui.window_height=720 --ui.video_mode_width=1280 --ui.video_mode_height=720 \
+  --gpu.resolution_scale_x=1 --gpu.resolution_scale_y=1 --gpu.xenos.async_shader_compilation=false \
   --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --hid.mnk_mode=true --hid.mnk_mouse=false --hid.mnk_passthrough=false --hid.guide_button=true --hid.keybind_guide=F9 --hid.keybind_dpad_up=W,Up,Shift+Up --hid.keybind_dpad_down=S,Down,Shift+Down --hid.keybind_dpad_left=A,Left,Shift+Left --hid.keybind_dpad_right=D,Right,Shift+Right --hid.keybind_a=Space,Return --hid.keybind_b=Escape,Backspace --hid.keybind_x=X --hid.keybind_y=Y --hid.keybind_left_shoulder=Q --hid.keybind_right_shoulder=E --hid.keybind_left_trigger=1 --hid.keybind_right_trigger=3 --hid.keybind_back=Tab --hid.keybind_start=F10 --hid.keybind_lstick_up=Shift+W --hid.keybind_lstick_down=Shift+S --hid.keybind_lstick_left=Shift+A --hid.keybind_lstick_right=Shift+D --hid.keybind_rstick_up=Ctrl+Up --hid.keybind_rstick_down=Ctrl+Down --hid.keybind_rstick_left=Ctrl+Left --hid.keybind_rstick_right=Ctrl+Right \
   "${profile_args[@]}" --log.level=info --log.flush_level=info > "$out/boot.log" 2>&1 &
 pid=$!
@@ -76,6 +77,13 @@ for tick in $(seq 1 65); do
   sleep 1
 done
 printf 'captured_samples=%s\n' "$samples" >> "$out/receipt.txt"
+# Fail the baseline if the known incomplete-pipeline draw path was observed.
+placeholder_frames="$(grep -c 'Skipping Vulkan frame presentation due to async placeholder draw' "$out/boot.log" || true)"
+printf 'guest_mode=1280x720\nrender_scale=1x1\nasync_shader_compilation=false\nplaceholder_draw_frames=%s\n' "$placeholder_frames" >> "$out/receipt.txt"
+if [ "$placeholder_frames" -ne 0 ]; then
+  echo "720p fidelity capture encountered asynchronous placeholder draws." >&2
+  exit 1
+fi
 grep -E '^METRO_BOOT (pass|fail|frames|guest_exit)' "$out/boot.log" >> "$out/receipt.txt" || true
 cat "$out/receipt.txt"
 if [ "$samples" -eq 0 ]; then

@@ -59,7 +59,9 @@ set X360_METRO_GUIDE_TRACE=
 set X360_METRO_PROFILE_TRACE=
 rem Keep the original guest mode independent of the desktop window size.
 set "METRO_VIDEO_ARGS=--ui.video_mode_width=1280 --ui.video_mode_height=720"
-set "METRO_SCALE_ARGS="
+rem UI/font atlases can be persistent render targets; never discard their first draw.
+set "METRO_RENDER_ARGS=--gpu.xenos.async_shader_compilation=false"
+set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=1 --gpu.resolution_scale_y=1"
 set "METRO_LOG=metro.log"
 if /i "%~1"=="hd" (
     set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=2 --gpu.resolution_scale_y=2"
@@ -79,7 +81,7 @@ set X360_METRO_GUIDE_UI=1
 set X360_METRO_GUIDE_TRACE=1
 set X360_METRO_PROFILE_TRACE=1
 :boot
-start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_VIDEO_ARGS% %METRO_SCALE_ARGS% %METRO_INPUT_ARGS% --log.level=info --log.flush_level=info > "%METRO_LOG%" 2>&1
+start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 %METRO_RENDER_ARGS% %METRO_VIDEO_ARGS% %METRO_SCALE_ARGS% %METRO_INPUT_ARGS% --log.level=info --log.flush_level=info > "%METRO_LOG%" 2>&1
 set "code=%ERRORLEVEL%"
 echo Native host exit code: %code%. See %METRO_LOG%.
 pause
@@ -144,6 +146,11 @@ needed to prepare the local original inputs.
    Shift+WASD moves the left stick; Ctrl+arrows move the right stick.
    Edit METRO_INPUT_ARGS in launch.cmd to customize bindings. Focus the window.
    Guide display still requires the separate diagnostic and is unverified.
+   Normal and intro launchers compile graphics pipelines synchronously: the
+   pinned Vulkan driver can silently skip draws while a pipeline is compiling,
+   including draws into persistent UI textures. 720p/1x is the normal mode.
+   This removes that known draw-loss path, but text clipping still needs visual
+   confirmation on the original dashboard.
    Launch Metro HD.cmd preserves the 720p guest mode and requests 2x internal
    rendering on both axes (nominally 2560x1440). Launch Metro 1080p Diagnostic.cmd
    instead exposes a 1920x1080 guest mode at the default GPU scale, to distinguish
