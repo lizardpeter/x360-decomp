@@ -252,6 +252,39 @@ def verified_storage_fault_details(image,base,pe,thunks):
             "intermediate_tail_path":direct_tail_path(image,base,pe,start,FRAMES[0]) if exact else None,
             "fault_load":operand(FAULT_PC,read_word(image,base,FAULT_PC))}
 
+
+def startup_contract_inventory(image,base,pe,thunks):
+    # Full bounded wrappers for navigation, text, statistics and initialization.
+    # Record each actual kernel import call with its enclosing original range.
+    names={"XInputdReadTextKeystroke","XInputdWriteState","XInputdNotify",
+           "XInputdGetDeviceStats","XInputdGetCapabilities","XInputdReadState",
+           "DrvSetContentStorageCallback","DrvGetContentStorageNotification",
+           "XeKeysGetStatus","EtxProducerRegister","XexShimLock"}
+    wanted={addr:meta for addr,meta in thunks.items() if meta["name"] in names}
+    groups={}
+    for start,length,_ in pe["functions"]:
+        calls=[]
+        for pc in range(start,start+length,4):
+            target=branch(pc,read_word(image,base,pc))
+            if target and target[1] and target[0] in wanted:
+                calls.append({"site":hx(pc),"import":wanted[target[0]]})
+        if not calls:continue
+        records=[]
+        for call in calls:
+            pc=int(call["site"],16)
+            ops=describe(image,base,max(start,pc-48),
+                         min(start+length,pc+84)-max(start,pc-48),thunks)
+            for row in ops:
+                address=int(row["pc"],16)
+                w=read_word(image,base,address)
+                if w>>26==16:row.update(conditional_details(address,w))
+                if w>>26 in (10,11):row["cr_field"]=(w>>23)&7
+            records.append({**call,"nearby_operands":ops})
+        short=length<=1024 and any(c["import"]["name"]!="EtxProducerRegister" for c in calls)
+        groups[hx(start)]={"size":length,"calls":records,
+                            "wrapper_operands":describe(image,base,start,length,thunks) if short else []}
+    return {"function_groups":groups,"scope":"verified original operand metadata; no inferred hardware ABI"}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -305,12 +338,14 @@ def main():
             "binding_callback_operands":binding_ops,
             "observed_startup_stubs":observed_storage_report(image,base,pe,thunks),
             "verified_storage_fault_details":verified_storage_fault_details(image,base,pe,thunks),
-            "verified_device_stats_status":verified_device_stats_status(image,base,thunks)}
+            "verified_device_stats_status":verified_device_stats_status(image,base,thunks),
+            "startup_contract_inventory":startup_contract_inventory(image,base,pe,thunks)}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
     print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
+    print("startup contract wrappers:",len(report["startup_contract_inventory"]["function_groups"]))
     print("device stats status conversion:",json.dumps(report["verified_device_stats_status"],sort_keys=True))
     print("storage fault gates:",json.dumps(report["verified_storage_fault_details"],sort_keys=True))
     print("binding callback:",json.dumps(binding_ops,sort_keys=True))
