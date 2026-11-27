@@ -40,6 +40,13 @@ jobs:
           sudo apt-get install -y lua5.1
           python tools/verify_lua_vm.py build/native/x360_lua_vm_probe --original
       - run: python tools/verify_xui_resources.py build/native/x360_resource_probe
+      - uses: actions/checkout@v4
+        with:
+          repository: SGCSam/XUIHelper
+          ref: c0d083036c6b0e3cdec5a3df0abfca0e58973117
+          path: build/xui-reference
+          persist-credentials: false
+      - run: python tools/verify_xui_tree.py build/native/x360_xui_tree_probe build/xui-reference/XUIHelper.Core/Assets/Extensions/V8
       - name: Build pinned original LZX source adapter and audit system resources
         run: |
           mkdir -p build/reference
