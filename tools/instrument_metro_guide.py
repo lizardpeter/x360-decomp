@@ -35,7 +35,7 @@ def insert(source,module,plan):
         if phase=="return" and name=="hud_skin_load":result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if name=="hw_gate":result='((ctx.r11.u32&0x200u)?"bit_set":"bit_clear")'
         kind=entry.get("result_kind","observed")
-        if kind not in {"observed","r3_class","r29_class","r30_class","r3_process_type","r30_nonzero","r31_nonzero"}:raise ValueError("unknown trace result category")
+        if kind not in {"observed","r3_class","r29_class","r30_class","r3_process_type","r30_nonzero","r31_nonzero","r4_app_id"}:raise ValueError("unknown trace result category")
         if kind.endswith("_class"):
             reg=kind.split("_")[0]
             result=f'(ctx.{reg}.u32==0?"zero":(ctx.{reg}.u32&0x80000000u?"negative":"positive"))'
@@ -44,6 +44,11 @@ def insert(source,module,plan):
             result=f'(ctx.{reg}.u32?"nonzero":"zero")'
         elif kind=="r3_process_type":
             result='(ctx.r3.u32==2?"system":(ctx.r3.u32==1?"user":(ctx.r3.u32==0?"idle":"unknown")))'
+        if kind=="r4_app_id":
+            # Public original application IDs only, never arbitrary r4.
+            if pc!="816BD368" or name!="deferred_app_register" or phase!="call":
+                raise ValueError("application ID at unverified PC")
+            result='([](unsigned app){switch(app){'+''.join(f'case {a}:return "app_{a}";' for a in (239,240,241,242,243,244,245,247,248,250,251,252,253))+'default:return "unknown";}})(ctx.r4.u32)'
         if name=="deferred_key_service" and phase=="return":
             result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if pc in INIT_OBJECT:result='(ctx.r3.u32?"nonzero_object":"null_object")'

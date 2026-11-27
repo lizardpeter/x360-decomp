@@ -187,6 +187,64 @@ def stalled_initializer_evidence(image,base,pe,funcs,thunks):
             "extended_key_gate":{"call":hx(KEY_CALL),"negative":"81899610","nonnegative":"81899578"},
             "bodies":bodies,"trace_points":plan}
 
+# The next live run executed the original failure path and entered a
+# subsequent fallback call on the same system worker. Trace control flow,
+# not cryptographic input, output, seed, intermediate state or key data.
+CALLBACK_ROOTS={0x818C9940:252,0x819018A0:253,0x81906808:251,
+ 0x816FF868:250,0x81996FB8:247,0x81965AC0:242,0x81981740:243,
+ 0x8198B8F0:241,0x8198C918:240}
+LIVE_STALL_ROOTS={0x81700C70,0x8189A4F0,0x8189A3D8,0x8189A170,
+                  0x818A6FC8,0x818A5428}
+
+def callback_stall_trace(image,base,pe,funcs,thunks):
+    def word(pc):return struct.unpack_from(">I",image,pc-base)[0]
+    for site,target in ((0x81700CA4,0x81899BB8),(0x818984D0,0x8189A4F0),
+                        (0x8189A520,0x8189A3D8),(0x8189A4C8,0x8189A170),
+                        (0x8189A588,0x818A6FC8),(0x8189A5AC,0x818A5428)):
+        if branch(site,word(site))!=(target,True):
+            raise ValueError("live fallback edge changed "+hx(site))
+    # Verify original app registration operand r4 is the public app ID,
+    # and each static callback address is in its original table record.
+    row=operand(0x816BD314,word(0x816BD314))
+    if any(row.get(k)!=v for k,v in {"kind":"memory_load","base":31,"offset":0,"width":4,"writes":4}.items()):
+        raise ValueError("app identifier load changed")
+    if branch(0x816BD368,word(0x816BD368))!=(0x816BCC38,True):
+        raise ValueError("app registration site changed")
+    table={}
+    for i in range(15):
+        ptr,app_id=word(0x815F91F8+16*i),word(0x815F91F4+16*i)
+        if executable(pe,base,ptr):table[ptr]=app_id
+    if table!=CALLBACK_ROOTS:raise ValueError("original app callback table changed")
+    plan={"816BD368":{"name":"deferred_app_register","phase":"call","result_kind":"r4_app_id"}}
+    for a,app_id in table.items():
+        plan[hx(a)]={"name":"deferred_app_callback_"+str(app_id),"phase":"entry"}
+    for a in sorted(LIVE_STALL_ROOTS):
+        if a not in funcs:raise ValueError("live fallback exact extent missing "+hx(a))
+        rows=bounded_entry(image,base,pe,a,thunks,funcs[a])["operands"]
+        by_pc={int(r["pc"],16):r for r in rows}
+        # Status and all nonvolatile/temporary register values are omitted
+        # for this entire subtree. The original code is not modified.
+        def add(pc,name,phase):
+            if pc in by_pc:plan.setdefault(hx(pc),{"name":name,"phase":phase})
+        for row in rows:
+            pc=int(row["pc"],16)
+            if row["kind"]=="branch" and row.get("linked") or row["kind"]=="indirect_branch" and row.get("linked"):
+                add(pc+4,"deferred_fallback_after_"+hx(pc),"continuation")
+        for row in rows:
+            pc=int(row["pc"],16)
+            if row["kind"]=="branch" and row.get("linked") or row["kind"]=="indirect_branch" and row.get("linked"):
+                add(pc,"deferred_fallback_call_"+hx(pc),"call")
+            elif row["kind"]=="conditional_branch" and int(row["target"],16)<pc:
+                # Sparse counter sampling at the actual original backedge
+                # instruction; the next instruction proves loop exit.
+                add(pc,"deferred_fallback_loop_"+hx(pc),"backedge")
+                add(pc+4,"deferred_fallback_loop_"+hx(pc),"exit")
+            elif row["kind"]=="return":
+                add(pc,"deferred_fallback_"+hx(a),"return")
+        plan[hx(a)]={"name":"deferred_fallback_"+hx(a),"phase":"entry"}
+    print("LIVE_CALLBACK_STALL_TRACE",len(plan),"points",len(LIVE_STALL_ROOTS),"exact function extents")
+    return plan
+
 def scan(label,raw,image,meta,catalog,stubs):
     base=meta["image_base"];pe=pe_info(image,base);thunks={}
     for row in imports(image,base,parse_xex(raw)):
@@ -441,6 +499,7 @@ def scan(label,raw,image,meta,catalog,stubs):
             trace.setdefault(pc,entry)
         stalled_initializer=stalled_initializer_evidence(image,base,pe,funcs,thunks)
         for pc,entry in stalled_initializer["trace_points"].items():trace.setdefault(pc,entry)
+        for pc,entry in callback_stall_trace(image,base,pe,funcs,thunks).items():trace[pc]=entry
         # Verify the last observed import, and record a return only if the
         # original call actually returns. No key bytes or output are logged.
         site=0x8189956C

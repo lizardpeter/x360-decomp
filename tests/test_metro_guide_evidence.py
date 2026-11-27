@@ -57,3 +57,12 @@ class DeferredStartup(unittest.TestCase):
         self.assertIn("pcr=%08X lr=%08X",code)
         self.assertIn("ctx.r13.u32,static_cast<unsigned>(ctx.lr)",code)
         self.assertNotIn("ctx.r4.u32",code)
+
+    def test_app_identifier_trace_is_closed_allowlist(self):
+        plan={"816BD368":{"name":"deferred_app_register","phase":"call","result_kind":"r4_app_id"}}
+        code,_=insert("  // METRO_GUEST_PC 816BD368\n","xam",plan)
+        self.assertIn('case 250:return "app_250";',code)
+        self.assertIn('default:return "unknown";',code)
+        self.assertNotIn("ctx.r5.u32",code)
+        with self.assertRaises(ValueError):
+            insert("  // METRO_GUEST_PC 816BD36C\n","xam",{"816BD36C":plan["816BD368"]})

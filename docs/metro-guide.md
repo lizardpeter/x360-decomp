@@ -40,3 +40,29 @@ The next live milestone requires original UI registration, real system device pu
 ## Live subsystem stall, run 46037966784
 
 The latest integrated run completed all 338/15/12 original XAM/HUD/dashboard trace point mappings and ten profile load-only cycles. Its real deferred worker reached 816966A4 (call 816BDE90), but never reached 816966A8 or the second hardware gate. The original body has an ETX registration, critical section initialization, calls to 816BCCA8, 816BD270 and 816E0250, then XexLoadImage at 816BDF20. The same interval includes the XeKeysExGetKey void stub returning the positive input identifier 0x100 without supplying its output. The original 81899570 signed status comparison routes negative results to 81899610; the hosted absence of an extended key provider is now reported as NOT_SUPPORTED, without supplying or modifying any key, output, signature or verification result. This is correction of the native error contract, not evidence that the missing provider caused the entire subsystem stall. New exact-body entry/exit and nested call probes include guest PCR and original LR for correlation across threads. Live validation is pending. The dashboard independently published a nonzero title device (process type 1); no XAM system device publication was observed. The expanded Windows run 46039230948 passed profile mapping preflight but did not execute an interactive Guide or sign-in.
+
+## Integrated live result 46050607435
+
+The expanded trace identified 378 startup records on one PCR (3003A000).
+The worker entered the fourth application dispatch at 816BCED8.
+Original caller 81700C70 at call site 81700CA4 invoked 81899BB8;
+the corrected extended-key lookup returned a negative status at 81899570
+and entered the original failure branch 81899610. This confirms the
+native status correction, not a successful account or key operation.
+The same worker continued through 81898438 and entered 8189A4F0 at
+818984D0, with no return observed before the end of the capture. The
+original Guide callback was not registered. Dashboard graphics continued
+to submit frames independently (346 counted after dashboard entry).
+
+The independently decoded app table policy explicitly tolerates negative
+loads for IDs 249,248,247,239,245,244 and skips 242 in this loop.
+The fourth table app is Music Player (250), which is not in that list.
+The new call trace identifies app registration by its public original ID,
+all nine verified table callback pointers, and the outer fallback call
+boundaries/backedges in six exact PDATA bodies. It records no key,
+credential, random seed, intermediate buffer or arbitrary app parameter.
+The trace does not bypass any app initialization or assert a successful
+security operation. The code-generation receipt and live result remain
+separate validation gates. The previous static audit (46052849954)
+recovered 44 bounded functions around the observed stalled callback.
+
