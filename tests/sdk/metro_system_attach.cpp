@@ -222,3 +222,14 @@ REX_TEST_CASE("metro_system_attach: overlapped APC targets original pointer-owne
     c.Kernel("ObDereferenceObject",{pointer});
   });
 }
+
+
+REX_TEST_CASE("metro_system_attach: absent original XAM flag leaf cannot map guest kernel data",
+              "[kernel][metro_system_attach]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& runtime=c.GetRuntime();
+    CHECK_FALSE(runtime.PrepareHostedXamHeapFlag());
+    CHECK_FALSE(runtime.GetGuestMemory().GetReadOnlySpan(0x8E03860A,2));
+  });
+}

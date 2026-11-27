@@ -11,6 +11,7 @@
 #include <iostream>
 #include <iomanip>
 #include <rex/kernel/guest_memory.h>
+#include <rex/ppc/context.h>
 #include <rex/kernel/module.h>
 #include <stdexcept>
 #include "metro_preflight_bindings.hpp"
@@ -283,6 +284,19 @@ inline bool guide_hardware_experiment(rex::kernel::TitleRuntime& title) {
     return true;
 }
 
+// Exercise the original four-instruction, stackless XAM leaf on the actual
+// native DLL, not a synthetic function or an OS mapping-only test.
+inline bool prepare_hosted_heap_flag(rex::kernel::TitleRuntime& title) {
+    const auto leaf=title.FindFunction(0x8168AF28u);
+    if (!leaf || !title.PrepareHostedXamHeapFlag()) return false;
+    PPCContext ctx{};
+    ctx.r3.u64=0xFFFFFFFFu;
+    (*leaf)(ctx,title.GetMembase().GetBase());
+    if (ctx.r3.u32!=0) return false;
+    std::cout<<"METRO_HOSTED_HEAP_FLAG native_original_leaf=8168AF28 result=0"<<std::endl;
+    return true;
+}
+
 struct EntryBinding {
     PPCFunc* dashboard{};
     rex::kernel::FunctionDispatcher* dispatcher{};
@@ -421,6 +435,7 @@ protected:
             !xam->hmodule_ptr || !title.FindFunction(kXamEntry)) return fail("xam_identity");
         if (!verify_kernel_variables(title,*dx,kDashKernelVariables,"dash") ||
             !verify_kernel_variables(title,*xx,kXamKernelVariables,"xam")) return fail("kernel_variables");
+        if (!prepare_hosted_heap_flag(title)) return fail("hosted_heap_flag");
         if (!guide_hardware_experiment(title)) return fail("guide_hardware_experiment");
         if (!verify_retail_routes(title, *dx, *xx)) return fail("retail_export_mapping");
         if (!verify_live_binding(title, *dx, *xx, kXamDataBinding, true))

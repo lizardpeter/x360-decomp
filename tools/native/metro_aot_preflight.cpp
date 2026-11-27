@@ -1,5 +1,6 @@
 // Host-only mapping and dispatch preflight for the original Metro/XAM pair.
-// This deliberately never launches the dashboard or executes XAM's entry point.
+// This never launches the dashboard or executes XAM's entry point.
+// It does execute one verified stackless heap-configuration leaf.
 #include <rex/app/app.h>
 #include <rex/apu/audio_system.h>
 #include <rex/gpu/graphics_system.h>
@@ -160,6 +161,8 @@ public:
             !title_.FindFunction(kXamEntry))
             return fail("xam_identity");
         std::cout << "METRO_PREFLIGHT pass xam_load" << std::endl;
+        if (!metro_boot::prepare_hosted_heap_flag(title_)) return fail("hosted_heap_flag");
+        std::cout << "METRO_PREFLIGHT pass hosted_heap_flag" << std::endl;
         // Data-referenced leaf entries are not guaranteed by PDATA or exports.
         // Fail before original XAM initialization if any actual callback is
         // absent from the native dispatch table.

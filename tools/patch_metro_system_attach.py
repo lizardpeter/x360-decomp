@@ -11,6 +11,10 @@ def replace(source,old,new):
     return source.replace(old,new,1)
 
 DECL = """
+  // Explicitly back the single legacy XAM heap-flag page in the hosted
+  // kernel address range. Never map arbitrary missing guest pages.
+  [[nodiscard]] Result<void> PrepareHostedXamHeapFlag();
+
   // Synchronously execute a system DLL's real process-attach entry in a
   // kernel thread belonging to the system process, not the title process.
   struct HostedSystemAttach {
@@ -21,6 +25,45 @@ DECL = """
                                                                   u32 module_handle);
 """
 BODY = r'''
+Result<void> TitleRuntime::PrepareHostedXamHeapFlag() {
+  // Retail XAM leaf 8168AF28 reads a halfword at 8E03860A and extracts
+  // bit 2 before the heap descriptor path at 816E65BC. The original
+  // console kernel is not mapped by this hosted runtime. POSIX's sparse
+  // backing previously happened to allow the zero read, while Windows
+  // correctly faults on the uncommitted page. Make the hosted default
+  // explicit: ordinary heap configuration, not a console kernel dump.
+  constexpr u32 page=0x8E030000u, bytes=0x10000u, field=0x8E03860Au;
+  if (!IsLoaded() || IsRunning() || !FindFunction(0x8168AF28u))
+    return Err(StatusError(X_STATUS_INVALID_PARAMETER));
+  auto* heap=state_->GetAddressSpace()->LookupHeap(page);
+  if (!heap || heap->GetPageSize()!=bytes || heap->GetHeapType()!=HeapType::kGuestXEX)
+    return Err(StatusError(X_STATUS_INVALID_PARAMETER));
+  HeapAllocation info{};
+  if (!heap->QueryRegionInfo(page,&info) || info.state)
+    return Err(StatusError(X_STATUS_CONFLICTING_ADDRESSES));
+  if (!heap->AllocFixed(page,bytes,bytes,kMemoryAllocationReserve|kMemoryAllocationCommit,
+                         kMemoryProtectRead|kMemoryProtectWrite))
+    return Err(StatusError(X_STATUS_NO_MEMORY));
+  auto& memory=GetGuestMemory();
+  auto span=memory.GetWritableSpan(page,bytes);
+  if (!span) {
+    heap->Release(page);
+    return Err(StatusError(X_STATUS_ACCESS_VIOLATION));
+  }
+  std::memset(span->data(),0,span->size());
+  if (!heap->Protect(page,bytes,kMemoryProtectRead,nullptr)) {
+    heap->Release(page);
+    return Err(StatusError(X_STATUS_ACCESS_VIOLATION));
+  }
+  auto value=memory.Load<be_u16>(field);
+  if (!value || static_cast<u16>(*value)!=0 || memory.GetWritableSpan(field,2)) {
+    heap->Release(page);
+    return Err(StatusError(X_STATUS_ACCESS_VIOLATION));
+  }
+  REXSYS_INFO("METRO_HOSTED_HEAP_FLAG address=8E03860A value=0 readonly=true diagnostic=true");
+  return Ok();
+}
+
 Result<TitleRuntime::HostedSystemAttach> TitleRuntime::AttachHostedSystemModule(
     u32 address, u32 module_handle) {
   if (!IsLoaded() || !KernelThread::IsInThread() || !module_handle)
@@ -209,7 +252,7 @@ def patch_sources(sdk,tests):
     out[public]=replace(public.read_text(),"  GuestMemory& GetGuestMemory() const;",
                         "  GuestMemory& GetGuestMemory() const;\n"+DECL)
     source=replace(runtime.read_text(),"#include <format>",
-        "#include <format>\n#include <atomic>\n#include <rex/kernel/object/kernel_thread.h>\n#include <rex/kernel/object/object_table.h>\n#include <rex/kernel/thread_registry.h>\n#include <rex/kernel/types/thread.h>")
+        "#include <format>\n#include <atomic>\n#include <cstring>\n#include <rex/kernel/heap.h>\n#include <rex/kernel/guest_memory.h>\n#include <rex/kernel/object/kernel_thread.h>\n#include <rex/kernel/object/object_table.h>\n#include <rex/kernel/thread_registry.h>\n#include <rex/kernel/types/thread.h>")
     out[runtime]=replace(source,"GuestMemory& TitleRuntime::GetGuestMemory() const {",
                          BODY+"\nGuestMemory& TitleRuntime::GetGuestMemory() const {")
     old=test.read_text()

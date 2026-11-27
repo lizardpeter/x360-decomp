@@ -223,7 +223,7 @@ jobs:
           if ($timedOut) { Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue; $p.WaitForExit() }
           $status = $p.ExitCode
           $log = Get-Content "$package/preflight.log" -Raw
-          $gates = @("dashboard_load","flash_mount","dashboard_identity","xam_registry","xam_load","xam_data_mapping","all_retail_export_mappings","kernel_variables","dynamic_xam_identity","custom_object_callbacks","hud_retail_mapping","original_resource_integrity","bootanim_native_mapping","clean_unload")
+          $gates = @("dashboard_load","flash_mount","dashboard_identity","xam_registry","xam_load","hosted_heap_flag","xam_data_mapping","all_retail_export_mappings","kernel_variables","dynamic_xam_identity","custom_object_callbacks","hud_retail_mapping","original_resource_integrity","bootanim_native_mapping","clean_unload")
           if ($env:METRO_PROFILE_MODULES -eq "1") { $gates += "profile_module_mapping" }
           $missing = @($gates | Where-Object { $log -notmatch "(?m)^METRO_PREFLIGHT pass $($_)\r?$" })
           $passed = (!$timedOut -and $status -eq 0 -and $missing.Count -eq 0)
