@@ -135,7 +135,15 @@ def patch_io(source):
     source=replace(source,READ_OFFSET_OLD,READ_OFFSET_NEW)
     source=replace(source,WRITE_START,WRITE_NEW)
     old="byte_offset_ptr ? static_cast<u64>(*byte_offset_ptr) : -1"
-    if source.count(old)!=2:raise ValueError("unexpected offset use")
+    # There is a third use in NtReadFileScatter. Patch its own argument
+    # validation first, so no uninitialized local is introduced.
+    scatter = """                            MappedU32 segment_array, u32 length, MappedU64 byte_offset_ptr) {
+  X_STATUS result = X_STATUS_SUCCESS;"""
+    scatter_new = """                            MappedU32 segment_array, u32 length, MappedU64 byte_offset_ptr) {
+""" + READ_OFFSET_NEW + """
+  X_STATUS result = X_STATUS_SUCCESS;"""
+    source=replace(source,scatter,scatter_new)
+    if source.count(old)!=3:raise ValueError("unexpected offset use")
     return source.replace(old,"byte_offset")
 
 def patch_file(source):
