@@ -4,6 +4,7 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
 from metro_import_contracts import branch, setup, result_use, variable_reference, inspect, reachable, report
 import struct
+from metro_xam_fault_evidence import conditional_details, observed_call
 
 class Contracts(unittest.TestCase):
     def test_branch(self):
@@ -32,4 +33,20 @@ class Contracts(unittest.TestCase):
         result=report({"dash":dash,"xam":xam},{1:0x2000},cat,set())
         self.assertEqual(result["modules"]["dash"]["imports"][0]["startup_graph_sites"],1)
         self.assertEqual(result["modules"]["dash"]["imports"][0]["sites"][0]["immediate_return_use"],"compare_r3_immediate")
+
+    def test_observed_lr_and_tail_wrapper(self):
+        # bl from 0x1000 to 0x1010; wrapper tail b to import 0x1020.
+        image=struct.pack(">9I",0x48000011,0x2c030000,0x41820008,0x4e800020,
+                          0x48000010,0x60000000,0x60000000,0x60000000,0x4e800020)
+        pe={"functions":[(0x1000,16,0),(0x1010,4,0)],
+            "sections":[{"flags":0x20000000,"rva":0,"loaded_bytes":len(image)}]}
+        imp={0x1020:{"name":"Example","library":"xboxkrnl","ordinal":"0001"}}
+        row=observed_call(image,0x1000,pe,0x1004,"Example",imp)
+        self.assertEqual(row["classification"],"direct_or_tail_match")
+        self.assertEqual(row["tail_chain"],[{"from":"00001010","to":"00001020"}])
+        self.assertEqual(row["operand_window"][2]["cr_test"],{"field":0,"bit":"eq","sense":"set"})
+        self.assertEqual(observed_call(image,0x1000,pe,0x1004,"Other",imp)["classification"],"different_import")
+        self.assertEqual(observed_call(image,0x1000,pe,0x1004,"Example",{})["classification"],"unresolved_wrapper_or_indirect")
+        self.assertEqual(conditional_details(0x1008,0x40820008)["cr_test"]["sense"],"clear")
+        self.assertIsNone(conditional_details(0,0x42000008)["cr_test"])
 if __name__=="__main__":unittest.main()
