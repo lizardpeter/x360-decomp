@@ -125,12 +125,15 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/win-amd64
-          key: rexglue-metro-win64-vs2022-release-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/stage_metro_xam_aot.py', 'tests/sdk/*.cpp') }}
+          key: rexglue-metro-win64-vs2022-release-crtwarn-a3e1d826-${{ hashFiles('tools/patch_*.py', 'tools/stage_metro_xam_aot.py', 'tests/sdk/*.cpp') }}
+      # MSVC marks read-only getenv calls in the portable runtime/probes as
+      # deprecated. Keep the warnings visible, without promoting that category
+      # to an error; all other compiler error policies remain unchanged.
       - name: Compile patched SDK release (non-debug CRT)
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
         run: |
-          cmake --preset win-amd64 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CONFIGURATION_TYPES=Release -DCMAKE_DEFAULT_BUILD_TYPE=Release -DCMAKE_DEFAULT_CONFIGS=Release -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+          cmake --preset win-amd64 -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ "-DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations" -DCMAKE_CONFIGURATION_TYPES=Release -DCMAKE_DEFAULT_BUILD_TYPE=Release -DCMAKE_DEFAULT_CONFIGS=Release -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build out/build/win-amd64 --config Release --target install --parallel 4
       - name: Select patched SDK
@@ -165,7 +168,7 @@ jobs:
       - name: Compile native Windows EXE and all three guest DLLs
         run: |
           $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
-          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_COMPILER_LAUNCHER=sccache "-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG" "-DCMAKE_PREFIX_PATH=$env:SDK"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_COMPILER_LAUNCHER=sccache "-DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations" "-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG" "-DCMAKE_PREFIX_PATH=$env:SDK"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build "$folder/native" --parallel 3 *> "$folder/build.log"
           $status = $LASTEXITCODE
