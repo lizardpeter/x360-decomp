@@ -14,7 +14,7 @@ from pathlib import Path
 from analyze_decoded import pe_info, imports, ordinal_exports
 from decode_image import decode
 from metro_import_contracts import sdk_catalog, library, hx, branch, context, variable_reference
-from metro_xam_fault_evidence import bounded_entry
+from metro_xam_fault_evidence import bounded_entry,operand
 from metro_live_slot_and_input_evidence import executable
 from pirs import parse as parse_pirs
 from prepare_recompilation import ROOT, EXPECTED, original, sha
@@ -311,6 +311,80 @@ def audit(raw,image,meta,catalog,stubs):
                  for item in items if item["explicit_sdk_stub"] or item["sdk_kind"]=="unknown"],
             "scope":"static module and callback evidence, not native animation execution"}
 
+# The retail kernel itself is not among the verified decoded images.
+# XAM's kernel imports are direct, independently recoverable evidence of
+# the startup service interface even when no bootanim filename occurs.
+ANIMATION_ORDINALS={0x0262:"AniBlockOnAnimation",0x0263:"AniTerminateAnimation",
+                    0x0265:"AniSetLogo",0x02A6:"AniStartBootAnimation"}
+ANIMATION_XAM_SLOTS={
+    0x0262:(0x815F066C,0x81A72AC4),
+    0x0263:(0x815F047C,0x81A72364),
+    0x0265:(0x815F0644,0x81A72A24),
+    0x02A6:(0x815F0474,0x81A72344),
+}
+
+def animation_service_calls(raw,image,base,pe,thunks):
+    from metro_stfs_abi_evidence import flow,render
+    funcs={a:n for a,n,_ in pe["functions"]}
+    imports_by_address={}
+    for row in imports(image,base,parse_xex(raw)):
+        ordinal=int(row["ordinal"],16)
+        if library(row["library"])!="xboxkrnl" or ordinal not in ANIMATION_ORDINALS:continue
+        expected=ANIMATION_XAM_SLOTS[ordinal]
+        if row["value_slots"]!=[expected[0]] or row["thunk_slots"]!=[expected[1]]:
+            raise ValueError("original animation service slot changed")
+        imports_by_address[expected[1]]=ANIMATION_ORDINALS[ordinal]
+    if len(imports_by_address)!=4:raise ValueError("original animation service import census")
+    edges=collections.defaultdict(list)
+    reverse=collections.defaultdict(set)
+    calls=[]
+    for a,n in sorted(funcs.items()):
+        words=body_words(image,base,a,n)
+        for i,w in enumerate(words):
+            pc=a+4*i;b=branch(pc,w)
+            if not b:continue
+            target,linked=b
+            if target in funcs and target!=a:
+                edges[a].append((pc,target,linked));reverse[target].add(a)
+            if target in imports_by_address:
+                # This is callsite evidence, not inferred semantics from
+                # the service name. Preserve actual pre-call operands,
+                # bounded argument flow and post-call result consumption.
+                _,states=flow(words,a)
+                regs=states.get(pc,({},{}))[0]
+                calls.append({"owner":hx(a),"site":hx(pc),"target":hx(target),
+                              "name":imports_by_address[target],"linked":linked,
+                              "arguments":{f"r{k}":render(regs.get(k)) for k in range(3,8)},
+                              "window":[{"pc":hx(a+4*j),**operand(a+4*j,words[j])}
+                                        for j in range(max(0,i-12),min(len(words),i+9))]})
+    if {x["name"] for x in calls}!=set(ANIMATION_ORDINALS.values()):
+        raise ValueError("not all animation kernel imports have original direct calls")
+    roots={int(c["owner"],16) for c in calls}
+    # Establish who calls the service owners by exact entry; do not
+    # pretend absence of a direct route rules out event/callback delivery.
+    parents=[]
+    for a in sorted(roots):
+        for p in sorted(reverse[a]):
+            for pc,t,linked in edges[p]:
+                if t==a:parents.append({"owner":hx(p),"site":hx(pc),"target":hx(a),"linked":linked})
+    startup_paths=[]
+    for root in (0x81696AF0,0x81696558,0x816CE8B0,0x81696420):
+        for goal in sorted(roots):
+            q=collections.deque([goal]);dist={goal:0}
+            while q:
+                d=q.popleft()
+                for p in reverse[d]:
+                    if p not in dist:dist[p]=dist[d]+1;q.append(p)
+            if root not in dist:continue
+            here=root;path=[]
+            while here!=goal:
+                pc,t,linked=min(v for v in edges[here] if dist.get(v[1])==dist[here]-1)
+                path.append({"owner":hx(here),"site":hx(pc),"target":hx(t),"linked":linked});here=t
+            startup_paths.append({"root":hx(root),"service_owner":hx(goal),"path":path})
+    return {"imports":{hx(t):n for t,n in imports_by_address.items()},
+            "calls":calls,"direct_callers":parents,"startup_exact_entry_paths":startup_paths,
+            "scope":"Verified XAM caller contracts; kernel-side implementation and cold boot policy are not established."}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -330,6 +404,12 @@ def main():
         pe=pe_info(image,m["image_base"])
         callers[label]=loader_references(image,m["image_base"],pe)
         if label=="xam":
+            xam_items,xam_thunks=kernel_imports(raw,image,m["image_base"],pe,catalog,stubs)
+            report["kernel_animation_services"]=animation_service_calls(raw,image,m["image_base"],pe,xam_thunks)
+            services=report["kernel_animation_services"]
+            print("ANIMATION_SERVICE_CALLS",json.dumps(services["calls"],sort_keys=True))
+            print("ANIMATION_SERVICE_PARENTS",json.dumps(services["direct_callers"],sort_keys=True))
+            print("ANIMATION_SERVICE_STARTUP_PATHS",json.dumps(services["startup_exact_entry_paths"],sort_keys=True))
             report["audio_library_homologues"]=matching_functions(
                 image,m["image_base"],pe,im,meta["image_base"],pe_info(im,meta["image_base"]),
                 (0x819AC540,0x819A5878,0x819A50B8,0x819A4F00,0x819AFF80,0x819B6FA0))
