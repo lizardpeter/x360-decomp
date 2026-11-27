@@ -486,6 +486,173 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
 }
 '''
 
+# Bounded queries at the original storage/resource I/O boundary.
+ATTR_QUERY_OLD = r"""  auto object_name = kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual<X_ANSI_STRING*>(
+      object_attrs->name_ptr);
+  auto path_str =
+      kernel::TranslateAnsiPath(kernel::GetCurrentState().GetAddressSpace(), object_name);
+  REXKRNL_TRACE(
+      "NtQueryFullAttributesFile "
+      "path={}",
+      path_str);
+
+  Pinned<FileObject> root_file;
+  // 0xFFFFFFFD is ObDosDevices.
+  if (object_attrs->root_directory != 0xFFFFFFFD && object_attrs->root_directory != 0) {
+    root_file = kernel::GetCurrent().GetObjectTable().Get<FileObject>(object_attrs->root_directory);
+    if (!root_file) {
+      return X_STATUS_INVALID_HANDLE;
+    }
+  }
+
+  auto target_path = StripDosDevicePrefix(
+      kernel::TranslateAnsiPath(kernel::GetCurrentState().GetAddressSpace(), object_name));
+
+"""
+ATTR_QUERY_NEW = r"""  auto& guest = kernel::GetCurrent().GetGuestMemory();
+  const auto output = file_info.GetGuestAddress();
+  if (!output || !guest.GetWritableSpan(output,sizeof(X_FILE_NETWORK_OPEN_INFORMATION)))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (!object_attrs.GetGuestAddress()) return X_STATUS_INVALID_PARAMETER;
+  const auto attributes = guest.Load<X_OBJECT_ATTRIBUTES>(object_attrs.GetGuestAddress());
+  if (!attributes) return X_STATUS_ACCESS_VIOLATION;
+  std::string target_path;
+  if (const auto status=CheckedAnsiPath(attributes->name_ptr,target_path);
+      status!=X_STATUS_SUCCESS) return status;
+  Pinned<FileObject> root_file;
+  if (attributes->root_directory!=0xFFFFFFFD && attributes->root_directory!=0) {
+    root_file=kernel::GetCurrent().GetObjectTable().Get<FileObject>(attributes->root_directory);
+    if (!root_file) return X_STATUS_INVALID_HANDLE;
+  }
+
+"""
+DIRECTORY_QUERY_OLD = r"""  X_STATUS result = X_STATUS_UNSUCCESSFUL;
+  u32 info = 0;
+
+  auto file = kernel::GetCurrent().GetObjectTable().Get<FileObject>(file_handle);
+  auto name = kernel::TranslateAnsiPath(kernel::GetCurrentState().GetAddressSpace(), file_name);
+
+  if (!IsValidPath(name, PathUse::kPattern)) {
+    return X_STATUS_INVALID_PARAMETER;
+  }
+
+"""
+DIRECTORY_QUERY_NEW = r"""  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 output=file_info_ptr.GetGuestAddress();
+  const u32 iosb=io_status_block.GetGuestAddress();
+  if (!output || !guest.GetWritableSpan(output,length) ||
+      (iosb && !guest.GetWritableSpan(iosb,sizeof(X_IO_STATUS_BLOCK))))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (iosb && u64{output}<u64{iosb}+sizeof(X_IO_STATUS_BLOCK) &&
+      u64{iosb}<u64{output}+length) return X_STATUS_INVALID_PARAMETER;
+  auto event=kernel::GetCurrent().GetObjectTable().Get<EventObject>(event_handle);
+  if (event_handle && !event) return X_STATUS_INVALID_HANDLE;
+  if ((apc_routine & ~3u) && !KernelThread::GetCallingThread())
+    return X_STATUS_INVALID_PARAMETER;
+  std::string name;
+  if (const u32 address=file_name.GetGuestAddress()) {
+    const auto desc=guest.Load<X_ANSI_STRING>(address);
+    if (!desc) return X_STATUS_ACCESS_VIOLATION;
+    const u16 count=desc->length;
+    if (count>static_cast<u16>(desc->maximum_length)) return X_STATUS_INVALID_PARAMETER;
+    if (count) {
+      if (!desc->pointer) return X_STATUS_ACCESS_VIOLATION;
+      auto bytes=guest.GetReadOnlySpan(desc->pointer,count);
+      if (!bytes) return X_STATUS_ACCESS_VIOLATION;
+      name.assign(reinterpret_cast<const char*>(bytes->data()),bytes->size());
+    }
+  }
+  if (name.find('\0')!=std::string::npos || name.find_first_of("\\/")!=std::string::npos ||
+      !IsValidPath(name,PathUse::kPattern)) return X_STATUS_INVALID_PARAMETER;
+  X_STATUS result=X_STATUS_UNSUCCESSFUL;
+  u32 info=0;
+  auto file=kernel::GetCurrent().GetObjectTable().Get<FileObject>(file_handle);
+
+"""
+DIRECTORY_COUNT_OLD = r"""      info = length;"""
+DIRECTORY_COUNT_NEW = r"""      info = offsetof(X_FILE_DIRECTORY_INFORMATION,file_name) +
+             static_cast<u32>(file_info_ptr->file_name_length);"""
+VOLUME_QUERY_OLD = r"""  info_ptr.Zero(info_length);"""
+VOLUME_QUERY_NEW = r"""  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 output=info_ptr.GetGuestAddress(), iosb=io_status_block.GetGuestAddress();
+  if (!output || !guest.GetWritableSpan(output,info_length) ||
+      (iosb && !guest.GetWritableSpan(iosb,sizeof(X_IO_STATUS_BLOCK))))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (iosb && u64{output}<u64{iosb}+sizeof(X_IO_STATUS_BLOCK) &&
+      u64{iosb}<u64{output}+info_length) return X_STATUS_INVALID_PARAMETER;
+  info_ptr.Zero(minimum_length);"""
+DIRECTORY_OBJECT_OLD = r"""  REX_ASSERT(out_info != nullptr);
+
+  std::optional<filesystem::FileStat> entry;"""
+DIRECTORY_OBJECT_NEW = r"""  if (!out_info) return X_STATUS_ACCESS_VIOLATION;
+  if (length<offsetof(X_FILE_DIRECTORY_INFORMATION,file_name))
+    return X_STATUS_INFO_LENGTH_MISMATCH;
+  if (!HasFlags(file->GetInfo().attributes,filesystem::FileAttributes::kDirectory))
+    return X_STATUS_NOT_A_DIRECTORY;
+
+  std::optional<filesystem::FileStat> entry;"""
+DIRECTORY_OVERFLOW_OLD = r"""  auto end = reinterpret_cast<u8*>(out_info) + length;
+  const std::string& entry_name = entry->name;
+  if (reinterpret_cast<u8*>(&out_info->file_name[0]) + entry_name.size() > end) {
+    REX_ASSERT_ALWAYS("Buffer overflow?");
+    return X_STATUS_BUFFER_OVERFLOW;
+  }"""
+DIRECTORY_OVERFLOW_NEW = r"""  const std::string& entry_name=entry->name;
+  if (entry_name.size()>length-offsetof(X_FILE_DIRECTORY_INFORMATION,file_name)) {
+    pending_directory_entry=std::move(entry);
+    return X_STATUS_BUFFER_OVERFLOW;
+  }"""
+DIRECTORY_RETRY_OLD = r"""    } else if (restart) {
+      find->Restart();
+    }
+    entry = FindNext();"""
+DIRECTORY_RETRY_NEW = r"""    } else if (restart) {
+      pending_directory_entry.reset();
+      find->Restart();
+    }
+    if (pending_directory_entry) {
+      entry=std::move(pending_directory_entry);
+      pending_directory_entry.reset();
+    } else {
+      entry=FindNext();
+    }"""
+DIRECTORY_PATTERN_OLD = r"""    REX_ASSERT(rex::string::utf8_find_any_of(file_name, "\\") == std::string_view::npos);"""
+DIRECTORY_PATTERN_NEW = r"""    if (file_name.find_first_of("\\/")!=std::string_view::npos)
+      return X_STATUS_INVALID_PARAMETER;"""
+DIRECTORY_SET_FIND_OLD = r"""void FileObject::SetFindPattern(std::string_view pattern) {
+"""
+DIRECTORY_SET_FIND_NEW = r"""void FileObject::SetFindPattern(std::string_view pattern) {
+  pending_directory_entry.reset();
+"""
+DIRECTORY_HEADER_OLD = r"""  PropagateConst<std::unique_ptr<filesystem::IDirectory>> find;"""
+DIRECTORY_HEADER_NEW = r"""  PropagateConst<std::unique_ptr<filesystem::IDirectory>> find;
+  std::optional<filesystem::FileStat> pending_directory_entry;"""
+
+def patch_storage_queries(source):
+    for old,new in ((ATTR_QUERY_OLD,ATTR_QUERY_NEW),
+                    (DIRECTORY_QUERY_OLD,DIRECTORY_QUERY_NEW),
+                    (DIRECTORY_COUNT_OLD,DIRECTORY_COUNT_NEW)):
+        source=replace(source,old,new)
+    return source
+
+def patch_volume_query(source):
+    start=source.index("u32 NtQueryVolumeInformationFile_entry(")
+    return source[:start]+replace(source[start:],VOLUME_QUERY_OLD,VOLUME_QUERY_NEW)
+
+def patch_directory_object(source):
+    for old,new in ((DIRECTORY_OBJECT_OLD,DIRECTORY_OBJECT_NEW),
+                    (DIRECTORY_OVERFLOW_OLD,DIRECTORY_OVERFLOW_NEW),
+                    (DIRECTORY_RETRY_OLD,DIRECTORY_RETRY_NEW),
+                    (DIRECTORY_PATTERN_OLD,DIRECTORY_PATTERN_NEW),
+                    (DIRECTORY_SET_FIND_OLD,DIRECTORY_SET_FIND_NEW)):
+        source=replace(source,old,new)
+    return source
+
+def patch_directory_header(source):
+    source=replace(source,"#include <rex/platform.h>",
+                   "#include <rex/filesystem/file_stat.h>\\n#include <rex/platform.h>".replace("\\n","\n"))
+    return replace(source,DIRECTORY_HEADER_OLD,DIRECTORY_HEADER_NEW)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -502,10 +669,13 @@ def main():
     info=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_io_info.cpp"
     filesystem=a.sdk/"src/filesystem/file_system.cpp"
     filesystem_test=a.sdk/"tests/unit/filesystem/file_system_test.cpp"
-    outputs={filesystem:patch_filesystem(filesystem.read_text()),
+    file_header=a.sdk/"include/rex/kernel/object/file_object.h"
+    outputs={file_header:patch_directory_header(file_header.read_text()),
+             filesystem:patch_filesystem(filesystem.read_text()),
              filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
-             io:patch_io(io.read_text()),file:patch_file(file.read_text()),
-             info:patch_file_information(info.read_text()),
+             io:patch_storage_queries(patch_io(io.read_text())),
+             file:patch_directory_object(patch_file(file.read_text())),
+             info:patch_volume_query(patch_file_information(info.read_text())),
              hid:patch_storage_notifications(hid.read_text()),
              test:test.read_text()+"\n"+tests}
     for path,content in outputs.items():path.write_text(content)

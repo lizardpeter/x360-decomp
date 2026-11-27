@@ -329,3 +329,57 @@ REX_TEST_CASE("metro_io_runtime: original six-argument file open keeps r7 share 
     CHECK(c.Kernel("NtOpenFile",{h,0x80100000,c.AllocAttributes("scratch:\\folder"),iosb,1,0x60})!=0);
   });
 }
+
+REX_TEST_CASE("metro_io_runtime: directory overflow retries and reports exact bytes",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) {
+    std::filesystem::create_directories(root/"scratch"/"profiles");
+    std::ofstream(root/"scratch"/"profiles"/"profile-fixture.bin") << "synthetic";
+  });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4),iosb=c.Alloc(8),out=c.Alloc(128);
+    REQUIRE(c.Kernel("NtOpenFile",{h,0x80100000,c.AllocAttributes("scratch:\\profiles"),iosb,1,1})==0);
+    const u32 handle=c.Load32(h);
+    const auto query=[&](u32 output,u32 length,u32 name,u32 restart) {
+      return c.Kernel("NtQueryDirectoryFile",{handle,0,0,0,iosb,output,length,name,restart});
+    };
+    c.Store32(out,0xCAFEBABE);c.Store32(iosb,0x12345678);
+    CHECK(query(0xfffffffc,128,0,0)==X_STATUS_ACCESS_VIOLATION);
+    CHECK(query(out,128,0xfffffffc,0)==X_STATUS_ACCESS_VIOLATION);
+    CHECK(query(iosb,72,0,0)==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Load32(iosb)==0x12345678);
+    CHECK(query(out,72,0,0)==X_STATUS_BUFFER_OVERFLOW);
+    CHECK(c.Load32(out)==0xCAFEBABE);
+    REQUIRE(query(out,128,0,0)==0);
+    CHECK(c.Load32(out+60)==19);
+    CHECK(c.Load32(iosb+4)==83);
+    CHECK(query(out,128,0,0)==X_STATUS_NO_MORE_FILES);
+    REQUIRE(query(out,128,0,1)==0);
+    CHECK(c.Load32(iosb+4)==83);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+  });
+}
+REX_TEST_CASE("metro_io_runtime: full attributes and volume query check guest spans",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) { WriteScratch(root,"volume.bin",32); });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 attrs=c.AllocAttributes("scratch:\\volume.bin"),h=c.Alloc(4),iosb=c.Alloc(8),out=c.Alloc(128);
+    CHECK(c.Kernel("NtQueryFullAttributesFile",{0,out})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("NtQueryFullAttributesFile",{attrs,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("NtQueryFullAttributesFile",{0xfffffffc,out})==X_STATUS_ACCESS_VIOLATION);
+    REQUIRE(c.Kernel("NtQueryFullAttributesFile",{attrs,out})==0);
+    REQUIRE(c.Kernel("NtOpenFile",{h,0x80100000,attrs,iosb,1,0x60})==0);
+    const u32 handle=c.Load32(h);
+    for(u32 offset=0;offset<128;offset+=4)c.Store32(out+offset,0xCAFEBABE);
+    REQUIRE(c.Kernel("NtQueryVolumeInformationFile",{handle,iosb,out,128,XFileFsSizeInformation})==0);
+    CHECK(c.Load32(iosb+4)==24);
+    CHECK(c.Load32(out+24)==0xCAFEBABE);
+    CHECK(c.Kernel("NtQueryVolumeInformationFile",{handle,iosb,0xfffffffc,24,XFileFsSizeInformation})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("NtQueryVolumeInformationFile",{handle,out+4,out,24,XFileFsSizeInformation})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+  });
+}
