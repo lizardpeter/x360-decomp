@@ -105,6 +105,27 @@ echo Missing verified original input files. Run Prepare Inputs.cmd first.
 pause
 exit /b 1
 """
+IMPORT_PROFILE=r"""@echo off
+setlocal
+cd /d "%~dp0"
+if "%~1"=="" (
+    echo Drag a copy of your original E-prefixed Xbox 360 CON profile file onto this launcher.
+    echo The source file is never modified. This does not authenticate Xbox Live.
+    pause
+    exit /b 1
+)
+py -3 --version >nul 2>&1
+if errorlevel 1 goto python
+py -3 tools\stage_metro_profile.py "%~1" --storage-root "%CD%\user\metro-17559\profile-storage"
+goto result
+:python
+python tools\stage_metro_profile.py "%~1" --storage-root "%CD%\user\metro-17559\profile-storage"
+:result
+set "code=%ERRORLEVEL%"
+echo Profile staging exit code: %code%.
+pause
+exit /b %code%
+"""
 PREPARE=r"""@echo off
 setlocal
 cd /d "%~dp0"
@@ -161,12 +182,13 @@ needed to prepare the local original inputs.
    native-package.json for diagnosis.
 
 Experimental local profile storage (not yet verified to sign in):
-stage a copy of your own original CON profile package with
-python tools\\stage_metro_profile.py <profile-file> --storage-root user\\metro-17559\\profile-storage
-then set X360_METRO_LOCAL_PROFILES=1 before launching. This only exposes the
-isolated Content directory to original XAM. It does not authenticate Xbox Live.
-If your SDK user root is customized, use that root instead. Keep profile
-packages and logs private; never upload them to GitHub or build artifacts.
+the normal launch mounts an isolated per-installation Content directory.
+Drag a copy of your original E-prefixed CON profile onto Import Local Profile.cmd
+or run python tools\\stage_metro_profile.py <profile-file> --storage-root
+user\\metro-17559\\profile-storage. The source is never modified. This does
+not authenticate Xbox Live or establish sign-in. Set X360_METRO_LOCAL_PROFILES=0
+to opt out. If your SDK user root is customized, stage to that root instead.
+Keep profile packages and logs private; never upload them to GitHub or CI.
 
 Direct command from cmd.exe, after preparing inputs:
 set X360_METRO_BOOT=1
@@ -194,7 +216,7 @@ def package(folder,output,commit,sdk_source,profile_modules=False):
     for name in ("LICENSE","LICENSE.md","LICENSE.txt","NOTICE","NOTICE.md","THIRD_PARTY_NOTICES"):
         for label,root in (("project",ROOT),("rexglue-sdk",sdk_source)):
             if (root/name).is_file():shutil.copy2(root/name,licenses/f"{label}-{name}")
-    launchers={"Prepare Inputs.cmd":PREPARE,"launch.cmd":LAUNCH,
+    launchers={"Prepare Inputs.cmd":PREPARE,"Import Local Profile.cmd":IMPORT_PROFILE,"launch.cmd":LAUNCH,
                       "Launch Metro.cmd":'@echo off\ncall "%~dp0launch.cmd"\n',
                       "Launch Metro HD.cmd":'@echo off\ncall "%~dp0launch.cmd" hd\n',
                       "Launch Metro 1080p Diagnostic.cmd":'@echo off\ncall "%~dp0launch.cmd" 1080p\n',

@@ -77,13 +77,9 @@ inline bool mount_dashboard_user(rex::kernel::TitleRuntime& title) {
 }
 
 inline bool mount_local_profiles(rex::kernel::TitleRuntime& title) {
-    // Opt-in only: the source package is never mounted. The staging tool
-    // creates an isolated copy under the same per-installation user root.
-    // This makes the Content directory addressable, not an invented
-    // physical storage device or a synthetic signed-in profile.
-    const auto root=REX_PATHS().user_root.Get()/"metro-17559"/"profile-storage"/"Content";
-    std::error_code ec;
-    if (!std::filesystem::is_directory(root,ec) || ec) return false;
+    // Expose only the isolated per-installation Content tree; never mount
+    // a source profile or the firmware directory writable. The same tree
+    // supports later original profile creation on a fresh installation.
     return mount_writable_area(title,"profile-storage/Content","\\Device\\MetroProfileContent",
                                "\\Device\\Harddisk0\\Partition1\\Content");
 }
@@ -436,7 +432,7 @@ protected:
         if (!mount_dashboard_user(title)) return fail("dashboard_user_mount");
         std::cout << "METRO_BOOT pass dashboard_user_mount" << std::endl;
         const char* profiles=std::getenv("X360_METRO_LOCAL_PROFILES");
-        if(profiles && std::string_view(profiles)=="1") {
+        if(!profiles || std::string_view(profiles)!="0") {
             if(!mount_local_profiles(title))return fail("local_profile_content_mount");
             std::cout<<"METRO_PROFILE content_mount=ready signin_verified=0"<<std::endl;
         }

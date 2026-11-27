@@ -115,6 +115,88 @@ TEXT_ENTRIES = {
 TEXT_RESULTS={pc+4:kind for entries in TEXT_CALLS.values()
               for pc,(_,_,kind) in entries.items()}
 
+# Verified original XUI text twins, run 46068603654. At the post-copy
+# instruction the original next store is the UTF-16 length at object +44.
+# Only recognize public tab labels; never log any other text or object data.
+HEADER_POINTS={
+ "generated":{0x921CB758:("text_header_copy","entry",4),
+              0x921F27A0:("text_header_set","entry",4),
+              0x921F2800:("text_header_length","return",0),
+              0x921E3AE0:("text_header_get","return",3),
+              0x921E3AF8:("text_header_measure","entry",4),
+              0x921E3B48:("text_header_measure","return",29)},
+ "generated_xam":{0x817ACA98:("text_header_copy","entry",4),
+                  0x817CCA28:("text_header_set","entry",4),
+                  0x817CCA88:("text_header_length","return",0),
+                  0x817C12C8:("text_header_get","return",3),
+                  0x817C12E0:("text_header_measure","entry",4),
+                  0x817C1330:("text_header_measure","return",29)},
+ "generated_hud":{}
+}
+HEADER_KIND={pc:reg for rows in HEADER_POINTS.values() for pc,(_,_,reg) in rows.items()}
+HEADER_PROBE=r"""
+#include <rex/kernel/title_runtime.h>
+#include <rex/kernel/guest_memory.h>
+namespace {
+struct MetroHeaderTag {const char* name; unsigned units;};
+MetroHeaderTag metro_header_tag(rex::kernel::GuestMemory& mem,unsigned addr) {
+    // A bounded full-match classifier: arbitrary strings are never printed.
+    if(!addr || addr>0xffffffe0u || (addr&1))return {nullptr,0};
+    char text[16]={};
+    for(unsigned i=0;i<15;++i) {
+        const auto value=mem.Load<rex::be_u16>(addr+2*i);
+        if(!value)return {nullptr,0};
+        unsigned ch=*value;
+        if(!ch) {
+            struct Known {const char* value; const char* tag;};
+            constexpr Known known[]={{"home","home"},{"hom","home_short"},{"movies & tv","movies"},
+              {"movies & t","movies_short"},{"social","social"},{"games","games"},
+              {"apps","apps"},{"settings","settings"}};
+            for(const auto& k:known) {
+                unsigned n=0;while(k.value[n]&&k.value[n]==text[n])++n;
+                if(n==i && !k.value[n])return {k.tag,i};
+            }
+            return {nullptr,0};
+        }
+        if(ch>=65&&ch<=90)ch+=32;
+        if(ch<32||ch>126)return {nullptr,0};
+        text[i]=static_cast<char>(ch);
+    }
+    return {nullptr,0};
+}
+void metro_header_observe(unsigned pc,const char* phase,const PPCContext& ctx,unsigned reg) {
+    auto* mem=REX_GUEST_MEMORY();
+    if(!mem)return;
+    unsigned address=0;
+    if(reg==0) {
+        // The original saved pointer-to-string is r29; at the post-wcslen
+        // instruction r3 contains the length just before its object store.
+        if(!ctx.r29.u32)return;
+        const auto ptr=mem->Load<rex::be_u32>(ctx.r29.u32);
+        if(!ptr)return;
+        address=*ptr;
+    } else if(reg==3)address=ctx.r3.u32;
+    else if(reg==4)address=ctx.r4.u32;
+    else if(reg==29)address=ctx.r29.u32;
+    else return;
+    const auto tag=metro_header_tag(*mem,address);
+    if(!tag.name)return;
+    static std::atomic<unsigned> count{0};
+    if(count.fetch_add(1,std::memory_order_relaxed)>=256)return;
+    if(reg==0) {
+        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u stored_length=%u\\n",
+                     pc,phase,tag.name,tag.units,ctx.r3.u32);
+    } else if(reg==29) {
+        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u status=%08X\\n",
+                     pc,phase,tag.name,tag.units,ctx.r3.u32);
+    } else {
+        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u\\n",
+                     pc,phase,tag.name,tag.units);
+    }
+}
+}
+"""
+
 MARK="/* METRO_UI_PROBES_INSERTED */"
 FONT_PATH_RETURNS={
     0x92265600:656,0x92265628:128,0x92265658:128,
@@ -194,6 +276,9 @@ def probes(module):
         if pc in result or pc+4 in result:raise ValueError("duplicate text call probe")
         result[pc]=(name,"call")
         result[pc+4]=(name,"return")
+    for pc,(name,phase,_) in HEADER_POINTS[module].items():
+        if pc in result:raise ValueError("duplicate header point")
+        result[pc]=(name,phase)
     return result
 
 def insert(source,points):
@@ -208,6 +293,9 @@ def insert(source,points):
         name,phase=points[pc];hits[pc]+=1
         prefix=m[1]
         args=", ".join(f"static_cast<unsigned>(ctx.r{i}.u32)" for i in range(3,9))
+        if pc in HEADER_KIND:
+            result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_header_observe(0x{pc:08X}u,"{phase}",ctx,{HEADER_KIND[pc]}u);\\n')
+            continue
         result.append(prefix+'if (std::getenv("X360_METRO_BOOT")) {\n')
         result.append(prefix+'  static std::atomic<unsigned> metro_ui_samples{0};\n')
         result.append(prefix+'  const auto metro_ui_n=metro_ui_samples.fetch_add(1,std::memory_order_relaxed)+1;\n')
@@ -229,7 +317,8 @@ def insert(source,points):
         result.append(prefix+'  }\n'+prefix+'}\n')
     if not hits:return source,hits
     font=FONT_HEADER if set(hits)&(set(FONT_PATH_RETURNS)|FONT_DESCRIPTORS|FONT_PATCH_RETURNS) else ""
-    return MARK+"\n#include <atomic>\n#include <cstdio>\n#include <cstdlib>\n"+font+"".join(result),hits
+    header=HEADER_PROBE if set(hits)&HEADER_KIND.keys() else ""
+    return MARK+"\n#include <atomic>\n#include <cstdio>\n#include <cstdlib>\n"+font+header+"".join(result),hits
 
 def instrument(folder):
     report={}

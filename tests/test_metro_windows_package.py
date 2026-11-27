@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from package_metro_windows import pe_identity,binary_files,REQUIRED,PROFILE_DLLS,LAUNCH,package
+from package_metro_windows import pe_identity,binary_files,REQUIRED,PROFILE_DLLS,LAUNCH,IMPORT_PROFILE,package
 
 def pe(path,machine=0x8664,magic=0x20b,dll=False):
     data=bytearray(128);data[:2]=b"MZ"
@@ -94,3 +94,8 @@ class TestWindowsPackage(unittest.TestCase):
                      '--gpu.xenos.async_shader_compilation=false'):
             self.assertIn(flag,capture)
         self.assertIn('placeholder_draw_frames=',capture)
+
+    def test_local_profile_import_isolated(self):
+        self.assertIn('tools\\\\stage_metro_profile.py', IMPORT_PROFILE)
+        self.assertIn('--storage-root "%CD%\\\\user\\\\metro-17559\\\\profile-storage"', IMPORT_PROFILE)
+        self.assertNotIn("X360_METRO_LOCAL_PROFILES=1", LAUNCH)

@@ -9,6 +9,8 @@ out="$native/metro-capture"
 mkdir -p "$out"
 rm -f "$out"/candidate-*.png "$out"/input-*.png "$out/next.png" "$out/receipt.txt" "$out/boot.log"
 export X360_METRO_BOOT=1
+# CI never mounts a real local profile, including baseline boot.
+export X360_METRO_LOCAL_PROFILES=0
 export X360_METRO_TEXT_CLIP_TRACE=1
 export SDL_AUDIODRIVER=dummy
 export SDL_VIDEODRIVER=x11
@@ -19,7 +21,7 @@ cd "$native"
 profile_args=()
 if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   # Synthetic input only: never mount a real local profile in CI.
-  unset X360_METRO_LOCAL_PROFILES
+  export X360_METRO_LOCAL_PROFILES=0
   export X360_METRO_PROFILE_TRACE=1
   export X360_METRO_GUIDE_TRACE=1
   export X360_METRO_GUIDE_UI="${X360_METRO_GUIDE_UI:-1}"

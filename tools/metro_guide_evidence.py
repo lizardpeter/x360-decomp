@@ -194,13 +194,15 @@ CALLBACK_ROOTS={0x818C9940:252,0x819018A0:253,0x81906808:251,
  0x816FF868:250,0x81996FB8:247,0x81965AC0:242,0x81981740:243,
  0x8198B8F0:241,0x8198C918:240}
 LIVE_STALL_ROOTS={0x81700C70,0x8189A4F0,0x8189A3D8,0x8189A170,
-                  0x818A6FC8,0x818A5428}
+                  0x818A6FC8,0x818A5428,0x818A6E98,0x818A6D50,0x818A6DA8,0x818A07F8}
 
 def callback_stall_trace(image,base,pe,funcs,thunks):
     def word(pc):return struct.unpack_from(">I",image,pc-base)[0]
     for site,target in ((0x81700CA4,0x81899BB8),(0x818984D0,0x8189A4F0),
                         (0x8189A520,0x8189A3D8),(0x8189A4C8,0x8189A170),
-                        (0x8189A588,0x818A6FC8),(0x8189A5AC,0x818A5428)):
+                        (0x8189A588,0x818A6FC8),(0x8189A5AC,0x818A5428),
+                        (0x818A7034,0x818A6E98),(0x818A6F50,0x818A6D50),
+                        (0x818A6F74,0x818A6DA8),(0x818A6F90,0x818A07F8)):
         if branch(site,word(site))!=(target,True):
             raise ValueError("live fallback edge changed "+hx(site))
     # Verify original app registration operand r4 is the public app ID,

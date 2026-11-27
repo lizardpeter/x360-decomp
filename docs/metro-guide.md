@@ -66,3 +66,6 @@ security operation. The code-generation receipt and live result remain
 separate validation gates. The previous static audit (46052849954)
 recovered 44 bounded functions around the observed stalled callback.
 
+
+## Latest live worker correlation (46066156180)
+The actual deferred startup worker in this run is PCR 30043000 (not the previous run's PCR). It completed the earlier fallback subcalls and entered the linked call at 818A7034 to 818A6E98; no return was observed. Four pad edges and the F9 press were received, but no original system-request callback was registered. The previous 46052849954 static report independently resolves three nested calls in 818A6E98 and two loop backedges. The trace now includes those four functions at their original boundaries; no cryptographic inputs, outputs, or account data are recorded. Guide remains unverified.
