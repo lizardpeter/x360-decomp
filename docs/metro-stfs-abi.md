@@ -1,3 +1,7 @@
 # Original STFS device ABI recovery
 
 The prior storage census proves three calls to StfsCreateDevice with r4=88 and r3 pointing to a local stack request, not the SDK's guessed three-argument signature. All three test signed r3 status. The original success path reads at least request offset +72, and two call sites also read +76. Fourteen StfsControlDevice sites use commands 0 through 5, with command 3 and 4 pointing to local buffers. A bounded original-image control-flow and conservative register/stack provenance pass now identifies concrete writes, loads, request-pointer escapes and success/failure paths for the exact original owners. Unknown instructions and merged conflicting register facts remain unresolved. This evidence is not an implemented kernel driver or a claim that a profile has been signed in.
+
+## Native provenance confirmation
+
+Run 46030200178 passed. All three original STFS create sites have a proven 88-byte stack request. The +72 output word is read on all three successful paths; +76 is read on two. Both +0 and +28 receive pointers through original calls; +28 is a 36-byte input copy. The two 64-bit fields at +8/+16, 32-bit fields +24/+64/+68, and byte flags +80..83 remain typed only by observed access width until their semantics are proved. This avoids guessing a file handle or producing an invented device pointer.

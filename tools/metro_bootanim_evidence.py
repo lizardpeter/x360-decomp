@@ -275,8 +275,30 @@ def audit(raw,image,meta,catalog,stubs):
     audio_registration=bounded_entry(image,base,pe,0x98051768,thunks,8192)
     audio_callback=bounded_entry(image,base,pe,0x9804BEA0,thunks,8192)
     direct_context=direct_audio_contract(audio_registration,audio_callback,0x980517C4,0x9804BEA0)
+    # Run 46027223390 observed a different registered callback. Recover
+    # its exact original body and all relevant voice-driver call sites.
+    observed=0x9804F308
+    if not executable(pe,base,observed):raise ValueError("observed callback is not executable")
+    alternate=bounded_entry(image,base,pe,observed,thunks,8192)
+    voice_sites=[{"import":row["name"],"calls":row["direct_calls"]}
+                 for row in items if row["name"] in (
+                     "XAudioGetVoiceCategoryVolumeChangeMask","XAudioSubmitRenderDriverFrame",
+                     "XAudioUnregisterRenderDriverClient")]
+    roots={int(c["owner"],16) for row in voice_sites for c in row["calls"]}
+    for op in alternate["operands"]:
+        if op.get("kind")=="branch" and "target" in op:
+            dest=int(op["target"],16)
+            if executable(pe,base,dest) and dest not in thunks:roots.add(dest)
+    alternate_evidence={"source_run":46027223390,"callback":hx(observed),
+                        "body":alternate,"registration":audio_registration,
+                        "voice_driver_calls":voice_sites,
+                        "related_bodies":[bounded_entry(image,base,pe,a,thunks,8192)
+                                          for a in sorted(roots)],
+                        "scope":"Observed callback and bounded original operand evidence; no guessed ABI."}
+
     return {"source_sha256":sha(raw),"decoded_sha256":meta["sha256"],
             "direct_audio_context":direct_context,
+            "alternate_audio_context":alternate_evidence,
             "module_flags":hx(int.from_bytes(raw[4:8],"big")),
             "xex_entry":None,"pe_entry":hx(pe["entry_point"]),
             "pe_entry_executable":executable(pe,base,pe["entry_point"]),
