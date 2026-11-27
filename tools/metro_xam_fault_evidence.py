@@ -285,6 +285,70 @@ def startup_contract_inventory(image,base,pe,thunks):
                             "wrapper_operands":describe(image,base,start,length,thunks) if short else []}
     return {"function_groups":groups,"scope":"verified original operand metadata; no inferred hardware ABI"}
 
+
+# Actual second native boot unwind, run 45944345779. The earlier storage
+# worker fault is retained separately; do not conflate these crashes.
+SECOND_FAULT=0x8169D068
+SECOND_FRAMES=[(0x8169D060,SECOND_FAULT),(0x81696558,0x816965C4),
+               (0x816B8B08,0x816B8B64),(0x816B92C8,None),(0x816B9668,0x816B971C)]
+SECOND_LR={0x816B9830:"KeSetPriorityClassThread",0x816BA16C:"EtxProducerRegister",
+           0x816969EC:"EtxProducerRegister",0x81696A0C:"HalGetPowerUpCause",
+           0x81696A10:"XexShimLock",0x816E0D44:"XeKeysGetStatus"}
+
+def bounded_entry(image,base,pe,addr,thunks,limit=256):
+    if not executable(pe,base,addr):raise ValueError("nonexecutable observed entry "+hx(addr))
+    exact=[s for a,s,_ in pe["functions"] if a==addr]
+    containing=[{"entry":hx(a),"size":s} for a,s,_ in pe["functions"] if a<=addr<a+s]
+    if len(exact)==1:
+        length=min(exact[0],limit)
+    else:
+        following=min((a for a,_,_ in pe["functions"] if a>addr),default=addr+limit)
+        length=min(limit,following-addr)
+    while length and not executable(pe,base,addr+length-4):length-=4
+    ops=describe(image,base,addr,length,thunks)
+    for row in ops:
+        pc=int(row["pc"],16)
+        w=read_word(image,base,pc)
+        if w>>26==16:row.update(conditional_details(pc,w))
+        if w>>26 in (10,11):row["cr_field"]=(w>>23)&7
+    return {"entry":hx(addr),"extent_verified":len(exact)==1,
+            "pdata_owners":containing,"bounded_length":length,"operands":ops}
+
+def second_fault_report(image,base,pe,thunks):
+    frames=[{**bounded_entry(image,base,pe,addr,thunks,4096),"return_or_fault_pc":None if hint is None else hx(hint)}
+            for addr,hint in SECOND_FRAMES]
+    fault=operand(SECOND_FAULT,read_word(image,base,SECOND_FAULT))
+    if fault.get("kind")!="memory_load" or fault.get("offset")!=0x274:
+        raise ValueError("second crash instruction differs from observed guest address")
+    # Enumerate actual direct callers of both innermost entries, including
+    # tail branches and local call setup. No assumed name or ABI.
+    incoming=[]
+    for start,size,_ in pe["functions"]:
+        for pc in range(start,start+size,4):
+            dest=branch(pc,read_word(image,base,pc))
+            if dest and dest[0] in (0x8169D060,0x81696558):
+                lo=max(start,pc-48);hi=min(start+size,pc+32)
+                incoming.append({"owner":hx(start),"site":hx(pc),"target":hx(dest[0]),
+                                 "linked":dest[1],"operands":describe(image,base,lo,hi-lo,thunks)})
+    # Inspect full original functions containing the observed startup calls,
+    # not just their immediate return uses. LR trace may name a tail wrapper.
+    related={}
+    for lr,name in SECOND_LR.items():
+        start,size=owner(pe,lr-4)
+        related.setdefault(hx(start),bounded_entry(image,base,pe,start,thunks,4096))
+    # Direct tail wrappers can lack PDATA. Capture them from the actual
+    # call target rather than inventing boundaries or assuming a function.
+    targets=set()
+    for start in related.values():
+        for row in start["operands"]:
+            if row.get("kind")=="branch" and row.get("linked") and "import" not in row:
+                target=int(row["target"],16)
+                if executable(pe,base,target):targets.add(target)
+    wrappers=[bounded_entry(image,base,pe,a,thunks,96) for a in sorted(targets)]
+    return {"source_run":45944345779,"guest_fault_address":"00000274","fault_pc":hx(SECOND_FAULT),
+            "fault_operand":fault,"unwind_functions":frames,"direct_incoming_edges":incoming,
+            "related_startup_functions":related,"direct_call_target_prefixes":wrappers}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -339,12 +403,14 @@ def main():
             "observed_startup_stubs":observed_storage_report(image,base,pe,thunks),
             "verified_storage_fault_details":verified_storage_fault_details(image,base,pe,thunks),
             "verified_device_stats_status":verified_device_stats_status(image,base,thunks),
-            "startup_contract_inventory":startup_contract_inventory(image,base,pe,thunks)}
+            "startup_contract_inventory":startup_contract_inventory(image,base,pe,thunks),
+            "second_native_fault":second_fault_report(image,base,pe,thunks)}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
     print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
+    print("second native fault:",json.dumps({k:v for k,v in report["second_native_fault"].items() if k in ("source_run","guest_fault_address","fault_pc","fault_operand")},sort_keys=True))
     print("startup contract wrappers:",len(report["startup_contract_inventory"]["function_groups"]))
     print("device stats status conversion:",json.dumps(report["verified_device_stats_status"],sort_keys=True))
     print("storage fault gates:",json.dumps(report["verified_storage_fault_details"],sort_keys=True))
