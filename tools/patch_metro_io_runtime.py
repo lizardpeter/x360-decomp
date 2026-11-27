@@ -22,7 +22,16 @@ IO_HEADER = '#include <rex/kernel/title_runtime.h>'
 IO_HEADER_NEW = IO_HEADER + '\n#include <rex/kernel/guest_memory.h>\n#include <cstring>\n#include <atomic>\n#include <cstdlib>\n#include <string_view>'
 IO_START = '  const u32 cache_size = 0xFF000;'
 IO_END = '\n}\n\n/**\n * Allocates a device structure'
-IO_BODY = """  // Preserve the established utility-drive geometry contract. Other
+IO_BODY = """  // An unavailable device endpoint is neither a disk nor an auth provider.
+  // Never apply the utility-drive geometry success path to it.
+  const auto endpoint_file=kernel::GetCurrent().GetObjectTable().Get<FileObject>(handle);
+  if (!endpoint_file) return X_STATUS_INVALID_HANDLE;
+  if (HasFlags(endpoint_file->file->GetInfo().attributes,filesystem::FileAttributes::kDevice)) {
+    REXKRNL_WARN("METRO_OFFLINE_DEVICE unsupported_ioctl={:08X} input_bytes={} output_bytes={}",
+                 io_control_code,input_buffer_len,output_buffer_len);
+    return X_STATUS_NOT_SUPPORTED;
+  }
+  // Preserve the established utility-drive geometry contract. Other
   // hosted files do not expose a physical device control provider.
   constexpr u32 cache_size = 0xFF000;
   constexpr u32 kGeometry = 0x70000;
@@ -973,7 +982,10 @@ def patch_set_information(source):
 
 def patch_volume_query(source):
     start=source.index("u32 NtQueryVolumeInformationFile_entry(")
-    return source[:start]+replace(source[start:],VOLUME_QUERY_OLD,VOLUME_QUERY_NEW)
+    body=replace(source[start:],VOLUME_QUERY_OLD,VOLUME_QUERY_NEW)
+    body=replace(body,"  auto& guest=kernel::GetCurrent().GetGuestMemory();",
+        "  if (HasFlags(file->file->GetInfo().attributes,filesystem::FileAttributes::kDevice))\n    return X_STATUS_NOT_SUPPORTED;\n  auto& guest=kernel::GetCurrent().GetGuestMemory();")
+    return source[:start]+body
 
 def patch_directory_object(source):
     for old,new in ((DIRECTORY_OBJECT_OLD,DIRECTORY_OBJECT_NEW),
@@ -1062,6 +1074,59 @@ def patch_entropy_linkage(source):
     return replace(source,"target_link_libraries(${kernel_target} PRIVATE ws2_32 winmm)",
                           "target_link_libraries(${kernel_target} PRIVATE ws2_32 winmm bcrypt)")
 
+# Offline named device endpoints have no authenticated backing. Keep the
+# ordinary SDK null disk provider unchanged; an endpoint is not a disk.
+OFFLINE_ENDPOINT_PATCHES = {
+  "include/rex/filesystem/mount.h": [
+    [
+      "  kNull,      /**< Answers a fixed list of paths with empty files. */",
+      "  kNull,      /**< Answers a fixed list of paths with empty files. */\n  kOfflineEndpoint, /**< Openable device name with no implemented operations. */"
+    ]
+  ],
+  "src/filesystem/provider.cpp": [
+    [
+      "    case ProviderType::kNull:\n      return NullProvider::Create(entry);",
+      "    case ProviderType::kNull:\n    case ProviderType::kOfflineEndpoint:\n      return NullProvider::Create(entry);"
+    ]
+  ],
+  "src/filesystem/null_provider.cpp": [
+    [
+      "class NullStream final : public NodeStream {",
+      "class OfflineEndpointStream final : public NodeStream {\n public:\n  Result<size_t> Read(std::span<u8>, u64) override {\n    return Err<size_t>(BuildError(FileSystemError::kUnsupported, \"offline device cannot read\"));\n  }\n  Result<size_t> Write(std::span<const u8>, u64) override {\n    return Err<size_t>(BuildError(FileSystemError::kUnsupported, \"offline device cannot write\"));\n  }\n  Result<void> SetLength(u64) override {\n    return Err(BuildError(FileSystemError::kUnsupported, \"offline device cannot resize\"));\n  }\n  Result<void> Flush() override {\n    return Err(BuildError(FileSystemError::kUnsupported, \"offline device cannot flush\"));\n  }\n};\n\nclass NullStream final : public NodeStream {"
+    ],
+    [
+      "  auto provider = std::make_unique<NullProvider>(Key{}, entry);",
+      "  if (entry.type == ProviderType::kOfflineEndpoint &&\n      (!entry.source.empty() || !entry.null_paths.empty() || entry.flags != MountFlags::kNone)) {\n    return Err<std::unique_ptr<Provider>>(\n        BuildError(FileSystemError::kInvalidPath, \"offline device has no host backing or children\"));\n  }\n  auto provider = std::make_unique<NullProvider>(Key{}, entry);"
+    ],
+    [
+      "  return {\"NullDevice\", 0, 40, 0x10, 0x10, 0x80, 0x200};",
+      "  if (GetEntry().type == ProviderType::kOfflineEndpoint) return {};\n  return {\"NullDevice\", 0, 40, 0x10, 0x10, 0x80, 0x200};"
+    ],
+    [
+      "  info_.attributes = parent ? FileAttributes::kNormal : FileAttributes::kDirectory;",
+      "  info_.attributes = provider.GetEntry().type == ProviderType::kOfflineEndpoint\n      ? FileAttributes::kDevice\n      : parent ? FileAttributes::kNormal : FileAttributes::kDirectory;"
+    ],
+    [
+      "Result<std::unique_ptr<NodeStream>> NullNode::Open(Access access) {",
+      "Result<std::unique_ptr<NodeStream>> NullNode::Open(Access access) {\n  if (GetProvider().GetEntry().type == ProviderType::kOfflineEndpoint)\n    return std::unique_ptr<NodeStream>(std::make_unique<OfflineEndpointStream>());"
+    ]
+  ],
+  "src/filesystem/file_system.cpp": [
+    [
+      "  if (node) {\n    if (node->IsDirectory() && options.require_file) {",
+      "  if (node) {\n    if (HasFlags(node->GetInfo().attributes, FileAttributes::kDevice) &&\n        (options.create_directory || options.disposition != Disposition::kOpen)) {\n      return Err<Opened>(BuildError(FileSystemError::kUnsupported,\n                                    \"offline endpoint supports existing-device opens only\"));\n    }\n    if (node->IsDirectory() && options.require_file) {"
+    ]
+  ]
+}
+
+def patch_offline_endpoint_sources(root,outputs):
+    for name,replacements in OFFLINE_ENDPOINT_PATCHES.items():
+        path=root/name
+        source=outputs.get(path,path.read_text())
+        for old,new in replacements:
+            source=replace(source,old,new)
+        outputs[path]=source
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -1097,6 +1162,7 @@ def main():
              info:patch_set_information(patch_volume_query(patch_file_information(info.read_text()))),
              hid:patch_storage_notifications(hid.read_text()),
              test:test.read_text()+"\n"+tests}
+    patch_offline_endpoint_sources(a.sdk,outputs)
     for path,content in outputs.items():path.write_text(content)
     subprocess.run(["git","-C",str(a.sdk),"diff","--check"],check=True)
 

@@ -477,3 +477,42 @@ REX_TEST_CASE("metro_io_runtime: profile persistence metadata rejects malformed 
     REQUIRE(c.Kernel("NtClose",{handle})==0);
   });
 }
+
+
+REX_TEST_CASE("metro_io_runtime: offline device endpoint opens without authenticating or exposing disk data",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture;
+  namespace fs=rex::filesystem;
+  auto& mounts=fixture.GetRuntime().GetFileSystem();
+  REQUIRE(mounts.Mount({"\\Device\\DeviceAuth",fs::ProviderType::kOfflineEndpoint,{},fs::MountFlags::kNone,{}}));
+  CHECK_FALSE(mounts.Mount({"\\Device\\InvalidEndpoint",fs::ProviderType::kOfflineEndpoint,{},fs::MountFlags::kWritable,{}}));
+  CHECK_FALSE(mounts.Open("\\Device\\DeviceAuth\\child",{}));
+  CHECK_FALSE(mounts.Open("\\Device\\DeviceAuth",{.disposition=fs::Disposition::kOverwrite}));
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4),iosb=c.Alloc(8),out=c.Alloc(64);
+    REQUIRE(c.Kernel("NtOpenFile",{h,3,c.AllocAttributes("\\Device\\DeviceAuth"),iosb,0,0})==0);
+    const u32 handle=c.Load32(h);
+    auto file=c.GetRuntime().GetObjectTable().Get<FileObject>(handle);
+    REQUIRE(file);
+    CHECK(rex::HasFlags(file->file->GetInfo().attributes,rex::filesystem::FileAttributes::kDevice));
+    std::array<u8,8> bytes{};
+    CHECK_FALSE(file->file->Read(bytes,0));
+    CHECK_FALSE(file->file->Write(bytes,0));
+    CHECK_FALSE(file->file->SetLength(0));
+    CHECK_FALSE(file->file->Flush());
+    const u32 event=NewEvent(c);
+    c.Store32(out,0xCAFEBABE);c.Store32(iosb,0x12345678);c.Store32(iosb+4,0x87654321);
+    for(u32 code:{0u,0x70000u,0x74004u,0xffffffffu}) {
+      CHECK(c.Kernel("NtDeviceIoControlFile",{handle,event,0,0,iosb,code,0,0,out,64})==X_STATUS_NOT_SUPPORTED);
+      CHECK(c.Load32(out)==0xCAFEBABE);
+      CHECK(c.Load32(iosb)==0x12345678);
+      CHECK(c.Load32(iosb+4)==0x87654321);
+    }
+    CHECK(c.Kernel("NtWaitForSingleObjectEx",{event,1,0,c.AllocQuad(0)})==X_STATUS_TIMEOUT);
+    CHECK(c.Kernel("NtQueryVolumeInformationFile",{handle,iosb,out,64,XFileFsSizeInformation})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(out)==0xCAFEBABE);
+    CHECK(c.Kernel("NtClose",{event})==0);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+  });
+}

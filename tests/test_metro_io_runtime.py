@@ -124,6 +124,15 @@ class IoRuntime(unittest.TestCase):
         self.assertEqual(result.count("0x7fffffffffffffff"),3)
         self.assertIn("if (info->attributes)",result)
         with self.assertRaises(ValueError):patch_set_information(result)
+    def test_offline_endpoint_cannot_report_device_control_success(self):
+        self.assertIn("kOfflineEndpoint",str(OFFLINE_ENDPOINT_PATCHES))
+        self.assertIn("FileAttributes::kDevice",IO_BODY)
+        self.assertIn("return X_STATUS_NOT_SUPPORTED",IO_BODY)
+        self.assertLess(IO_BODY.index("METRO_OFFLINE_DEVICE"),IO_BODY.index("kGeometry"))
+        provider=OFFLINE_ENDPOINT_PATCHES["src/filesystem/null_provider.cpp"]
+        self.assertIn("offline device cannot read",provider[0][1])
+        self.assertIn("offline device cannot write",provider[0][1])
+        self.assertNotIn("return Ok()",provider[0][1])
     def test_storage_queries_bound_and_retry(self):
         source="\n".join([ATTR_QUERY_OLD,DIRECTORY_QUERY_OLD,DIRECTORY_COUNT_OLD])
         patched=patch_storage_queries(source)

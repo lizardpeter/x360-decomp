@@ -84,6 +84,16 @@ inline bool mount_local_profiles(rex::kernel::TitleRuntime& title) {
                                "\\Device\\Harddisk0\\Partition1\\Content");
 }
 
+inline bool mount_offline_device_auth(rex::kernel::TitleRuntime& title) {
+    // Original XAM requires this endpoint to open during initialization.
+    // The hosted endpoint has no console identity, key vault, credentials,
+    // authentication capability or network transport. Every operation fails
+    // with an unsupported status. No account or key check is overridden.
+    auto& fs=title.GetFileSystem();
+    return bool(fs.Mount({"\\Device\\DeviceAuth",rex::filesystem::ProviderType::kOfflineEndpoint,
+                          {},rex::filesystem::MountFlags::kNone,{}}));
+}
+
 inline bool mount_flash(rex::kernel::TitleRuntime& title) {
     auto& fs = title.GetFileSystem();
     const auto root = title.GetTitlePaths().game_root.Get() / "flash";
@@ -431,6 +441,8 @@ protected:
         std::cout << "METRO_BOOT pass hdd_cache_mount" << std::endl;
         if (!mount_dashboard_user(title)) return fail("dashboard_user_mount");
         std::cout << "METRO_BOOT pass dashboard_user_mount" << std::endl;
+        if(!mount_offline_device_auth(title))return fail("offline_device_endpoint");
+        std::cout<<"METRO_BOOT pass offline_device_endpoint auth_available=0"<<std::endl;
         const char* profiles=std::getenv("X360_METRO_LOCAL_PROFILES");
         if(!profiles || std::string_view(profiles)!="0") {
             if(!mount_local_profiles(title))return fail("local_profile_content_mount");

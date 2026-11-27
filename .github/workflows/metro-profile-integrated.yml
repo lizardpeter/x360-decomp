@@ -25,6 +25,8 @@ on:
       - 'tools/capture_metro_intro.sh'
       - 'tests/test_metro_intro.py'
       - 'tools/patch_metro_public_verification.py'
+      - 'tools/patch_metro_io_runtime.py'
+      - 'tests/sdk/metro_io_runtime.cpp'
       - '.github/workflows/metro-profile-integrated.yml'
 permissions:
   contents: read
