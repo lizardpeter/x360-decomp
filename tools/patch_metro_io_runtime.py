@@ -273,7 +273,7 @@ u32 DrvGetContentStorageNotification_entry(u32 notification_address) {
   // incoming r3 pointer or write an invented notification structure.
   return notification_address ? X_STATUS_NOT_SUPPORTED : X_STATUS_INVALID_PARAMETER;
 }
-}  // namespace rex::kernel::xboxkrnl
+}  // hosted storage notification namespace
 REX_EXPORT(__imp__DrvGetContentStorageNotification,
            rex::kernel::xboxkrnl::DrvGetContentStorageNotification_entry)"""
 
