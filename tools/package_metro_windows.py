@@ -12,6 +12,7 @@ REQUIRED={"dash_17559.exe","dash_17559_xam.dll","dash_17559_hud.dll","dash_17559
           "rexbase.dll","rexppc.dll","rexkernel.dll","rexapp.dll","rexfilesystem.dll",
           "rexapu.dll","rexhid.dll","rexui.dll","rexgpu.dll","rexxam.dll",
           "rexgpu-xenos-vulkan.dll","rexapu-sdl3.dll","rexhid-sdl3.dll","rexui-sdl3.dll","sdl3.dll"}
+PROFILE_DLLS={f"dash_17559_{name}.dll" for name in ("signin","deviceselector","vk","gamerprofile","createprofile")}
 SUPPORT=("target.toml","tools/fetch_originals.py","tools/prepare_recompilation.py","tools/pirs.py",
          "tools/stage_dashboard_runtime.py","tools/prepare_windows_inputs.py","tools/stage_metro_profile.py","docs/native-offline-profiles.md","analysis/pirs_17559/members.json")
 def pe_identity(path):
@@ -28,7 +29,7 @@ def pe_identity(path):
     if (machine,magic)!=(0x8664,0x20b) or dll!=(path.suffix.lower()==".dll"):
         raise ValueError(f"wrong PE architecture or kind: {path.name}")
     return {"machine":"AMD64","format":"PE32+","dll":dll}
-def binary_files(folder):
+def binary_files(folder,profile_modules=False):
     matches=list(folder.rglob("dash_17559.exe"))
     if len(matches)!=1:raise ValueError("expected exactly one native host executable")
     files=[p for p in matches[0].parent.iterdir() if p.is_file() and
@@ -36,6 +37,11 @@ def binary_files(folder):
     names={p.name.lower() for p in files}
     if len(names)!=len(files):raise ValueError("duplicate binary names")
     if REQUIRED-names:raise ValueError("missing native dependencies: "+", ".join(sorted(REQUIRED-names)))
+    present=names & PROFILE_DLLS
+    if profile_modules and present!=PROFILE_DLLS:
+        raise ValueError("missing original profile DLLs: "+", ".join(sorted(PROFILE_DLLS-present)))
+    if not profile_modules and present:
+        raise ValueError("unexpected original profile DLLs in baseline package")
     return sorted(files,key=lambda p:p.name.lower())
 LAUNCH=r"""@echo off
 setlocal
@@ -47,13 +53,25 @@ if not exist "inputs\bootanim.xex" goto missing
 set X360_METRO_BOOT=1
 set X360_METRO_INTRO=
 if /i "%~1"=="intro" set X360_METRO_INTRO=1
+if /i "%~1"=="guide" goto guide
+if /i "%~1"=="profile-preflight" goto profilepreflight
 if /i "%~1"=="preflight" goto preflight
+goto boot
+:guide
+set X360_METRO_GUIDE_UI=1
+set X360_METRO_GUIDE_TRACE=1
+:boot
 start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex --gpu.driver=vulkan --ui.fullscreen=false --ui.window_width=1280 --ui.window_height=720 --log.level=info --log.flush_level=info > metro.log 2>&1
 set "code=%ERRORLEVEL%"
 echo Native host exit code: %code%. See metro.log.
 pause
 exit /b %code%
+:profilepreflight
+set X360_METRO_PROFILE_MODULE_PREFLIGHT=1
+goto runpreflight
 :preflight
+set X360_METRO_PROFILE_MODULE_PREFLIGHT=
+:runpreflight
 set X360_METRO_BOOT=
 set X360_METRO_INTRO=
 start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex > local-preflight.log 2>&1
@@ -121,8 +139,8 @@ dash_17559.exe --title.game_root="%CD%\\inputs" --title.entry=dash.xex --gpu.dri
 No original firmware file is included in the downloadable artifact. The
 local setup script checks exact sizes and SHA-256 digests before staging.
 """
-def package(folder,output,commit,sdk_source):
-    files=binary_files(folder)
+def package(folder,output,commit,sdk_source,profile_modules=False):
+    files=binary_files(folder,profile_modules)
     if output.exists():raise ValueError("package output must be fresh")
     output.mkdir(parents=True)
     rows=[]
@@ -140,15 +158,25 @@ def package(folder,output,commit,sdk_source):
     for name in ("LICENSE","LICENSE.md","LICENSE.txt","NOTICE","NOTICE.md","THIRD_PARTY_NOTICES"):
         for label,root in (("project",ROOT),("rexglue-sdk",sdk_source)):
             if (root/name).is_file():shutil.copy2(root/name,licenses/f"{label}-{name}")
-    for name,text in {"Prepare Inputs.cmd":PREPARE,"launch.cmd":LAUNCH,
+    launchers={"Prepare Inputs.cmd":PREPARE,"launch.cmd":LAUNCH,
                       "Launch Metro.cmd":'@echo off\ncall "%~dp0launch.cmd"\n',
                       "Launch with Intro.cmd":'@echo off\ncall "%~dp0launch.cmd" intro\n',
-                      "Verify Inputs.cmd":'@echo off\ncall "%~dp0launch.cmd" preflight\n'}.items():
+                      "Verify Inputs.cmd":'@echo off\ncall "%~dp0launch.cmd" preflight\n'}
+    if profile_modules:
+        launchers.update({
+            "Launch Guide Diagnostic.cmd":'@echo off\ncall "%~dp0launch.cmd" guide\n',
+            "Verify Profile Modules.cmd":'@echo off\ncall "%~dp0launch.cmd" profile-preflight\n'})
+    for name,text in launchers.items():
         (output/name).write_bytes(text.replace("\r\n","\n").replace("\n","\r\n").encode("ascii"))
-    (output/"README.txt").write_text(README,encoding="utf-8")
+    details=README
+    if profile_modules:
+        details+="\nThis diagnostic includes all five original native profile UI DLLs.\nVerify Profile Modules.cmd runs ten load/unload cycles without executing\ntheir entrypoints. Launch Guide Diagnostic.cmd enables the original Guide\nstartup hardware experiment and status traces. Neither launcher signs in\na user or proves that the Guide opens.\n"
+    (output/"README.txt").write_text(details,encoding="utf-8")
     (output/"windows-preflight.json").write_text(json.dumps({"passed":False,"status":"not_run","interactive_dashboard_verified":False},indent=2)+"\n")
     report={"commit":commit,"architecture":"Windows AMD64 PE32+","configuration":"Release",
-            "original_inputs_included":False,"interactive_dashboard_verified":False,"binaries":rows}
+            "original_inputs_included":False,"interactive_dashboard_verified":False,
+            "profile_modules_included":profile_modules,"profile_module_dlls":sorted(PROFILE_DLLS) if profile_modules else [],
+            "guide_verified":False,"sign_in_verified":False,"binaries":rows}
     (output/"native-package.json").write_text(json.dumps(report,indent=2)+"\n")
     print(json.dumps({"binaries":len(rows),"bytes":sum(r["bytes"] for r in rows),"commit":commit}))
 def main():
@@ -157,8 +185,9 @@ def main():
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--commit",required=True)
     p.add_argument("--sdk-source",type=Path,required=True)
+    p.add_argument("--profile-modules",action="store_true")
     a=p.parse_args()
     if not all(x.resolve().is_relative_to(ROOT/"build") for x in (a.folder,a.output,a.sdk_source)):
         p.error("build paths only")
-    package(a.folder,a.output,a.commit,a.sdk_source)
+    package(a.folder,a.output,a.commit,a.sdk_source,a.profile_modules)
 if __name__=="__main__":main()

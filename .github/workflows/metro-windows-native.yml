@@ -1,6 +1,11 @@
 name: Metro native Windows x64 package
 on:
   workflow_dispatch:
+    inputs:
+      profile_modules:
+        description: 'Compile and verify all five original profile UI DLLs'
+        type: boolean
+        default: true
   push:
     branches: [main]
     paths:
@@ -28,6 +33,8 @@ jobs:
   windows-x64:
     runs-on: windows-2022
     timeout-minutes: 120
+    env:
+      METRO_PROFILE_MODULES: ${{ (github.event_name == 'push' || inputs.profile_modules) && '1' || '0' }}
     defaults:
       run:
         shell: pwsh
@@ -117,6 +124,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tools/verify_metro_entries.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.dll --reference build/metro-reference/titles/dash_17559/analysis/dash_17559_pointer_targets.toml --receipt build/receipts/metro-entry-hints.json
           python tools/stage_metro_intro.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.dll --receipt build/receipts/metro-intro-input.json
+      - name: Stage five original profile UI modules
+        if: env.METRO_PROFILE_MODULES == '1'
+        run: |
+          python tools/stage_metro_profile_modules.py --integrated build/fixed-imports/dash_17559 --receipt build/receipts/windows-profile-integration.json
       - name: Set up persistent native compiler cache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -151,7 +162,7 @@ jobs:
           path: build/sdk-source/out/install/win-amd64
           key: ${{ steps.sdk_cache.outputs.cache-primary-key }}
         continue-on-error: true
-      - name: Generate four original native modules
+      - name: Generate original native modules
         run: |
           $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
           Push-Location $folder
@@ -159,7 +170,11 @@ jobs:
           $status = $LASTEXITCODE
           Pop-Location
           python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/windows-codegen-diagnostics.json
-          foreach ($module in @("generated","generated_xam","generated_hud","generated_bootanim")) {
+          $modules = @("generated","generated_xam","generated_hud","generated_bootanim")
+          if ($env:METRO_PROFILE_MODULES -eq "1") {
+            $modules += @("generated_signin","generated_deviceselector","generated_vk","generated_gamerprofile","generated_createprofile")
+          }
+          foreach ($module in $modules) {
             python tools/aot_receipt.py "$folder/$module" --status $status --output "build/receipts/windows-$module.json"
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
@@ -168,7 +183,18 @@ jobs:
           python tools/instrument_metro_heap.py "$folder/generated_xam" --receipt build/receipts/windows-heap-probes.json
           python tools/instrument_metro_ui.py "$folder" --receipt build/receipts/windows-ui-probes.json
           python tools/instrument_metro_audio.py "$folder/generated_xam" --receipt build/receipts/windows-audio-probes.json
-      - name: Compile native Windows EXE and all three guest DLLs
+      - name: Verify exact original profile module bindings and install Guide probes
+        if: env.METRO_PROFILE_MODULES == '1'
+        run: |
+          $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
+          python tools/verify_metro_profile_generated.py "$folder" --receipt build/receipts/windows-profile-generated.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/metro_guide_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.dll --output build/receipts/windows-guide-evidence.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/instrument_metro_guide.py "$folder" --evidence build/receipts/windows-guide-evidence.json --receipt build/receipts/windows-guide-trace.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python tools/instrument_metro_profile.py "$folder" --receipt build/receipts/windows-profile-trace.json
+      - name: Compile native Windows EXE and guest DLLs
         run: |
           $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
           cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_CXX_COMPILER_LAUNCHER=sccache "-DCMAKE_CXX_FLAGS=-Wno-error=deprecated-declarations" "-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG" "-DCMAKE_PREFIX_PATH=$env:SDK"
@@ -180,7 +206,9 @@ jobs:
       - name: Package validated PE32+ native runtime
         id: package
         run: |
-          python tools/package_metro_windows.py build/fixed-imports/dash_17559/native --output build/metro-win64 --commit "${{ github.sha }}" --sdk-source build/sdk-source
+          $profileArgs = @()
+          if ($env:METRO_PROFILE_MODULES -eq "1") { $profileArgs += "--profile-modules" }
+          python tools/package_metro_windows.py build/fixed-imports/dash_17559/native --output build/metro-win64 --commit "${{ github.sha }}" --sdk-source build/sdk-source @profileArgs
       - name: Native Windows headless mapping preflight
         if: steps.package.outcome == 'success'
         run: |
@@ -188,6 +216,7 @@ jobs:
           $package = (Resolve-Path build/metro-win64).Path
           Remove-Item Env:X360_METRO_BOOT -ErrorAction SilentlyContinue
           Remove-Item Env:X360_METRO_INTRO -ErrorAction SilentlyContinue
+          $env:X360_METRO_PROFILE_MODULE_PREFLIGHT = $env:METRO_PROFILE_MODULES
           $arguments = @("--title.game_root=`"$folder/inputs`"","--title.entry=dash.xex")
           $p = Start-Process -FilePath "$package/dash_17559.exe" -WorkingDirectory $package -ArgumentList $arguments -RedirectStandardOutput "$package/preflight.log" -RedirectStandardError "$package/preflight-stderr.log" -PassThru
           $timedOut = !$p.WaitForExit(90000)
@@ -195,9 +224,10 @@ jobs:
           $status = $p.ExitCode
           $log = Get-Content "$package/preflight.log" -Raw
           $gates = @("dashboard_load","flash_mount","dashboard_identity","xam_registry","xam_load","xam_data_mapping","all_retail_export_mappings","kernel_variables","dynamic_xam_identity","custom_object_callbacks","hud_retail_mapping","original_resource_integrity","bootanim_native_mapping","clean_unload")
+          if ($env:METRO_PROFILE_MODULES -eq "1") { $gates += "profile_module_mapping" }
           $missing = @($gates | Where-Object { $log -notmatch "(?m)^METRO_PREFLIGHT pass $($_)\r?$" })
           $passed = (!$timedOut -and $status -eq 0 -and $missing.Count -eq 0)
-          [ordered]@{passed=$passed;exit_code=$status;timed_out=$timedOut;missing_gates=$missing;interactive_dashboard_verified=$false} | ConvertTo-Json -Depth 4 | Set-Content "$package/windows-preflight.json"
+          [ordered]@{passed=$passed;exit_code=$status;timed_out=$timedOut;missing_gates=$missing;profile_modules_requested=($env:METRO_PROFILE_MODULES -eq "1");profile_mapping_verified=($env:METRO_PROFILE_MODULES -eq "1" -and $passed);interactive_dashboard_verified=$false;guide_verified=$false;sign_in_verified=$false} | ConvertTo-Json -Depth 4 | Set-Content "$package/windows-preflight.json"
           Get-Content "$package/windows-preflight.json"
           if (!$passed) { throw "Windows native mapping not verified; package is diagnostic only" }
       - name: Upload native Windows binaries (even if mapping preflight fails)

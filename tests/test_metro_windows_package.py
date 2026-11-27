@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from package_metro_windows import pe_identity,binary_files,REQUIRED,LAUNCH
+from package_metro_windows import pe_identity,binary_files,REQUIRED,PROFILE_DLLS,LAUNCH,package
 
 def pe(path,machine=0x8664,magic=0x20b,dll=False):
     data=bytearray(128);data[:2]=b"MZ"
@@ -36,3 +36,23 @@ class TestWindowsPackage(unittest.TestCase):
         self.assertIn("X360_METRO_INTRO=1",LAUNCH)
         self.assertIn(":preflight",LAUNCH)
         self.assertIn("inputs\\bootanim.xex",LAUNCH)
+
+    def test_profile_module_census_is_all_or_nothing(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            for name in REQUIRED:pe(root/name,dll=name.endswith(".dll"))
+            with self.assertRaisesRegex(ValueError,"missing original profile DLLs"):
+                binary_files(root,True)
+            for name in PROFILE_DLLS:pe(root/name,dll=True)
+            self.assertEqual({p.name for p in binary_files(root,True)},REQUIRED|PROFILE_DLLS)
+            with self.assertRaisesRegex(ValueError,"unexpected original profile DLLs"):
+                binary_files(root)
+            (root/next(iter(PROFILE_DLLS))).unlink()
+            with self.assertRaises(ValueError):binary_files(root,True)
+
+    def test_diagnostic_mode_is_separate_from_normal_boot(self):
+        self.assertIn('if /i "%~1"=="guide" goto guide',LAUNCH)
+        self.assertIn(":guide\nset X360_METRO_GUIDE_UI=1\nset X360_METRO_GUIDE_TRACE=1\n:boot",LAUNCH)
+        self.assertIn(":profilepreflight\nset X360_METRO_PROFILE_MODULE_PREFLIGHT=1",LAUNCH)
+        self.assertIn("goto boot\n:guide",LAUNCH)
+        self.assertNotIn("set X360_METRO_LOCAL_PROFILES=1",LAUNCH)

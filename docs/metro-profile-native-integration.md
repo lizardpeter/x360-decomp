@@ -76,3 +76,7 @@ trace markers identify local API entry, original UI module entry and storage
 return categories without logging original account bytes or identities.
 Screenshots and original frame progress are independent evidence; no visual
 verification or sign-in result is claimed by the input test itself.
+
+## Windows native integration
+
+Windows main-branch CI now stages the same five original profile UI modules as Linux, checks all required original XAM target and module thunk mappings before linking, and requires the complete set of eight guest DLLs alongside the host EXE. A manual Windows workflow can still select the original four-module baseline. The integrated package adds Verify Profile Modules.cmd (ten load-only cycles) and Launch Guide Diagnostic.cmd (isolated hardware-flag experiment plus original trace probes). Neither enables local profile mounts or changes account state. The package's native PE32+ architecture, complete DLL census, load/unload preflight and actual interactive Guide remain separate gates. Native Windows validation is pending until the new workflow completes.
