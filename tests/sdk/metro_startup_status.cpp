@@ -47,3 +47,45 @@ REX_TEST_CASE("metro_startup_status: unsupported custom object exports preserve 
     CHECK(c.Kernel("ObReferenceObjectByHandle",{0,0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
   });
 }
+
+
+REX_TEST_CASE("metro_startup_status: original counted object names and missing devices",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 out=c.Alloc(4), event_out=c.Alloc(4);
+    const u32 attrs=c.AllocAttributes("MetroObjectName");
+    const u32 name=c.Load32(attrs+4);
+    REQUIRE(c.Kernel("NtCreateEvent",{event_out,attrs,0,0})==0);
+    const u32 handle=c.Load32(event_out);
+    const u32 expected=c.Alloc(4);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{handle,0,expected})==0);
+    REQUIRE(c.Kernel("ObReferenceObjectByName",{name,64,0,0,out})==0);
+    CHECK(c.Load32(out)==c.Load32(expected));
+    CHECK(c.Kernel("ObDereferenceObject",{c.Load32(out)})==0);
+    CHECK(c.Kernel("ObDereferenceObject",{c.Load32(expected)})==0);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+    const u32 missing=c.Load32(c.AllocAttributes("\\Device\\HdDvdRom")+4);
+    c.Store32(out,0xbebebebe);
+    CHECK(c.Kernel("ObReferenceObjectByName",{missing,64,0,0,out})==X_STATUS_OBJECT_NAME_NOT_FOUND);
+    CHECK(c.Load32(out)==0xbebebebe);
+    CHECK(c.Kernel("ObReferenceObjectByName",{0xfffffffc,64,0,0,out})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ObReferenceObjectByName",{missing,64,0,0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Load32(out)==0xbebebebe);
+    const u32 malformed=c.Alloc(8);
+    c.Store32(malformed,0x00080004);
+    c.Store32(malformed+4,c.AllocString("abcdefgh"));
+    CHECK(c.Kernel("ObReferenceObjectByName",{malformed,64,0,0,out})==X_STATUS_OBJECT_NAME_INVALID);
+    c.Store32(malformed,0x00040004);
+    c.Store32(malformed+4,0xfffffffc);
+    CHECK(c.Kernel("ObReferenceObjectByName",{malformed,64,0,0,out})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Load32(out)==0xbebebebe);
+    const u32 data=c.Alloc(16), returned=c.Alloc(4);
+    c.Store32(data,0x11223344); c.Store32(returned,0x55667788);
+    CHECK(c.Kernel("IoSynchronousDeviceIoControlRequest",{0x2d001c,0,0,0,data,16,returned,0})==X_STATUS_INVALID_HANDLE);
+    CHECK(c.Kernel("IoSynchronousDeviceIoControlRequest",{0x2d001c,0xbebebebe,0,0,data,16,returned,0})==X_STATUS_INVALID_HANDLE);
+    CHECK(c.Load32(data)==0x11223344);
+    CHECK(c.Load32(returned)==0x55667788);
+  });
+}

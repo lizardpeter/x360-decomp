@@ -52,6 +52,38 @@ def patch_object_contracts(source):
         {arg}.GetGuestAddress(),sizeof(be_u32)))
     return X_STATUS_ACCESS_VIOLATION;
 """,1)
+    # Confirmed by original XAM at 8167AB34..8167AB54 and 8167ABC4..8167ABE4.
+    for old,new in (
+        (r'''u32 ObReferenceObjectByName_entry(MappedString name, [[maybe_unused]] u32 attributes,''', r'''u32 ObReferenceObjectByName_entry(GuestPtrT<X_ANSI_STRING> name, [[maybe_unused]] u32 attributes,'''),
+        (r'''  auto& table = kernel::GetCurrent().GetObjectTable();
+  auto opened = table.OpenByName(name.GetValue());''', r'''  // Retail callers pass PANSI_STRING, not a NUL-terminated char pointer.
+  auto& runtime = kernel::GetCurrent();
+  auto& guest = runtime.GetGuestMemory();
+  if (!out_object_ptr.GetGuestAddress() ||
+      !guest.GetWritableSpan(out_object_ptr.GetGuestAddress(), sizeof(be_u32)))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (!name.GetGuestAddress()) return X_STATUS_INVALID_PARAMETER;
+  auto descriptor = guest.Load<X_ANSI_STRING>(name.GetGuestAddress());
+  if (!descriptor) return X_STATUS_ACCESS_VIOLATION;
+  const u16 length = descriptor->length;
+  if (!length || length > static_cast<u16>(descriptor->maximum_length))
+    return X_STATUS_OBJECT_NAME_INVALID;
+  if (!descriptor->pointer) return X_STATUS_ACCESS_VIOLATION;
+  auto bytes = guest.GetReadOnlySpan(descriptor->pointer, length);
+  if (!bytes) return X_STATUS_ACCESS_VIOLATION;
+  std::string object_name(reinterpret_cast<const char*>(bytes->data()), bytes->size());
+  if (object_name.find('\0') != std::string::npos) return X_STATUS_OBJECT_NAME_INVALID;
+  auto& table = runtime.GetObjectTable();
+  auto opened = table.OpenByName(object_name);'''),
+        (r'''    REXKRNL_WARN_ONCE(bodyless_once, std::to_underlying(object.GetType()),
+                      "ObReferenceObjectByHandle on object type {} with no guest body returns 0",
+                      std::to_underlying(object.GetType()));''', r'''    REXKRNL_WARN_ONCE(bodyless_once, std::to_underlying(object.GetType()),
+                      "ObReferenceObjectByHandle on object type {} has no guest body",
+                      std::to_underlying(object.GetType()));
+    return X_STATUS_NOT_SUPPORTED;'''),
+    ):
+        if source.count(old)!=1:raise ValueError("named reference ABI anchor")
+        source=source.replace(old,new,1)
     for name in ("ObDereferenceObject","ObReferenceObjectByHandle","ObReferenceObjectByName","ObOpenObjectByPointer","ObLookupThreadByThreadId"):
         source=trace_export(source,name)
     anchor='    REXKRNL_WARN("ObDereferenceObject: {:#x} is not a registered object", native_ptr);'
@@ -63,6 +95,16 @@ def patch_object_contracts(source):
     return source
 
 def patch_io_trace(source):
+    old=r'''  REX_KERNEL_STUB("IoSynchronousDeviceIoControlRequest({:#x})", static_cast<u32>(ioctl));
+  return X_STATUS_SUCCESS;'''
+    new=r'''  // A hosted file or dispatcher object is not an optical device provider.
+  // Do not signal success or populate unspecified response data.
+  if (!device_object.GetGuestAddress() ||
+      !kernel::GetCurrent().GetObjectTable().GetByAddress(device_object.GetGuestAddress()))
+    return X_STATUS_INVALID_HANDLE;
+  return X_STATUS_NOT_SUPPORTED;'''
+    if source.count(old)!=1:raise ValueError("synchronous device control anchor")
+    source=source.replace(old,new,1)
     for name in ("IoDismountVolumeByName","NtQueryFullAttributesFile","NtOpenFile","NtCreateFile"):
         source=trace_export(source,name)
     return source
