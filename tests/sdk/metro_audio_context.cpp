@@ -48,3 +48,15 @@ REX_TEST_CASE("metro_audio_context: original direct context is not wrapped",
   legacy.Shutdown();
   memory->SystemHeapFree(object);
 }
+
+REX_TEST_CASE("metro_audio_context: only proven paired registrations select direct ABI",
+              "[kernel][metro_audio_context]") {
+  using rex::kernel::GetRetailRenderContext;
+  using rex::kernel::RetailRenderContext;
+  CHECK(GetRetailRenderContext(0x819A5878u,0x819AC5A0u)==RetailRenderContext::kXam17559);
+  CHECK(GetRetailRenderContext(0x9804BEA0u,0x980517C8u)==RetailRenderContext::kBootanim17559);
+  CHECK(GetRetailRenderContext(0x819A5878u,0x980517C8u)==RetailRenderContext::kNone);
+  CHECK(GetRetailRenderContext(0x9804BEA0u,0x819AC5A0u)==RetailRenderContext::kNone);
+  CHECK(GetRetailRenderContext(0x819A5878u,0)==RetailRenderContext::kNone);
+  CHECK(GetRetailRenderContext(0,0x980517C8u)==RetailRenderContext::kNone);
+}

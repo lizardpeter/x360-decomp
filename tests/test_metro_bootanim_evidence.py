@@ -3,7 +3,7 @@ import struct
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from metro_bootanim_evidence import riff_metadata,loader_references,xma1_format,matching_functions
+from metro_bootanim_evidence import riff_metadata,loader_references,xma1_format,matching_functions,direct_audio_contract
 
 def wave():
     fmt=struct.pack("<HHIIHH",1,2,48000,192000,4,16)
@@ -37,6 +37,23 @@ class BootanimEvidence(unittest.TestCase):
         result=matching_functions(a,0x1000,src,b+c,0x2000,dst,[0x1000])[0]
         self.assertEqual(result["exact"],["00002000"])
         self.assertEqual(result["near"][0]["address"],"00002010")
+    def test_direct_audio_contract(self):
+        pc=0x980517C4;cb=0x9804BEA0
+        registration={"operands":[
+            {"pc":f"{pc-0x44:08X}","kind":"register_copy","source":4,"writes":29},
+            {"pc":f"{pc-0x14:08X}","kind":"memory_load","base":30,"offset":12,"writes":11},
+            {"pc":f"{pc-0x0c:08X}","kind":"memory_store","base":1,"offset":80,"source":29},
+            {"pc":f"{pc-8:08X}","kind":"register_offset","base":1,"value":80,"writes":3},
+            {"pc":f"{pc-4:08X}","kind":"memory_store","base":1,"offset":84,"source":11},
+            {"pc":f"{pc:08X}","kind":"branch","linked":True,
+             "import":{"name":"XAudioRegisterRenderDriverClient"}}]}
+        callback={"operands":[
+            {"pc":f"{cb+0x10:08X}","kind":"register_copy","source":3,"writes":31},
+            {"pc":f"{cb+0x30:08X}","kind":"memory_load","base":31,"offset":304,"writes":10},
+            {"pc":f"{cb+0x38:08X}","kind":"memory_store","base":31,"offset":300,"source":11}]}
+        self.assertEqual(direct_audio_contract(registration,callback,pc,cb)["registration_return"],"980517C8")
+        callback["operands"][1]["offset"]=4
+        with self.assertRaises(ValueError):direct_audio_contract(registration,callback,pc,cb)
     def test_loader_reference(self):
         base=0x10000000;image=bytearray(128)
         image[:13]=b"bootanim.xex\0"

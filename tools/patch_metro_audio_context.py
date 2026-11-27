@@ -12,6 +12,19 @@ def replace(s,old,new):
 def patch(sdk,tests):
     files={}
     p="src/kernel/apu.h";s=(sdk/p).read_text()
+    s=replace(s,"class XMADecoder;",
+        """class XMADecoder;
+
+enum class RetailRenderContext { kNone, kXam17559, kBootanim17559 };
+// Match both callback entry and registration return address. An ordinary
+// title at either individual address is not sufficient evidence.
+constexpr RetailRenderContext GetRetailRenderContext(u32 callback,u32 lr) {
+  if (callback==0x819A5878u && lr==0x819AC5A0u)
+    return RetailRenderContext::kXam17559;
+  if (callback==0x9804BEA0u && lr==0x980517C8u)
+    return RetailRenderContext::kBootanim17559;
+  return RetailRenderContext::kNone;
+}""")
     s=replace(s,"Result<u32> RegisterClient(u32 callback, u32 callback_arg);",
         """Result<u32> RegisterClient(u32 callback, u32 callback_arg,
                              bool direct_context = false);""")
@@ -60,11 +73,23 @@ def patch(sdk,tests):
   auto* thread = KernelThread::GetCallingThread();
   const u32 lr = thread && thread->GetThreadState()
       ? static_cast<u32>(thread->GetThreadState()->GetContext()->lr) : 0;
-  const bool direct_context = callback == 0x819A5878u && lr == 0x819AC5A0u &&
-                              kernel::GetCurrent().FindFunction(callback);
-  if (direct_context)
-    REXKRNL_INFO("METRO_AUDIO direct_context callback={:08X} object={:08X}", callback, callback_arg);
+  const auto contract=kernel::GetRetailRenderContext(callback,lr);
+  const bool direct_context=contract!=kernel::RetailRenderContext::kNone;
+  if (direct_context) {
+    // Both independently verified original callbacks access the direct object
+    // through +304 and write +300. Refuse invalid contexts before queuing
+    // any audio work; don't silently substitute the legacy wrapper.
+    auto& runtime=kernel::GetCurrent();
+    if (!runtime.FindFunction(callback) || !callback_arg ||
+        callback_arg>0xffffffffu-308u ||
+        !runtime.GetGuestMemory().GetReadOnlySpan(callback_arg,308) ||
+        !runtime.GetGuestMemory().GetWritableSpan(callback_arg+300,4))
+      return X_E_INVALIDARG;
+    REXKRNL_INFO("METRO_AUDIO direct_context module={} callback={:08X} object={:08X}",
+        contract==kernel::RetailRenderContext::kXam17559?"xam":"bootanim",callback,callback_arg);
+  }
   auto index = apu->RegisterClient(callback, callback_arg, direct_context);""")
+    s=replace(s,"#include <rex/kernel/title_runtime.h>","#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>")
     files[p]=s
     p="tests/unit/kernel/apu_test.cpp";s=(sdk/p).read_text()
     if "metro_audio_context" in s:raise ValueError("test already staged")

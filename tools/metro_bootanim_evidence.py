@@ -163,6 +163,34 @@ def matching_functions(source,source_base,source_pe,target,target_base,target_pe
         result.append({"source":hx(root),"size":size,"exact":exact,"near":near[:8]})
     return result
 
+def direct_audio_contract(registration,callback,register_pc,callback_pc):
+    """Validate the actual descriptor writes and direct context access."""
+    regs={int(r["pc"],16):r for r in registration["operands"]}
+    ops={int(r["pc"],16):r for r in callback["operands"]}
+    def check(table,pc,expected):
+        row=table.get(pc,{})
+        if any(row.get(k)!=v for k,v in expected.items()):
+            raise ValueError("original direct audio operand differs: "+hx(pc))
+    # All descriptor fields must originate from the actual caller arguments.
+    for delta,expected in (
+        (-0x44,{"kind":"register_copy","source":4,"writes":29}),
+        (-0x14,{"kind":"memory_load","base":30,"offset":12,"writes":11}),
+        (-0x0C,{"kind":"memory_store","base":1,"offset":80,"source":29}),
+        (-0x08,{"kind":"register_offset","base":1,"value":80,"writes":3}),
+        (-0x04,{"kind":"memory_store","base":1,"offset":84,"source":11}),
+        (0,{"kind":"branch","linked":True})):
+        check(regs,register_pc+delta,expected)
+    if regs[register_pc].get("import",{}).get("name")!="XAudioRegisterRenderDriverClient":
+        raise ValueError("original audio import differs")
+    for delta,expected in (
+        (0x10,{"kind":"register_copy","source":3,"writes":31}),
+        (0x30,{"kind":"memory_load","base":31,"offset":304,"writes":10}),
+        (0x38,{"kind":"memory_store","base":31,"offset":300,"source":11})):
+        check(ops,callback_pc+delta,expected)
+    return {"callback":hx(callback_pc),"registration_return":hx(register_pc+4),
+            "object_argument":"direct r3","object_read_offset":304,
+            "object_write_offset":300,"descriptor_words":2}
+
 def lifecycle_report(raw,image,meta,thunks):
     base=meta["image_base"];pe=pe_info(image,base)
     roots=(0x98020E60,0x98020EC8,0x98020ED8,0x98020EF0,
@@ -217,7 +245,11 @@ def audit(raw,image,meta,catalog,stubs):
         name=row["name"]
         if name.startswith(("Vd","XAudio","XMA","Xex","ExCreateThread","KeWait")) or row["explicit_sdk_stub"]:
             for c in row["direct_calls"]:focus[int(c["owner"],16)].add(name)
+    audio_registration=bounded_entry(image,base,pe,0x98051768,thunks,8192)
+    audio_callback=bounded_entry(image,base,pe,0x9804BEA0,thunks,8192)
+    direct_context=direct_audio_contract(audio_registration,audio_callback,0x980517C4,0x9804BEA0)
     return {"source_sha256":sha(raw),"decoded_sha256":meta["sha256"],
+            "direct_audio_context":direct_context,
             "module_flags":hx(int.from_bytes(raw[4:8],"big")),
             "xex_entry":None,"pe_entry":hx(pe["entry_point"]),
             "pe_entry_executable":executable(pe,base,pe["entry_point"]),
