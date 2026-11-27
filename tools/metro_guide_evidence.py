@@ -27,7 +27,7 @@ GUIDE_EXPORTS={"XamShowGuideUI":0x816C3580,"XamInputSendXenonButtonPress":0x816F
  "XamInputGetKeystrokeHudEx":0x816F4C78}
 SYSREQ_OWNERS={0x816F0368,0x816F0410,0x816F0AE0,0x816F0DF0}
 INPUT_OWNERS={0x816F14E8,0x816F28A8,0x816F19C0,0x816F2A70,0x816F2B98,
- 0x816F2C50,0x816F2D88,0x816DA550,0x816F17E0,0x81696068,0x816D9060,0x816F06E8,0x816F0E70,0x816F3C48,0x816D8AA8,0x816F0400,0x816F0DE0,0x816C7D78,0x816CAF08,0x816E16E0,0x816C2AF0,0x81696AF0}
+ 0x816F2C50,0x816F2D88,0x816DA550,0x816F17E0,0x81696068,0x816D9060,0x816F06E8,0x816F0E70,0x816F3C48,0x816D8AA8,0x816F0400,0x816F0DE0,0x816C7D78,0x816CAF08,0x816E16E0,0x816C2AF0,0x81696AF0,0x816CE8B0,0x816F0F28,0x816968A8,0x816F4088}
 KERNEL={"DrvSetSysReqCallback","DrvSetUserBindingCallback","XInputdReadState",
  "XInputdRawState","XInputdNotify","XInputdGetCapabilities"}
 UI={"XamShowGuideUI","XamInputSendXenonButtonPress","XamIsGuideDisabled",
@@ -133,12 +133,12 @@ def scan(label,raw,image,meta,catalog,stubs):
     lifecycle_refs=[]
     data_refs=[]
     if label=="xam":
-        targets=SYSREQ_OWNERS|extra|{0x816F0E70,0x816F0DE0,0x816F0AE0,0x816F3C48,0x816F0400}
+        targets=SYSREQ_OWNERS|extra|{0x816F0E70,0x816F0DE0,0x816F0AE0,0x816F3C48,0x816F0400,0x816F0F28,0x816CE8B0}
         global_slots={0x81AAC260,0x81AAC264}
         # A constructor may be reached from a callback table, not via bl.
         # Find exact data words and original code materializations separately.
         for sec in pe["sections"]:
-            if sec["flags"]&0x20000000 or sec["name"] not in (".rdata",".data"):continue
+            if sec["flags"]&0x20000000:continue
             lo=sec["rva"];hi=lo+sec["loaded_bytes"]
             for off in range(lo,hi-3,4):
                 w=struct.unpack_from(">I",image,off)[0]
@@ -189,11 +189,23 @@ def scan(label,raw,image,meta,catalog,stubs):
     for a in SYSREQ_OWNERS|extra if label=="xam" else ():
         mark(a,"sysreq_"+hx(a),"entry")
     if label=="xam":
-        for a in (0x816F0E70,0x816F0DF0,0x816F0AE0,0x816F06E8,0x816F3C48,0x816F0400,0x816F0DE0,
+        for a in (0x816CE8B0,0x816F0F28,0x816F0E70,0x816F0DF0,0x816F0AE0,0x816F06E8,0x816F3C48,0x816F0400,0x816F0DE0,
                   0x816D8AA8,0x816F0E84,0x816F0E88,0x816F0EC8,0x816F0ED0,0x816F0E40,0x816F0E44,
                   0x816F0710,0x816F0724,0x816F0734,0x816F0760,0x816F0764,0x816F0794,0x816F0C8C,0x816F0C90,
                   0x816F0D08,0x816F0DAC,0x816F0DCC,0x816F03F0):
             mark(a,"guide_lifecycle_"+hx(a),"observed")
+        # The sole original direct caller of the init wrapper is the UI
+        # subsystem initializer. Probe every direct call/return in that
+        # bounded original body to locate the first failing stage.
+        for row in bodies[hx(0x816CE8B0)]["operands"]:
+            if row["kind"]=="branch" and row["linked"]:
+                a=int(row["pc"],16)
+                mark(a,"ui_init_"+row["target"],"call")
+                mark(a+4,"ui_init_"+row["target"],"return")
+            elif row["kind"]=="conditional_branch":
+                a=int(row["pc"],16)
+                mark(a+4,"ui_init_branch_"+hx(a),"fallthrough")
+                mark(int(row["target"],16),"ui_init_branch_"+hx(a),"taken_target")
     for c in callbacks:
         pc=int(c["site"],16)
         mark(pc,"DrvSetSysReqCallback","call")

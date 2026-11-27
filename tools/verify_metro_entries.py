@@ -182,6 +182,47 @@ def custom_callback_hints(image,base,pe,descriptors=CUSTOM_OBJECT_DESCRIPTORS,
             record["slots"].append(f"{address+i*4:08X}")
     return sorted((v for v in report.values()),key=lambda r:r["address"])
 
+def guide_callback_hints(image,base,pe,raw):
+    """Independent original registration and tail-wrapper identity proofs."""
+    from metro_import_contracts import variable_reference,branch as ppc_branch
+    from metro_profile_evidence import linear_export_extent
+    from analyze_decoded import imports
+    from xex import parse as parse_xex
+    code=sections(pe,base,True)
+    expected={0x816F05E8,0x816F0DB8,0x816F0DCC,0x816F0E54}
+    rows=imports(image,base,parse_xex(raw))
+    if not any(r["library"].lower()=="xboxkrnl.exe" and int(r["ordinal"],16)==0x20c
+               and r["thunk_slots"]==[0x81A72FF4] for r in rows):
+        raise ValueError("original system request import")
+    for pc in sorted(expected):
+        if ppc_branch(pc,word(image,base,pc))!=(0x81A72FF4,True):
+            raise ValueError("original Guide registration call")
+        ref=variable_reference(word(image,base,pc-8),word(image,base,pc-4))
+        if ref!=(0x816F09E8,"address_construction"):
+            raise ValueError("original Guide callback operand")
+    # Original three-register driver callback and its guest worker wrapper.
+    # Both targets are referenced by actual instructions, not guessed roots.
+    if ppc_branch(0x816F09FC,word(image,base,0x816F09FC))!=(0x816F06E8,False):
+        raise ValueError("original system request callback tail")
+    if ppc_branch(0x816F0DE8,word(image,base,0x816F0DE8))!=(0x816F0AE0,False):
+        raise ValueError("original system request worker tail")
+    if ppc_branch(0x816F0F28,word(image,base,0x816F0F28))!=(0x816F0E70,False):
+        raise ValueError("original Guide initializer tail")
+    # The public XamShowGuideUI and SendXenonButtonPress wrappers are actual
+    # export entries even if neither is imported by the existing dashboard.
+    byordinal=dict(ordinal_exports(image,base,raw))
+    if byordinal.get(0x304)!=0x816C3580 or byordinal.get(0x506)!=0x816F2E60:
+        raise ValueError("original Guide public export identity")
+    if ppc_branch(0x816F2E6C,word(image,base,0x816F2E6C))!=(0x816F0400,False):
+        raise ValueError("original Guide input export tail")
+    candidates={0x816F09E8,0x816F0DE0,0x816F0F28,0x816C3580,0x816F2E60,0x816F0400}
+    result=[]
+    for a in sorted(candidates):
+        if not inside(a,code) or not linear_export_extent(image,base,pe,a):
+            raise ValueError("original Guide target is not an independent bounded wrapper")
+        result.append(f"{a:08X}")
+    return result
+
 def resource_integrity_header(modules):
     """Digest each pinned original resource independently before native loading."""
     out=["#pragma once", "#include <cstdint>",
@@ -265,7 +306,8 @@ def main():
         if not any(r["library"]=="xboxkrnl.exe" and int(r["ordinal"],16)==ordinal and
                    f"{addr:08X}" in r["thunk_slots"].split(",") for r in xam_imports):
             raise ValueError("custom allocator/release import proof failed")
-    exports=sorted(set(exports)|{f"{callback:08X}"}|
+    guide_callbacks=guide_callback_hints(xi,xb,xpe,xam_raw)
+    exports=sorted(set(exports)|set(guide_callbacks)|{f"{callback:08X}"}|
                    {r["address"] for r in custom_callbacks if r["kind"]=="descriptor_entry"})
     hud_raw=parse_pirs(original("pirs"))["$flash_hud.xex"]["payload"]
     from stage_metro_xam_aot import HUD_SHA
@@ -285,7 +327,7 @@ def main():
         "dashboard_candidates":len(candidates),"accepted":accepted,"rejected":rejected,
         "new_dashboard_entries":len(additions),"crt_calls":jumps,
         "xam_non_pdata_export_entries":exports,"xam_interior_exports_unresolved":interior,
-        "custom_object_callbacks":custom_callbacks},indent=2)+"\n")
+        "custom_object_callbacks":custom_callbacks,"guide_callback_entries":guide_callbacks},indent=2)+"\n")
     print("Verified entries:",len(additions),"dashboard pointer starts,",len(exports),"XAM export starts;",
           len(rejected),"reference candidates rejected,",len(interior),"interior XAM targets")
 
