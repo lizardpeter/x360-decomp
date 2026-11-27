@@ -1,0 +1,32 @@
+name: Authenticate original Metro retail firmware
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/verify_retail_firmware.py'
+      - 'tests/test_retail_firmware.py'
+      - '.github/workflows/metro-firmware-authenticity.yml'
+      - 'target.toml'
+permissions:
+  contents: read
+jobs:
+  authenticate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test verifier
+        run: python -m unittest discover -s tests -p test_retail_firmware.py
+      - name: Fetch pinned source bytes without executing them
+        run: python tools/fetch_originals.py --only pirs --only dash --only shared_resources
+      - name: Verify retail RSA signature and complete STFS hash tree
+        run: python tools/verify_retail_firmware.py --receipt build/firmware-authenticity.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: metro-firmware-authenticity
+          path: build/firmware-authenticity.json
+          if-no-files-found: ignore
