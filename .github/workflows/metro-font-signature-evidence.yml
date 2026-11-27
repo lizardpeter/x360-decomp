@@ -35,7 +35,7 @@ jobs:
           python tools/fetch_originals.py --only pirs --only dash_basic
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
-          python tools/metro_text_draw_evidence.py --lzx build/lzx_adapter.so --output build/receipts/metro-font-signature-evidence.json
+          python tools/metro_font_signature_evidence.py --lzx build/lzx_adapter.so --output build/receipts/metro-font-signature-evidence.json
       - uses: actions/upload-artifact@v4
         with:
           name: metro-font-signature-evidence
