@@ -16,7 +16,9 @@ from xex import parse as parse_xex
 from metro_import_contracts import DIGESTS, branch, setup, registers, signed, hx, sdk_catalog, library
 from metro_live_slot_and_input_evidence import read_word, owner, operand_window, executable
 
-FRAMES=[0x81671250,0x81673B28,0x81673260,0x81675950,0x816A5AF8,0x816AE930,0x816AD998]
+FRAMES=[0x816769D0,0x8167E760,0x8167E918,0x8167EB60,0x816B8B08,0x816B92C8,0x816B9668]
+FAULT_PC=0x81676A3C
+FRAME_PC_HINTS=[FAULT_PC,0x8167E7A8,0x8167E9D0,0x8167EC40,0x816B8B64,None,0x816B971C]
 BINDING=0x816D9060
 
 def operand(pc,w):
@@ -179,14 +181,18 @@ def main():
         for addr in row["thunk_slots"]:
             thunks[addr]={"library":lib,"ordinal":f"{ordinal:04X}","name":name,"sdk_stub":name in stubs}
     functions=[]
-    for addr in FRAMES:
+    for addr,hint in zip(FRAMES,FRAME_PC_HINTS):
         start,length=owner(pe,addr)
         if start!=addr:raise ValueError("unwind symbol is interior")
         ops=describe(image,base,start,length,thunks)
+        if hint is not None and not start<=hint<start+length:
+            raise ValueError("line-table candidate outside original function")
         functions.append({"entry":hx(start),"size":length,
+                          "pc_hint":None if hint is None else hx(hint),
+                          "pc_operand":None if hint is None else operand(hint,read_word(image,base,hint)),
                           "calls":[op for op in ops if op["kind"] in ("branch","indirect_branch") and op.get("linked")],
                           "first_memory_accesses":[op for op in ops if "memory_" in op["kind"] or op["kind"]=="indexed_load"][:20],
-                          "operands":ops if addr==FRAMES[0] else []})
+                          "operands":ops})
     edges=[]
     for inner,outer in zip(FRAMES,FRAMES[1:]):
         start,length=owner(pe,outer)
@@ -198,7 +204,9 @@ def main():
     following=min(addr for addr,_,_ in pe["functions"] if addr>BINDING)
     if following-BINDING>256:raise ValueError("callback extent must remain bounded")
     binding_ops=describe(image,base,BINDING,following-BINDING,thunks)
-    report={"source_run":45935812586,"fault_guest_address":"00000000",
+    report={"source_run":45942627248,"fault_guest_address":"00000000",
+            "fault_pc_candidate":hx(FAULT_PC),
+            "supersedes_uncorrected_symbolization_run":45935812586,
             "scope":"static operand and direct-call evidence; no dynamic fault operand claimed",
             "unwind_functions":functions,"adjacent_unwind_edges":edges,
             "binding_callback_operands":binding_ops,
@@ -206,6 +214,7 @@ def main():
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
+    print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
     print("binding callback:",json.dumps(binding_ops,sort_keys=True))
     print("observed startup calls:",json.dumps([{k:v for k,v in x.items() if k!="operand_window"} for x in report["observed_startup_stubs"]["observed_calls"]],sort_keys=True))
