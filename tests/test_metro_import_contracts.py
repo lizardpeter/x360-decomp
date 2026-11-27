@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
 from metro_import_contracts import branch, setup, result_use, variable_reference, inspect, reachable, report
 import struct
-from metro_xam_fault_evidence import conditional_details, observed_call
+from metro_xam_fault_evidence import conditional_details, observed_call, notification_gate, direct_tail_path
 
 class Contracts(unittest.TestCase):
     def test_branch(self):
@@ -49,4 +49,25 @@ class Contracts(unittest.TestCase):
         self.assertEqual(observed_call(image,0x1000,pe,0x1004,"Example",{})["classification"],"unresolved_wrapper_or_indirect")
         self.assertEqual(conditional_details(0x1008,0x40820008)["cr_test"]["sense"],"clear")
         self.assertIsNone(conditional_details(0,0x42000008)["cr_test"])
+
+    def test_signed_notification_gate(self):
+        imp={0x1020:{"name":"DrvGetContentStorageNotification"}}
+        image=struct.pack(">3I",0x48000021,0x2c030000,0x41800008)
+        row=notification_gate(image,0x1000,0x1000,0x1010,imp)
+        self.assertEqual(row["negative_status_target"],"00001010")
+        self.assertEqual(row["nonnegative_status_target"],"0000100C")
+        self.assertEqual([x["next_pc"] for x in row["examples"]],
+                         ["0000100C","0000100C","00001010","00001010"])
+        # Reverse condition, as on the worker's second polling call.
+        image=struct.pack(">3I",0x48000021,0x2c030000,0x4080fff8)
+        row=notification_gate(image,0x1000,0x1000,0x100c,imp)
+        self.assertEqual(row["nonnegative_status_target"],"00001000")
+        with self.assertRaises(ValueError):notification_gate(image,0x1000,0x1000,0x1000,imp)
+    def test_tail_path_preserves_original_function_entries(self):
+        image=struct.pack(">5I",0x48000008,0x60000000,0x48000008,0x60000000,0x4e800020)
+        pe={"functions":[(0x1000,4,0),(0x1008,4,0),(0x1010,4,0)]}
+        path=direct_tail_path(image,0x1000,pe,0x1000,0x1010)
+        self.assertEqual([x["to"] for x in path],["00001008","00001010"])
+        self.assertIsNone(direct_tail_path(image,0x1000,pe,0x1000,0x1010,max_depth=1))
+        self.assertIsNone(direct_tail_path(image,0x1000,pe,0x1000,0x1004))
 if __name__=="__main__":unittest.main()

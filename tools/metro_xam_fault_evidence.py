@@ -159,6 +159,65 @@ def observed_storage_report(image,base,pe,thunks):
             "scope":"observed LR and original static operand/branch evidence; no inferred ABI or guest execution",
             "observed_calls":observed,"storage_worker_and_registration":storage}
 
+
+def notification_gate(image,base,call_pc,negative_target,thunks):
+    """Validate the original signed status test, not a reconstructed guest worker."""
+    destination=branch(call_pc,read_word(image,base,call_pc))
+    if not destination or not destination[1]:
+        raise ValueError("storage gate is not a linked call")
+    imp=thunks.get(destination[0])
+    if not imp or imp["name"]!="DrvGetContentStorageNotification":
+        raise ValueError("storage gate import changed")
+    comparison=read_word(image,base,call_pc+4)
+    if comparison>>26!=11 or ((comparison>>21)&31)!=0 or ((comparison>>16)&31)!=3 or (comparison&65535)!=0:
+        raise ValueError("expected signed CR0 comparison of r3 against zero")
+    detail=conditional_details(call_pc+8,read_word(image,base,call_pc+8))
+    if not detail or detail["linked"] or detail["cr_test"] not in (
+        {"field":0,"bit":"lt","sense":"set"},{"field":0,"bit":"lt","sense":"clear"}):
+        raise ValueError("expected original signed status branch")
+    branch_target=int(detail["target"],16)
+    fallthrough=call_pc+12
+    negative=branch_target if detail["cr_test"]["sense"]=="set" else fallthrough
+    nonnegative=fallthrough if detail["cr_test"]["sense"]=="set" else branch_target
+    if negative!=negative_target:
+        raise ValueError("original failure edge changed")
+    return {"call":hx(call_pc),"negative_status_target":hx(negative),
+            "nonnegative_status_target":hx(nonnegative),
+            "examples":[{"r3":hx(value),"next_pc":hx(negative if signed(value,32)<0 else nonnegative)}
+                        for value in (0,0x7026FC30,0xC00000BB,0xC000000D)]}
+
+def direct_tail_path(image,base,pe,start,target,max_depth=4):
+    """Follow only unconditional non-link jumps to exact function entries."""
+    entries={addr:size for addr,size,_ in pe["functions"]}
+    if start not in entries or target not in entries:return None
+    queue=[(start,[])]
+    seen={start}
+    for current,path in queue:
+        if current==target:return path
+        if len(path)>=max_depth:continue
+        for pc in range(current,current+entries[current],4):
+            dest=branch(pc,read_word(image,base,pc))
+            if not dest or dest[1] or dest[0] not in entries or dest[0] in seen:continue
+            seen.add(dest[0])
+            queue.append((dest[0],path+[{"from":hx(current),"site":hx(pc),"to":hx(dest[0])}]))
+    return None
+
+def verified_storage_fault_details(image,base,pe,thunks):
+    gates=[notification_gate(image,base,pc,0x8167ED4C,thunks)
+           for pc in (0x8167EB90,0x8167ED40)]
+    # The return instruction in 8167E760 is immediately after 81679558,
+    # not a direct call to the innermost unwind frame.
+    site=0x8167E7A4
+    dest=branch(site,read_word(image,base,site))
+    if dest!=(0x81679558,True):raise ValueError("fault caller site changed")
+    start,length=owner(pe,dest[0])
+    if start!=dest[0]:raise ValueError("fault intermediary is interior")
+    return {"gates":gates,
+            "caller_return_pc":"8167E7A8","caller_call_site":hx(site),
+            "intermediate_entry":hx(start),"intermediate_operands":describe(image,base,start,length,thunks),
+            "intermediate_tail_path":direct_tail_path(image,base,pe,start,FRAMES[0]),
+            "fault_load":operand(FAULT_PC,read_word(image,base,FAULT_PC))}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -210,12 +269,14 @@ def main():
             "scope":"static operand and direct-call evidence; no dynamic fault operand claimed",
             "unwind_functions":functions,"adjacent_unwind_edges":edges,
             "binding_callback_operands":binding_ops,
-            "observed_startup_stubs":observed_storage_report(image,base,pe,thunks)}
+            "observed_startup_stubs":observed_storage_report(image,base,pe,thunks),
+            "verified_storage_fault_details":verified_storage_fault_details(image,base,pe,thunks)}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
     print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
+    print("storage fault gates:",json.dumps(report["verified_storage_fault_details"],sort_keys=True))
     print("binding callback:",json.dumps(binding_ops,sort_keys=True))
     print("observed startup calls:",json.dumps([{k:v for k,v in x.items() if k!="operand_window"} for x in report["observed_startup_stubs"]["observed_calls"]],sort_keys=True))
 if __name__=="__main__":main()
