@@ -100,6 +100,52 @@ def scan(label,raw,image,meta,catalog,stubs):
                 if ref and ref[0] in variables and variables[ref[0]]["name"] in INTEREST:
                     refs.append({"owner":hx(a),"site":hx(pc-4),"slot":hx(ref[0]),"import":variables[ref[0]]})
                     roots.add(a)
+    startup={}
+    if label=="xam":
+        # Last logged import on the actual deferred worker in run
+        # 46033912824. Its position alone is not proof of failure.
+        worker=0x81696558;site=0x8189956C
+        b=branch(site,struct.unpack_from(">I",image,site-base)[0])
+        if not b or not b[1] or thunks.get(b[0],{}).get("name")!="XeKeysExGetKey":
+            raise ValueError("live startup import mismatch")
+        owners=[a for a,n in funcs.items() if a<=site<a+n]
+        if len(owners)!=1 or worker not in funcs:raise ValueError("startup owner ambiguity")
+        owner=owners[0]
+        # Reverse distance from the observed caller over bounded PDATA
+        # direct edges. Show shortest paths separately for each original
+        # top-level initialization call; no path implies no static proof.
+        reverse=collections.defaultdict(set)
+        for a,dests in edges.items():
+            for d in dests:reverse[d].add(a)
+        dist={owner:0};queue=collections.deque([owner])
+        while queue:
+            d=queue.popleft()
+            for a in sorted(reverse[d]):
+                if a not in dist:dist[a]=dist[d]+1;queue.append(a)
+        paths=[]; selected={worker,owner}
+        for pc in range(worker,worker+funcs[worker],4):
+            b=branch(pc,struct.unpack_from(">I",image,pc-base)[0])
+            if not b or not b[1]:continue
+            d=b[0]
+            if d not in dist:continue
+            path=[d]
+            while path[-1]!=owner:
+                nxt=min(a for a in edges[path[-1]] if dist.get(a)==dist[path[-1]]-1)
+                path.append(nxt)
+            selected.update(path)
+            paths.append({"worker_call":hx(pc),"path":[hx(a) for a in path]})
+        # Record exact entry extents and original return/status branches
+        # along the shortest candidates; not cryptographic key material.
+        startup={"worker":hx(worker),"last_observed_import_site":hx(site),
+            "import_owner":hx(owner),"import":"XeKeysExGetKey",
+            "direct_path_candidates":paths,
+            "bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,min(funcs[a],4096))
+                      for a in sorted(selected)}}
+        print("DEFERRED_STARTUP_PATHS",json.dumps({k:v for k,v in startup.items() if k!="bodies"},sort_keys=True))
+        for a in sorted(selected):
+            rows=startup["bodies"][hx(a)]["operands"]
+            print("DEFERRED_STARTUP_CONTROL",hx(a),json.dumps([r for r in rows if r["kind"] in
+                {"branch","conditional_branch","compare_immediate","return"}],sort_keys=True))
     if label=="xam":
         # Capture actual callback register consumption and downstream callees;
         # do not assume a notification code or payload layout.
@@ -127,7 +173,7 @@ def scan(label,raw,image,meta,catalog,stubs):
                 for p in range(start,end,4)],sort_keys=True))
 
     return {"registration_callback":hx(CALLBACK) if label=="xam" else None,
-            "hud_load":hud_load,"calls":calls,"data_refs":refs,"bodies":bodies}
+            "hud_load":hud_load,"calls":calls,"data_refs":refs,"bodies":bodies,"deferred_startup":startup}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
