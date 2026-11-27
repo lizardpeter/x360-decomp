@@ -6,6 +6,8 @@ on:
       - 'tools/metro_import_contracts.py'
       - 'tools/metro_live_slot_and_input_evidence.py'
       - 'tools/metro_xam_fault_evidence.py'
+      - 'tools/metro_heap_scalar.py'
+      - 'tests/test_metro_heap_scalar.py'
       - 'tests/test_metro_import_contracts.py'
       - '.github/workflows/metro-dependency-analysis.yml'
 permissions:
@@ -34,6 +36,7 @@ jobs:
       - name: Verify analysis and collect original-only dependency evidence
         run: |
           python -m unittest discover -s tests -p test_metro_import_contracts.py
+          python -m unittest discover -s tests -p test_metro_heap_scalar.py
           python tools/fetch_originals.py --only dash_basic --only pirs
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so

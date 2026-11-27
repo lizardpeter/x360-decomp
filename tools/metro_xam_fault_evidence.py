@@ -15,6 +15,7 @@ from prepare_recompilation import ROOT, EXPECTED, original, sha
 from xex import parse as parse_xex
 from metro_import_contracts import DIGESTS, branch, setup, registers, signed, hx, sdk_catalog, library
 from metro_live_slot_and_input_evidence import read_word, owner, operand_window, executable
+from metro_heap_scalar import original_system_object_heap_selection
 
 FRAMES=[0x816769D0,0x8167E760,0x8167E918,0x8167EB60,0x816B8B08,0x816B92C8,0x816B9668]
 FAULT_PC=0x81676A3C
@@ -489,13 +490,18 @@ def main():
             "verified_device_stats_status":verified_device_stats_status(image,base,thunks),
             "startup_contract_inventory":startup_contract_inventory(image,base,pe,thunks),
             "second_native_fault":second_fault_report(image,base,pe,thunks),
-            "second_fault_global":global_object_report(image,base,pe,thunks)}
+            "second_fault_global":global_object_report(image,base,pe,thunks),
+            "second_fault_heap_selection":original_system_object_heap_selection(lambda pc:read_word(image,base,pc)),
+            "original_xex_module_flags":{"xam":hx(int.from_bytes(raw[4:8],"big")),
+                                        "dashboard_basic":hx(int.from_bytes(original("dash_basic")[4:8],"big"))}}
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("fault function operands:",json.dumps(functions[0]["operands"],sort_keys=True))
     print("fault and unwind instruction candidates:",json.dumps([{k:v for k,v in x.items() if k in ("entry","pc_hint","pc_operand")} for x in functions],sort_keys=True))
     print("confirmed direct edges:",json.dumps([{k:v if k!="direct_sites" else [x["site"] for x in v] for k,v in e.items()} for e in edges]))
     print("second fault global:",json.dumps({k:v for k,v in report["second_fault_global"].items() if k in ("address","original_initial_word")},sort_keys=True), "writers",len(report["second_fault_global"]["writer_functions"]))
+    print("original heap selector scenarios:",json.dumps({k:v for k,v in report["second_fault_heap_selection"].items() if k!="scenarios"},sort_keys=True))
+    print("original XEX module flags:",json.dumps(report["original_xex_module_flags"],sort_keys=True))
     print("second native fault:",json.dumps({k:v for k,v in report["second_native_fault"].items() if k in ("source_run","guest_fault_address","fault_pc","fault_operand")},sort_keys=True))
     print("startup contract wrappers:",len(report["startup_contract_inventory"]["function_groups"]))
     print("device stats status conversion:",json.dumps(report["verified_device_stats_status"],sort_keys=True))
