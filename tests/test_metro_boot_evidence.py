@@ -13,6 +13,15 @@ class BootEvidence(unittest.TestCase):
         self.assertEqual(result["pad_transitions"][0]["buttons"],8)
         self.assertFalse(result["navigation_visually_verified"])
         self.assertFalse(result["menu_visually_verified"])
+    def test_guest_consumption_not_inferred_from_host(self):
+        result=summarize(["info METRO_PAD user=0 buttons=0x0008",
+                          "info METRO_GUEST_PAD context=10000001 user=0 packet=12 buttons=0x0008",
+                          "info METRO_GUEST_PAD context=10000001 user=0 packet=13 buttons=0x0000"],
+                         {"xam":[]})
+        self.assertEqual(len(result["pad_transitions"]),1)
+        self.assertEqual([x["buttons"] for x in result["guest_pad_transitions"]],[8,0])
+        self.assertEqual(result["guest_pad_transitions"][0]["packet"],12)
+        self.assertFalse(result["navigation_visually_verified"])
     def test_no_invented_calls(self):
         result=summarize(["METRO_BOOT pass guest_thread","METRO_BOOT xam_attach_begin"],{"xam":[]})
         self.assertFalse(result["stub_call_sites"])

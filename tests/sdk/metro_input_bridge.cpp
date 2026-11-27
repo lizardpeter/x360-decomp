@@ -97,6 +97,15 @@ REX_TEST_CASE("metro_input_bridge: connected provider, original callback ABI and
     CHECK(c.Kernel("XInputdReadState",{0x10000001,packet,0xfffffffc,extra})==rex::kernel::X_STATUS_ACCESS_VIOLATION);
     CHECK(c.Kernel("XInputdGetDeviceStats",{0x10000001,1,data,extra})==rex::kernel::X_STATUS_NOT_SUPPORTED);
     CHECK(c.Load32(data)==0xdeadbeef);
+    const u32 key=c.Alloc(8);
+    c.Store64(key,0xdeadbeefcafebabeull);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{0,key})==rex::kernel::X_ERROR_EMPTY);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{1,key})==rex::kernel::X_ERROR_EMPTY);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{3,key})==rex::kernel::X_ERROR_DEVICE_NOT_CONNECTED);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{9,key})==rex::kernel::X_ERROR_INVALID_PARAMETER);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{0,0xfffffffc})==rex::kernel::X_ERROR_INVALID_PARAMETER);
+    CHECK(c.Load32(key)==0xdeadbeef);
+    CHECK(c.Load32(key+4)==0xcafebabe);
     CHECK(c.Kernel("XInputdReadState",{0x10000003,packet,data,extra})==0xc000009d);
     g_fake[0].states[1] = Buttons(rex::hid::kPadDPadLeft);
     REQUIRE(c.Kernel("XInputdReadState",{0x10000001,packet,data,extra})==0);
@@ -108,5 +117,37 @@ REX_TEST_CASE("metro_input_bridge: connected provider, original callback ABI and
     state.ResetHostedPadBindings();
     CHECK(runtime.AnnounceHostedPads()==0);
     CHECK(c.Kernel("XInputdReadState",{0x10000001,packet,data,extra})==0xc000009d);
+  });
+}
+
+REX_TEST_CASE("metro_input_bridge: host text events preserve queue on bad guest output",
+              "[kernel][input][metro_input_bridge]") {
+  using namespace rex::test_input;
+  g_fake = {};
+  FakeProvider provider;
+  g_fake[0].devices={MakePad(1,0)};
+  g_fake[0].states[1]=Buttons(0);
+  rex::test::KernelFixture fixture({}, {&provider}, {}, {}, "fake_a");
+  auto& input=fixture.GetInput();
+  REQUIRE(input.GetSettings().mnk_passthrough.Set(true));
+  input.SetInputCaptured(true);
+  StateOf(fixture.GetRuntime()).hosted_pad_input=&input;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& state=StateOf(c.GetRuntime());
+    const u32 callback=state.GetFunctionDispatcher()->AllocateThunk(
+      +[](PPCContext& ctx,u8* base) {base[ctx.r7.u32]=0; ctx.r3.u64=0;},0);
+    REQUIRE(callback);
+    c.Kernel("DrvSetUserBindingCallback",{callback});
+    REQUIRE(c.GetRuntime().AnnounceHostedPads()==1);
+    rex::InputEvent event{.type=rex::InputEvent::Type::kKeyDown,.key=rex::VirtualKey::kW};
+    state.hosted_pad_input->OnInputEvent(event);
+    const u32 out=c.Alloc(8);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{0,0xfffffffc})==rex::kernel::X_ERROR_INVALID_PARAMETER);
+    REQUIRE(c.Kernel("XInputdReadTextKeystroke",{0,out})==0);
+    CHECK((c.Load32(out)>>16)!=0);
+    CHECK(c.Load8(out+6)==0);
+    CHECK((c.Load32(out+4)>>16 & 1)!=0);
+    CHECK(c.Kernel("XInputdReadTextKeystroke",{0,out})==rex::kernel::X_ERROR_EMPTY);
+    state.ResetHostedPadBindings();
   });
 }

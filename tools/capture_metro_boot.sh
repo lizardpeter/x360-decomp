@@ -113,7 +113,20 @@ for key in Right Left; do
   import -window "$win" "$out/input-$key.png"
   printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
   if [[ "$frame_before" =~ ^[1-9][0-9]*$ && "$frame_after" =~ ^[1-9][0-9]*$ ]] && [ "$frame_after" -gt "$frame_before" ]; then
-    if tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_GUEST_PAD ' >> "$out/receipt.txt"; then
+    # The keyboard bindings intentionally emit right/left D-pad bits.
+    # Require a real press AND later release on the same guest context.
+    expected=0008
+    if [ "$key" = Left ]; then expected=0004; fi
+    trace="$out/input-$key.log"
+    tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_GUEST_PAD ' > "$trace" || true
+    cat "$trace" >> "$out/receipt.txt"
+    if awk -v wanted="$expected" '
+      /context=10000001 user=0/ {
+        if (index(tolower($0),"buttons=0x" wanted)) pressed=1
+        else if (pressed && index(tolower($0),"buttons=0x0000")) released=1
+      }
+      END {exit !(pressed && released)}
+    ' "$trace"; then
       pad_observed=$((pad_observed+1))
     fi
   fi
