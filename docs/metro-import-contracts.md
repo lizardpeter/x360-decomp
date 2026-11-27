@@ -1,0 +1,5 @@
+# Original Metro kernel dependency evidence
+
+The independent audit walks digest-verified 17559 dashboard and XAM PDATA functions, identifies direct calls and tail transfers to original import slots, and joins the pinned SDK export catalog and explicit stub macros. It traverses both original entry points and direct dashboard-to-XAM exports without assuming that indirect calls or interior entry addresses are resolved. It reports nearby argument-register writes, immediate return-use evidence and adjacent address constructions referencing original kernel variables or the unknown fixed system page at 0x8E030000.
+
+The report is deliberately not an inferred signature or a dynamic trace. Register writes in the same local window may be superseded by unrecognized instructions. The presence of a call in the graph does not establish that it executes during startup. No original instructions, decoded image, generated translation, or resource bytes are uploaded. The report is intended to prioritize actual driver reconstruction and cross-check live boot observations. No fake controller state, fabricated kernel variables or guessed successful return values are introduced.
