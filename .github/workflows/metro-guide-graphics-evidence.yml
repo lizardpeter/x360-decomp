@@ -1,0 +1,41 @@
+name: Metro original Guide graphics evidence
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/metro_guide_graphics_evidence.py'
+      - '.github/workflows/metro-guide-graphics-evidence.yml'
+permissions:
+  contents: read
+jobs:
+  original-hardware-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          sparse-checkout: src/kernel
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: kyz/libmspack
+          ref: 305907723a4e7ab2018e58040059ffb5e77db837
+          path: build/mspack
+          persist-credentials: false
+      - name: Recover original graphics notification and HUD loader
+        run: |
+          python tools/fetch_originals.py --only pirs --only dash_basic
+          source=build/mspack/libmspack/mspack
+          cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+          python tools/metro_guide_graphics_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-guide-graphics-evidence.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: metro-guide-graphics-evidence
+          path: build/receipts/metro-guide-graphics-evidence.json
+          if-no-files-found: error
