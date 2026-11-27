@@ -231,3 +231,64 @@ REX_TEST_CASE("metro_io_runtime: isolated writable cache via physical path and g
   CHECK_FALSE(std::filesystem::exists(fixture.GetRoot()/"Cache"/"entry.bin"));
   CHECK(std::filesystem::file_size(fixture.GetRoot()/"immutable.bin")==8);
 }
+
+REX_TEST_CASE("metro_io_runtime: resource file metadata is populated and bounded",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) {
+    WriteScratch(root,"metadata.bin",64);
+  });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4),iosb=c.Alloc(8),out=c.Alloc(64);
+    REQUIRE(c.Kernel("NtCreateFile",{h,kReadWriteAccess,c.AllocAttributes("scratch:\\metadata.bin"),
+         iosb,0,0,3,1,0x20})==0);
+    const u32 handle=c.Load32(h);
+    for(u32 off=0;off<64;off+=4)c.Store32(out+off,0xDEADBEEF);
+    REQUIRE(c.Kernel("NtQueryInformationFile",{handle,iosb,out,64,4})==0);
+    CHECK(c.Load32(iosb+4)==40);
+    CHECK(c.Load32(out+40)==0xDEADBEEF);
+    REQUIRE(c.Kernel("NtQueryInformationFile",{handle,iosb,out,64,19})==0);
+    CHECK(c.Load32(iosb+4)==8);
+    CHECK(c.Load32(out+4)>=64);
+    CHECK(c.Load32(out+40)==0xDEADBEEF);
+    CHECK(c.Kernel("NtQueryInformationFile",{handle,iosb,0xfffffffc,40,4})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("NtQueryInformationFile",{handle,0xfffffffc,out,40,4})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("NtQueryInformationFile",{handle,out+4,out,40,4})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("NtQueryInformationFile",{handle,iosb,out,7,19})==X_STATUS_INFO_LENGTH_MISMATCH);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+  });
+}
+REX_TEST_CASE("metro_io_runtime: scatter explicit zero and short read preserve exact cursor",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) {
+    std::filesystem::create_directories(root/"scratch");
+    std::ofstream out(root/"scratch"/"scatter.bin",std::ios::binary);
+    for(unsigned i=0;i<4096;++i)out.put(char(0x11));
+    for(unsigned i=0;i<16;++i)out.put(char(0x22));
+  });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4),iosb=c.Alloc(8),a=c.Alloc(4096),b=c.Alloc(4096),list=c.Alloc(8);
+    REQUIRE(c.Kernel("NtCreateFile",{h,kReadWriteAccess,c.AllocAttributes("scratch:\\scatter.bin"),
+         iosb,0,0,3,1,0x20})==0);
+    const u32 handle=c.Load32(h);
+    REQUIRE(c.Kernel("NtReadFile",{handle,0,0,0,iosb,a,4,c.AllocQuad(8)})==0);
+    c.Store32(list,a);c.Store32(list+4,b);c.Store32(b+16,0xCAFEBABE);
+    REQUIRE(c.Kernel("NtReadFileScatter",{handle,0,0,0,iosb,list,8192,c.AllocQuad(0)})==0);
+    CHECK(c.Load32(iosb+4)==4112);
+    CHECK(c.Load32(a)==0x11111111);
+    CHECK(c.Load32(a+4092)==0x11111111);
+    CHECK(c.Load32(b)==0x22222222);
+    CHECK(c.Load32(b+12)==0x22222222);
+    CHECK(c.Load32(b+16)==0xCAFEBABE);
+    const u32 pos=c.Alloc(8);
+    REQUIRE(c.Kernel("NtQueryInformationFile",{handle,iosb,pos,8,14})==0);
+    CHECK(c.Load32(pos+4)==4112);
+    CHECK(c.Kernel("NtReadFileScatter",{handle,0,0,0,iosb,0xfffffffc,8192,c.AllocQuad(0)})==X_STATUS_ACCESS_VIOLATION);
+    REQUIRE(c.Kernel("NtQueryInformationFile",{handle,iosb,pos,8,14})==0);
+    CHECK(c.Load32(pos+4)==4112);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+  });
+}

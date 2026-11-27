@@ -258,12 +258,112 @@ def patch_io(source):
     if source.count(old)!=3:raise ValueError("unexpected offset use")
     return patch_create_and_dismount(source.replace(old,"byte_offset"))
 
+# File names only; no resource bytes, arbitrary host paths or user files.
+RESOURCE_TRACE = r'''
+static bool IsMetroUIResource(std::string_view name) {
+  return name.ends_with(".xtt") || name.ends_with(".XTT") ||
+         name.ends_with(".xzp") || name.ends_with(".XZP") ||
+         name.ends_with(".xur") || name.ends_with(".XUR");
+}
+'''
+
+def patch_file_information(source):
+    source=replace(source,"#include <rex/kernel/title_runtime.h>",
+        "#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>")
+    source=replace(source,"  info_ptr.Zero(info_length);",
+        """  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 output=info_ptr.GetGuestAddress(), iosb=io_status_block.GetGuestAddress();
+  if (!output || !guest.GetWritableSpan(output,info_length) ||
+      (iosb && !guest.GetWritableSpan(iosb,sizeof(X_IO_STATUS_BLOCK))))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (iosb && u64{output}<u64{iosb}+sizeof(X_IO_STATUS_BLOCK) &&
+      u64{iosb}<u64{output}+info_length)
+    return X_STATUS_INVALID_PARAMETER;
+  // Only the returned structure is owned by this query, not spare bytes
+  // the caller may have reserved after it.
+  info_ptr.Zero(minimum_length);""")
+    source=replace(source,"    case XFileNetworkOpenInformation: {",
+        """    case XFileBasicInformation: {
+      file->file->Refresh();
+      const auto entry=file->file->GetInfo();
+      auto info=info_ptr.As<X_FILE_BASIC_INFORMATION*>();
+      info->creation_time=entry.create_time;
+      info->last_access_time=entry.access_time;
+      info->last_write_time=entry.write_time;
+      info->change_time=entry.write_time;
+      info->attributes=std::to_underlying(entry.attributes);
+      out_length=sizeof(*info);
+      break;
+    }
+    case XFileAllocationInformation: {
+      file->file->Refresh();
+      auto info=info_ptr.As<X_FILE_ALLOCATION_INFORMATION*>();
+      info->allocation_size=file->file->GetInfo().allocation_size;
+      out_length=sizeof(*info);
+      break;
+    }
+    case XFileNetworkOpenInformation: {""")
+    return source
+
+def patch_scatter(source):
+    old="""  be_u32* segments = reinterpret_cast<be_u32*>(
+      StateOf(runtime).GetAddressSpace()->TranslateVirtual(segments_address));
+
+  u32 page_size = kPageSize4KiB;"""
+    new="""  auto& guest=runtime.GetGuestMemory();
+  constexpr u32 page_size=kPageSize4KiB;
+  const u64 count=(u64{length}+page_size-1)/page_size;
+  if (count && (!segments_address ||
+      !guest.GetReadOnlySpan(segments_address,count*sizeof(be_u32)))) {
+    if (out_bytes_read) *out_bytes_read=0;
+    return X_STATUS_ACCESS_VIOLATION;
+  }
+  u32 segment_index=0;"""
+    source=replace(source,old,new)
+    old="""    u32 read_length = read_remain;
+    u32 read_buffer = *segments;
+    if (read_length > page_size) {
+      read_length = page_size;
+      segments++;
+    }"""
+    new="""    const u32 read_length=std::min(read_remain,page_size);
+    const auto segment=guest.Load<be_u32>(segments_address+segment_index*sizeof(be_u32));
+    if (!segment || !static_cast<u32>(*segment)) {
+      result=X_STATUS_ACCESS_VIOLATION;
+      break;
+    }
+    const u32 read_buffer=*segment;
+    ++segment_index;"""
+    source=replace(source,old,new)
+    old="""        byte_offset ? ((byte_offset != ~u64{0} && byte_offset != ~u64{1}) ? byte_offset + read_total
+                                                                          : byte_offset)
+                    : -1,"""
+    new="""        byte_offset==~u64{0} ? byte_offset : byte_offset+read_total,"""
+    source=replace(source,old,new)
+    source=replace(source,"    read_total += bytes_read;\n    read_remain -= read_length;",
+        "    read_total += bytes_read;\n    if (bytes_read < read_length) break; // stop at a short read/EOF\n    read_remain -= read_length;")
+    return source
+
 def patch_file(source):
     source=replace(source,'#include <rex/kernel/title_runtime.h>',
                    '#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>')
     source=replace(source,READ_CURSOR_OLD,READ_CURSOR_NEW)
     source=replace(source,WRITE_CURSOR_OLD,WRITE_CURSOR_NEW)
-    return replace(source,VIRTUAL_READ_OLD,VIRTUAL_READ_NEW)
+    source=replace(source,VIRTUAL_READ_OLD,VIRTUAL_READ_NEW)
+    source=replace(source,"#include <span>","#include <span>\n#include <algorithm>\n#include <atomic>\n#include <cstdlib>\n#include <string_view>")
+    source=replace(source,"namespace {\n\nvoid NotifyIOCompletionPorts","namespace {\n"+RESOURCE_TRACE+"\nvoid NotifyIOCompletionPorts")
+    source=replace(source,"  if (out_bytes_read) {\n    *out_bytes_read = static_cast<u32>(bytes_read);",
+        """  if (std::getenv("X360_METRO_BOOT") && IsMetroUIResource(file->GetInfo().name)) {
+    static std::atomic_uint count{0};
+    const auto n=count.fetch_add(1,std::memory_order_relaxed)+1;
+    if(n<=96 || (n & (n-1))==0)
+      REXSYS_INFO("METRO_UI_FILE name={} size={} offset={} requested={} actual={} status={:08X} count={}",
+                  file->GetInfo().name,file->GetInfo().size,byte_offset,buffer_length,
+                  bytes_read,static_cast<u32>(result),n);
+  }
+  if (out_bytes_read) {
+    *out_bytes_read = static_cast<u32>(bytes_read);""")
+    return patch_scatter(source)
 
 NOTIFICATION_STUB = "REX_EXPORT_STUB(__imp__DrvGetContentStorageNotification);"
 NOTIFICATION_ENTRY = """namespace rex::kernel::xboxkrnl {
@@ -293,7 +393,9 @@ def main():
     test=a.sdk/"tests/unit/kernel/files_test.cpp"
     tests=a.tests.read_text()
     if "metro_io_runtime" in test.read_text():raise ValueError("test already installed")
+    info=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_io_info.cpp"
     outputs={io:patch_io(io.read_text()),file:patch_file(file.read_text()),
+             info:patch_file_information(info.read_text()),
              hid:patch_storage_notifications(hid.read_text()),
              test:test.read_text()+"\n"+tests}
     for path,content in outputs.items():path.write_text(content)
