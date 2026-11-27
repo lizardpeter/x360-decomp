@@ -52,8 +52,8 @@ ENTRIES = {
                       0x817C54D0:"retail_scene_forward",0x8177DA10:"retail_render_begin",
                       0x8177DAA0:"retail_render_present",0x817FE5C0:"xam_controlpack_setup",
                       0x81807DB8:"xam_controlpack_uri",0x81699190:"xam_font_patch_resolver",
-                      0x81699810:"xam_font_typeface_resolver",0x81699238:"xam_font_patch_result",
-                      0x816998FC:"xam_font_typeface_result"},
+                      0x81699810:"xam_font_typeface_resolver",0x81699244:"xam_font_patch_result",
+                      0x81699910:"xam_font_typeface_result"},
     "generated_hud": {0x913E98F8:"hud_initialize",0x913E9B88:"hud_render_loop"},
 }
 MARK="/* METRO_UI_PROBES_INSERTED */"

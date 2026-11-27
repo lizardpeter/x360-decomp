@@ -29,5 +29,7 @@ class MetroUIProbes(unittest.TestCase):
             self.assertEqual(dash[pc+4],(dash[pc][0],"return"))
         self.assertEqual(xam[0x81699190],("xam_font_patch_resolver","entry"))
         self.assertEqual(xam[0x81699810],("xam_font_typeface_resolver","entry"))
-        self.assertEqual(xam[0x816998FC],("xam_font_typeface_result","entry"))
+        self.assertEqual(xam[0x81699910],("xam_font_typeface_result","entry"))
+        self.assertEqual(xam[0x816998FC],("xam_font_copy_path_2","return"))
+        self.assertEqual(xam[0x81699244],("xam_font_patch_result","entry"))
 if __name__=="__main__":unittest.main()
