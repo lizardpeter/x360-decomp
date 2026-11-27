@@ -63,7 +63,7 @@ class IoRuntime(unittest.TestCase):
         self.assertNotIn("X_STATUS_SUCCESS",result)
         with self.assertRaises(ValueError):patch_storage_notifications(result)
     def test_profile_mount_routes_explicit_alias_and_respects_provider_ownership(self):
-        source="\n".join([MOUNT_ROOT_OLD,RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD,
+        source="\n".join([RELATIVE_RENAME_OLD,RELATIVE_RENAME_REJECT_OLD,MOUNT_ROOT_OLD,RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD,
           "  return Opened{std::make_unique<NodeFile>(*node, access, std::move(stream)), action};",
           "  return std::unique_ptr<IDirectory>(std::make_unique<NodeDirectory>(*node, pattern));",
           "Result<void> FileSystem::Mount(const MountEntry& entry) {"])
@@ -108,6 +108,22 @@ class IoRuntime(unittest.TestCase):
         self.assertNotIn("X_STATUS_SUCCESS",patched)
         self.assertNotIn("memory.Store",patched)
         with self.assertRaises(ValueError):patch_stfs_contract(patched)
+    def test_profile_relative_rename_resolves_destination_provider(self):
+        result=patch_relative_rename(RELATIVE_RENAME_OLD+"\n"+RELATIVE_RENAME_REJECT_OLD)
+        self.assertIn("ResolveMount(target_parent)",result)
+        self.assertIn("resolved.provider != &node.GetProvider()",result)
+        self.assertIn("StartsWithComponents(target_parent, root_path)",result)
+        self.assertNotIn(RELATIVE_RENAME_REJECT_OLD,result)
+    def test_set_information_checks_extent_and_status(self):
+        original="u32 NtSetInformationFile_entry(\n"+"\n".join([SET_START_OLD,SET_RENAME_OLD,
+            SET_UNSUPPORTED_OLD,SET_EOF_OLD,SET_ALLOCATION_OLD,SET_POSITION_OLD,SET_BASIC_OLD])+"\nu32 GetQueryVolumeMinimumLength("
+        result=patch_set_information(original)
+        self.assertIn("GetReadOnlySpan(input,minimum_length)",result)
+        self.assertIn("GetReadOnlySpan(name->pointer,length)",result)
+        self.assertIn("X_STATUS_NOT_SUPPORTED",result)
+        self.assertEqual(result.count("0x7fffffffffffffff"),3)
+        self.assertIn("if (info->attributes)",result)
+        with self.assertRaises(ValueError):patch_set_information(result)
     def test_storage_queries_bound_and_retry(self):
         source="\n".join([ATTR_QUERY_OLD,DIRECTORY_QUERY_OLD,DIRECTORY_COUNT_OLD])
         patched=patch_storage_queries(source)

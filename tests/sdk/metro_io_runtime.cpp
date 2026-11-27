@@ -443,3 +443,37 @@ REX_TEST_CASE("metro_io_runtime: XeCryptRandom uses system entropy and preserves
     CHECK(c.Load32(large+size+4)==0x87654321);
   });
 }
+
+
+REX_TEST_CASE("metro_io_runtime: profile persistence metadata rejects malformed requests",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) { WriteScratch(root,"persist.bin",32); });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4), iosb=c.Alloc(8), info=c.Alloc(40);
+    REQUIRE(c.Kernel("NtOpenFile",{h,kReadWriteAccess,c.AllocAttributes("scratch:\\persist.bin"),iosb,1,0x20})==0);
+    const u32 handle=c.Load32(h);
+    auto set=[&](u32 address,u32 len,u32 cls,u32 status) {
+      return c.Kernel("NtSetInformationFile",{handle,status,address,len,cls});
+    };
+    c.Store32(iosb,0x12345678);c.Store32(iosb+4,0xCAFEBABE);
+    CHECK(set(0xfffffffc,8,XFileEndOfFileInformation,iosb)==X_STATUS_ACCESS_VIOLATION);
+    CHECK(set(info,8,XFileEndOfFileInformation,0xfffffffc)==X_STATUS_ACCESS_VIOLATION);
+    CHECK(set(info,8,XFilePositionInformation,info)==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Load32(iosb)==0x12345678);
+    CHECK(c.Load32(iosb+4)==0xCAFEBABE);
+    c.Store32(info,0xffffffff);c.Store32(info+4,0xffffffff);
+    for(u32 cls:{XFilePositionInformation,XFileEndOfFileInformation,XFileAllocationInformation})
+      CHECK(set(info,8,cls,iosb)==X_STATUS_INVALID_PARAMETER);
+    c.Store32(info,0);c.Store32(info+4,16);
+    REQUIRE(set(info,8,XFileEndOfFileInformation,iosb)==0);
+    REQUIRE(c.Kernel("NtQueryInformationFile",{handle,iosb,info,8,XFileAllocationInformation})==0);
+    // Counted rename string points outside guest memory; no host dereference.
+    c.Store32(info,0);c.Store32(info+4,0);c.Store32(info+8,0x00040004);c.Store32(info+12,0xfffffffc);
+    CHECK(set(info,16,XFileRenameInformation,iosb)==X_STATUS_ACCESS_VIOLATION);
+    c.Store32(info,0);
+    CHECK(set(info,4,XFileIoPriorityInformation,iosb)==X_STATUS_NOT_SUPPORTED);
+    REQUIRE(c.Kernel("NtClose",{handle})==0);
+  });
+}

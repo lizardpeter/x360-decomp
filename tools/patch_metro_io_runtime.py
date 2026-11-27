@@ -484,7 +484,45 @@ MOUNT_ROOT_NEW = r"""  } else {
     }
   }"""
 
+RELATIVE_RENAME_OLD = r"""  if (root) {
+    parent =
+        base.empty()
+            ? root
+            : root->GetProvider().Resolve(string::utf8_join_guest_paths(root->GetPath(), base));
+  } else if (base.empty()) {"""
+RELATIVE_RENAME_NEW = r"""  if (root) {
+    if (!root->IsDirectory()) {
+      return Err(BuildError(FileSystemError::kNotDirectory, "rename root is not a directory"));
+    }
+    const auto root_path = root->GetAbsolutePath();
+    const auto target_parent = base.empty() ? root_path : string::utf8_canonicalize_guest_path(
+        string::utf8_join_guest_paths(root_path, base));
+    if (!StartsWithComponents(target_parent, root_path)) {
+      return Err(BuildError(FileSystemError::kInvalidPath, "rename escapes its root directory"));
+    }
+    // Partition-relative Content/Cache names can resolve into an explicit
+    // child provider. The source and resolved destination must still be on
+    // the same actual filesystem: no cross-volume move or firmware write.
+    REX_TRY(Resolved resolved, ResolveMount(target_parent));
+    if (resolved.provider != &node.GetProvider()) {
+      return Err(BuildError(FileSystemError::kNotSameDevice, "rename crosses a mounted volume"));
+    }
+    parent = resolved.provider->Resolve(resolved.relative);
+  } else if (base.empty()) {"""
+RELATIVE_RENAME_REJECT_OLD = r"""  if (root && &root->GetProvider() != &node.GetProvider()) {
+    return Err(
+        BuildError(FileSystemError::kNotSameDevice,
+                   std::format("'{}' is not on the mount of '{}'", to, node.GetAbsolutePath())));
+  }"""
+
+def patch_relative_rename(source):
+    source=replace(source,RELATIVE_RENAME_OLD,RELATIVE_RENAME_NEW)
+    if source.count(RELATIVE_RENAME_REJECT_OLD)!=1:
+        raise ValueError("unexpected relative rename provider check")
+    return source.replace(RELATIVE_RENAME_REJECT_OLD,"",1)
+
 def patch_filesystem(source):
+    source=patch_relative_rename(source)
     source=replace(source,MOUNT_ROOT_OLD,MOUNT_ROOT_NEW)
     source=replace(source,RELATIVE_OPEN_OLD,RELATIVE_OPEN_NEW)
     source=replace(source,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_CHILD_NEW)
@@ -639,6 +677,16 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
       {.disposition = Disposition::kCreate, .access = Access::kWriteAccess});
   REQUIRE(created);
   CHECK(std::filesystem::exists(storage / "profile" / "new.bin"));
+  // XAM can commit a temporary profile/cache file with a partition-relative
+  // rename. The source is already in the Content mount; do not reject it
+  // simply because the caller's root handle belongs to the firmware mount.
+  REQUIRE(fs.Rename(*created->file, "Content\\profile\\final.bin", false, partition.file.get()));
+  CHECK_FALSE(std::filesystem::exists(storage / "profile" / "new.bin"));
+  CHECK(std::filesystem::exists(storage / "profile" / "final.bin"));
+  CHECK_FALSE(fs.Rename(*created->file, "forbidden.bin", false, partition.file.get()));
+  CHECK_FALSE(std::filesystem::exists(firmware / "forbidden.bin"));
+  CHECK_FALSE(fs.Rename(*created->file, "ContentOther\\final.bin", false, partition.file.get()));
+  CHECK_FALSE(std::filesystem::exists(firmware / "Content" / "profile" / "final.bin"));
   CHECK_FALSE(std::filesystem::exists(firmware / "Content" / "profile" / "new.bin"));
   CHECK_FALSE(fs.OpenRelative(*partition.file, "forbidden.bin",
       {.disposition = Disposition::kCreate, .access = Access::kWriteAccess}));
@@ -844,6 +892,85 @@ def patch_storage_queries(source):
         source=replace(source,old,new)
     return source
 
+SET_START_OLD = r"""  REX_KERNEL_LOOKUP(file, FileObject, file_handle);
+
+  X_STATUS result = X_STATUS_SUCCESS;
+  u32 out_length;
+
+  switch (info_class) {"""
+SET_START_NEW = r"""  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 input=info_ptr.GetGuestAddress(), iosb=io_status_block.GetGuestAddress();
+  if (!input || !guest.GetReadOnlySpan(input,minimum_length) ||
+      (iosb && !guest.GetWritableSpan(iosb,sizeof(X_IO_STATUS_BLOCK))))
+    return X_STATUS_ACCESS_VIOLATION;
+  if (iosb && u64{input}<u64{iosb}+sizeof(X_IO_STATUS_BLOCK) &&
+      u64{iosb}<u64{input}+minimum_length) return X_STATUS_INVALID_PARAMETER;
+  REX_KERNEL_LOOKUP(file, FileObject, file_handle);
+
+  X_STATUS result = X_STATUS_SUCCESS;
+  u32 out_length=0;
+
+  switch (info_class) {"""
+
+SET_RENAME_OLD = r"""      auto target_path = kernel::TranslateAnsiPath(kernel::GetCurrentState().GetAddressSpace(),
+                                                   &info->ansi_string);"""
+SET_RENAME_NEW = r"""      const auto name=guest.Load<X_ANSI_STRING>(input+offsetof(X_FILE_RENAME_INFORMATION,ansi_string));
+      if (!name) return X_STATUS_ACCESS_VIOLATION;
+      const u16 length=name->length;
+      if (!length || length>static_cast<u16>(name->maximum_length))
+        return X_STATUS_OBJECT_NAME_INVALID;
+      if (!name->pointer) return X_STATUS_ACCESS_VIOLATION;
+      auto bytes=guest.GetReadOnlySpan(name->pointer,length);
+      if (!bytes) return X_STATUS_ACCESS_VIOLATION;
+      std::string target_path(reinterpret_cast<const char*>(bytes->data()),bytes->size());
+      if (target_path.find('\0')!=std::string::npos) return X_STATUS_OBJECT_NAME_INVALID;"""
+
+SET_UNSUPPORTED_OLD = r"""      REXKRNL_WARN("NtSetInformationFile class {} is unsupported", info_class);
+      out_length = 0;"""
+SET_UNSUPPORTED_NEW = r"""      REXKRNL_WARN("NtSetInformationFile class {} is unsupported", info_class);
+      result = X_STATUS_NOT_SUPPORTED;
+      out_length = 0;"""
+
+SET_EOF_OLD = r"""      result = file->SetLength(info->end_of_file);"""
+SET_EOF_NEW = r"""      if (static_cast<u64>(info->end_of_file)>0x7fffffffffffffffull)
+        return X_STATUS_INVALID_PARAMETER;
+      result = file->SetLength(info->end_of_file);"""
+
+SET_ALLOCATION_OLD = r"""      result = file->SetAllocation(info->allocation_size);"""
+SET_ALLOCATION_NEW = r"""      if (static_cast<u64>(info->allocation_size)>0x7fffffffffffffffull)
+        return X_STATUS_INVALID_PARAMETER;
+      result = file->SetAllocation(info->allocation_size);"""
+
+SET_POSITION_OLD = r"""      file->SetPosition(info->current_byte_offset);"""
+SET_POSITION_NEW = r"""      if (static_cast<u64>(info->current_byte_offset)>0x7fffffffffffffffull)
+        return X_STATUS_INVALID_PARAMETER;
+      file->SetPosition(info->current_byte_offset);"""
+
+SET_BASIC_OLD = r"""      basic_result &= file->file
+                          ->SetAttributes(static_cast<filesystem::FileAttributes>(
+                              static_cast<u32>(info->attributes)))
+                          .has_value();"""
+SET_BASIC_NEW = r"""      // Zero attributes mean leave the existing attributes unchanged.
+      if (info->attributes)
+        basic_result &= file->file
+                            ->SetAttributes(static_cast<filesystem::FileAttributes>(
+                                static_cast<u32>(info->attributes)))
+                            .has_value();"""
+
+def patch_set_information(source):
+    start=source.index('u32 NtSetInformationFile_entry(')
+    end=source.index('u32 GetQueryVolumeMinimumLength(',start)
+    body=source[start:end]
+    for old,new in ((SET_START_OLD,SET_START_NEW),
+                    (SET_RENAME_OLD,SET_RENAME_NEW),
+                    (SET_UNSUPPORTED_OLD,SET_UNSUPPORTED_NEW),
+                    (SET_EOF_OLD,SET_EOF_NEW),
+                    (SET_ALLOCATION_OLD,SET_ALLOCATION_NEW),
+                    (SET_POSITION_OLD,SET_POSITION_NEW),
+                    (SET_BASIC_OLD,SET_BASIC_NEW)):
+        body=replace(body,old,new)
+    return source[:start]+body+source[end:]
+
 def patch_volume_query(source):
     start=source.index("u32 NtQueryVolumeInformationFile_entry(")
     return source[:start]+replace(source[start:],VOLUME_QUERY_OLD,VOLUME_QUERY_NEW)
@@ -967,7 +1094,7 @@ def main():
              filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
              io:patch_stfs_contract(patch_storage_queries(patch_io(io.read_text()))),
              file:patch_directory_object(patch_file(file.read_text())),
-             info:patch_volume_query(patch_file_information(info.read_text())),
+             info:patch_set_information(patch_volume_query(patch_file_information(info.read_text()))),
              hid:patch_storage_notifications(hid.read_text()),
              test:test.read_text()+"\n"+tests}
     for path,content in outputs.items():path.write_text(content)
