@@ -63,6 +63,11 @@ REX_TEST_CASE("metro_startup_status: original counted object names and missing d
     REQUIRE(c.Kernel("ObReferenceObjectByHandle",{handle,0,expected})==0);
     REQUIRE(c.Kernel("ObReferenceObjectByName",{name,64,0,0,out})==0);
     CHECK(c.Load32(out)==c.Load32(expected));
+    const u32 data=c.Alloc(16), returned=c.Alloc(4);
+    c.Store32(data,0x11223344); c.Store32(returned,0x55667788);
+    CHECK(c.Kernel("IoSynchronousDeviceIoControlRequest",{0x2d001c,c.Load32(out),0,0,data,16,returned,0})==X_STATUS_NOT_SUPPORTED);
+    CHECK(c.Load32(data)==0x11223344);
+    CHECK(c.Load32(returned)==0x55667788);
     CHECK(c.Kernel("ObDereferenceObject",{c.Load32(out)})==0);
     CHECK(c.Kernel("ObDereferenceObject",{c.Load32(expected)})==0);
     CHECK(c.Kernel("NtClose",{handle})==0);
@@ -81,8 +86,6 @@ REX_TEST_CASE("metro_startup_status: original counted object names and missing d
     c.Store32(malformed+4,0xfffffffc);
     CHECK(c.Kernel("ObReferenceObjectByName",{malformed,64,0,0,out})==X_STATUS_ACCESS_VIOLATION);
     CHECK(c.Load32(out)==0xbebebebe);
-    const u32 data=c.Alloc(16), returned=c.Alloc(4);
-    c.Store32(data,0x11223344); c.Store32(returned,0x55667788);
     CHECK(c.Kernel("IoSynchronousDeviceIoControlRequest",{0x2d001c,0,0,0,data,16,returned,0})==X_STATUS_INVALID_HANDLE);
     CHECK(c.Kernel("IoSynchronousDeviceIoControlRequest",{0x2d001c,0xbebebebe,0,0,data,16,returned,0})==X_STATUS_INVALID_HANDLE);
     CHECK(c.Load32(data)==0x11223344);

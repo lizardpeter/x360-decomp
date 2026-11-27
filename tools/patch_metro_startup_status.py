@@ -99,6 +99,7 @@ def patch_io_trace(source):
   return X_STATUS_SUCCESS;'''
     new=r'''  // A hosted file or dispatcher object is not an optical device provider.
   // Do not signal success or populate unspecified response data.
+  REXKRNL_TRACE("Hosted device control without provider: {:#x}", ioctl);
   if (!device_object.GetGuestAddress() ||
       !kernel::GetCurrent().GetObjectTable().GetByAddress(device_object.GetGuestAddress()))
     return X_STATUS_INVALID_HANDLE;
