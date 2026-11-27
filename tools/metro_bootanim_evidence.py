@@ -206,6 +206,81 @@ def control_flag_references(image,base,pe,addresses):
                              "address":hx(found[0]),"access":"read" if w>>26==34 else "write"})
     return refs
 
+def phase_fp_instruction(word):
+    """Decode the original scalar PPC floating-point operands, not host approximations."""
+    op=word>>26
+    fd=(word>>21)&31;fa=(word>>16)&31;fb=(word>>11)&31;fc=(word>>6)&31
+    if op in (48,49,50,51,52,53,54,55):
+        return {"op":("lfs","lfsu","lfd","lfdu","stfs","stfsu","stfd","stfdu")[op-48],
+                "fpr":fd,"base":fa,"offset":struct.unpack(">h",struct.pack(">H",word&0xffff))[0],
+                "width":4 if op in (48,49,52,53) else 8}
+    if op not in (59,63):return None
+    xo=(word>>1)&1023
+    if op==63 and xo in (0,32):
+        return {"op":"fcmpo" if xo==32 else "fcmpu","cr":(word>>23)&7,"lhs":fa,"rhs":fb}
+    if op==63 and xo in (12,14,15,40,72,136,264,814,815,846):
+        names={12:"frsp",14:"fctiw",15:"fctiwz",40:"fneg",72:"fmr",136:"fnabs",264:"fabs",
+               814:"fctid",815:"fctidz",846:"fcfid"}
+        return {"op":names[xo],"dest":fd,"src":fb}
+    xo5=xo&31
+    if xo5 in (18,20,21,25,28,29,30,31) or (op==63 and xo5==23):
+        name={18:"fdiv",20:"fsub",21:"fadd",23:"fsel",25:"fmul",28:"fmsub",
+              29:"fmadd",30:"fnmsub",31:"fnmadd"}[xo5]
+        if op==59:name+="s"
+        return {"op":name,"dest":fd,"a":fa,**({"c":fc} if xo5==25 else
+                {"b":fb,"c":fc} if xo5 in (23,28,29,30,31) else {"b":fb})}
+    return {"op":"unclassified_fp","primary":op,"extended":xo}
+
+def phase_arithmetic(image,base,pe):
+    """Recover exact FP arithmetic and original branch/field producers for the animation."""
+    functions={a:n for a,n,_ in pe["functions"]}
+    roots=(0x9800EA10,0x9800FCB0,0x9800FDB0,0x9801F298,0x9801F9F0,0x9800E938,0x9800E6F0)
+    reports={}
+    for start in roots:
+        n=functions.get(start)
+        if not n:
+            reports[hx(start)]={"extent_verified":False}
+            continue
+        rows=[];hi={}
+        for i,(word,) in enumerate(struct.iter_unpack(">I",image[start-base:start-base+n])):
+            pc=start+i*4;dec=phase_fp_instruction(word)
+            if dec:
+                if dec["op"] in ("lfs","lfd") and dec["base"] in hi:
+                    owner,address=hi[dec["base"]]
+                    a=(address+dec["offset"])&0xffffffff
+                    if pc-owner<=48 and base<=a<=base+len(image)-dec["width"]:
+                        val=struct.unpack_from(">f" if dec["width"]==4 else ">d",image,a-base)[0]
+                        import math
+                        if math.isfinite(val):
+                            dec.update({"constant_address":hx(a),"constant_value":val,
+                                        "constant_base_site":hx(owner)})
+                rows.append({"pc":hx(pc),**dec})
+                continue
+            a=operand(pc,word)
+            kind=a.get("kind")
+            if kind in ("branch","conditional_branch","return"):
+                rows.append({"pc":hx(pc),**a})
+                # Avoid treating a linear constant definition as a proven
+                # value across control-flow edges or volatile call clobbers.
+                hi.clear()
+            elif kind in ("memory_load","memory_store","compare_immediate","arithmetic","register_copy","immediate","register_offset"):
+                rows.append({"pc":hx(pc),**a})
+                if "writes" in a:hi.pop(a["writes"],None)
+                if word>>26==15 and ((word>>16)&31)==0:
+                    hi[(word>>21)&31]=(pc,(word&0xffff)<<16)
+            else:
+                hi.clear()
+        reports[hx(start)]={"extent_verified":True,"bytes":n,"operations":rows}
+    # Pin the observed original millisecond subtraction, conversion and
+    # phase update call; units inferred only where the original constants agree.
+    for root,sites in ((0x9800FCB0,(0x9800FCDC,0x9800FCE8)),
+                       (0x9800FDB0,(0x9800FE28,0x9800FE34)),
+                       (0x9800EA10,(0x9800EA9C,0x9800EA80,0x9800EABC,0x9800EB5C))):
+        rows={r["pc"]:r for r in reports[hx(root)]["operations"]}
+        if not all(hx(pc) in rows for pc in sites):
+            raise ValueError("missing original arithmetic site")
+    return reports
+
 def graceful_phase_constants(image,base):
     # Recover original floating-point comparisons; no host timing estimate.
     # Only resolve absolute addresses when the base register's exact lis
@@ -318,6 +393,7 @@ def lifecycle_report(raw,image,meta,thunks):
             "first_export_arguments":{"r3":"module handle (verified resource lookup flow)",
             "r4":"flags word (verified masks, caller policy not recovered)"},
             "module_handle_global":hx(slot),"startup_flag_masks":masks,
+            "phase_arithmetic":phase_arithmetic(image,base,pe),
             "clock_and_phase_sources":{
                 "original_clock_function":"98045A00",
                 "initial_clock_store":"9800FAC8",
@@ -502,6 +578,9 @@ def main():
           "focused functions",len(report["missing_or_stub_imports"]),"missing/stub imports")
     print("audio",report["audio"]["format"],"packets",report["audio"].get("packet_count"))
     print("lifecycle",report["lifecycle"]["module_handle_global"],report["lifecycle"]["startup_flag_masks"])
+    arithmetic=report["lifecycle"]["phase_arithmetic"]
+    for root in ("9800EA10","9800FCB0","9800FDB0"):
+        print("ANIMATION_PHASE_ARITHMETIC",root,json.dumps([r for r in arithmetic[root]["operations"] if "op" in r],sort_keys=True))
     print("audio library homologues",report["audio_library_homologues"])
     print("exports",[(r["ordinal"],r["address"],r["kind"]) for r in report["exports"]])
     print("caller references", {k:len(v["code_references"]) for k,v in callers.items()})

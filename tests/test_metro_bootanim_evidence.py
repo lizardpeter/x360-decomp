@@ -75,4 +75,20 @@ class BootanimEvidence(unittest.TestCase):
         self.assertIn("10000020",result["pointer_addresses"])
         self.assertEqual(result["code_references"][0]["target"],"10000000")
 
+
+class PhaseArithmetic(unittest.TestCase):
+    def test_scalar_fp_operands(self):
+        from metro_bootanim_evidence import phase_fp_instruction as decode
+        self.assertEqual(decode((48<<26)|(13<<21)|(31<<16)|36),
+                         {"op":"lfs","fpr":13,"base":31,"offset":36,"width":4})
+        self.assertEqual(decode((52<<26)|(13<<21)|(31<<16)|0xfff8),
+                         {"op":"stfs","fpr":13,"base":31,"offset":-8,"width":4})
+        self.assertEqual(decode((63<<26)|(6<<23)|(13<<16)),
+                         {"op":"fcmpu","cr":6,"lhs":13,"rhs":0})
+        self.assertEqual(decode((59<<26)|(2<<21)|(3<<16)|(4<<6)|(25<<1)),
+                         {"op":"fmuls","dest":2,"a":3,"c":4})
+        self.assertEqual(decode((63<<26)|(1<<21)|(3<<11)|(72<<1)),
+                         {"op":"fmr","dest":1,"src":3})
+        self.assertIsNone(decode(0x4e800020))
+
 if __name__=="__main__":unittest.main()
