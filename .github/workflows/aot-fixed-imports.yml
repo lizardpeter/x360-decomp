@@ -20,6 +20,8 @@ on:
       - 'tests/sdk/metro_system_attach.cpp'
       - 'tools/instrument_metro_heap.py'
       - 'tools/instrument_metro_ui.py'
+      - 'tools/instrument_metro_audio.py'
+      - 'tests/test_metro_audio_probes.py'
       - 'tests/test_metro_ui_probes.py'
       - 'tests/test_metro_heap_probes.py'
       - 'tests/sdk/metro_virtual_memory.cpp'
@@ -82,6 +84,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_io_runtime.py
           python -m unittest discover -s tests -p test_metro_entries.py
           python -m unittest discover -s tests -p test_metro_ui_probes.py
+          python -m unittest discover -s tests -p test_metro_audio_probes.py
           python -m unittest discover -s tests -p test_metro_kernel_variables.py
           python -m unittest discover -s tests -p test_metro_boot_evidence.py
           python -m unittest discover -s tests -p test_metro_fault_localization.py
@@ -195,6 +198,7 @@ jobs:
           python tools/filter_zero_aot_mappings.py "$folder" --receipt build/receipts/zero-address-mappings.json
           python tools/instrument_metro_heap.py "$folder/generated_xam" --receipt build/receipts/metro-heap-probes.json
           python tools/instrument_metro_ui.py "$folder" --receipt build/receipts/metro-ui-probes.json
+          python tools/instrument_metro_audio.py "$folder/generated_xam" --receipt build/receipts/metro-audio-probes.json
           python tools/aot_receipt.py "$folder/generated" --status 0 --output build/receipts/dashboard-generated.json
           python tools/aot_receipt.py "$folder/generated_xam" --status 0 --output build/receipts/xam-generated.json
           python tools/aot_receipt.py "$folder/generated_hud" --status 0 --output build/receipts/hud-generated.json
