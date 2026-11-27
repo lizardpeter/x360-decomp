@@ -30,3 +30,19 @@ REX_TEST_CASE("metro_input_bridge: unmapped callbacks and unannounced contexts a
     CHECK(state.hosted_pad_binding_callback.load()==0);
   });
 }
+
+REX_TEST_CASE("metro_input_bridge: statistics failure cannot masquerade as populated output",
+              "[kernel][input][metro_input_bridge]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    const u32 data=c.Alloc(32), extra=c.Alloc(16);
+    for (u32 offset=0;offset<32;offset+=4) c.Store32(data+offset,0xdeadbeef);
+    for (u32 offset=0;offset<16;offset+=4) c.Store32(extra+offset,0xcafebabe);
+    const u32 status=c.Kernel("XInputdGetDeviceStats",{0x10000001,1,data,extra});
+    CHECK(status==0xc000009d);
+    CHECK((status&0x80000000u)!=0);
+    CHECK(c.Kernel("XInputdGetDeviceStats",{0,1,0,0})==0xc000009d);
+    for (u32 offset=0;offset<32;offset+=4) CHECK(c.Load32(data+offset)==0xdeadbeef);
+    for (u32 offset=0;offset<16;offset+=4) CHECK(c.Load32(extra+offset)==0xcafebabe);
+  });
+}
