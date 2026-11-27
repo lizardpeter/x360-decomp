@@ -12,7 +12,7 @@ import subprocess
 from pathlib import Path
 from prepare_recompilation import ROOT, EXPECTED
 from patch_rexglue_imports import REVISION
-from stage_metro_xam_aot import rows
+from stage_metro_xam_aot import rows, HUD_SHA
 
 OLD = """      if (exp) {
         if (exp->type == kernel::ExportType::kFunction) {"""
@@ -85,7 +85,28 @@ def original_inventory(sdk=None):
                      json.loads((ROOT/"analysis/dash_17559/decoded.json").read_text()),
                      json.loads((ROOT/"analysis/xam_17559/decoded.json").read_text()),sdk)
 
-def patched(source,bindings):
+def hud_inventory():
+    hud=json.loads((ROOT/"analysis/hud_17559/decoded.json").read_text())
+    xam=json.loads((ROOT/"analysis/xam_17559/decoded.json").read_text())
+    if hud["state"]!="verified" or hud["source_sha256"]!=HUD_SHA or hud["image_base"]!=0x913E0000:
+        raise ValueError("unverified HUD identity")
+    if xam["state"]!="verified" or xam["source_sha256"]!=EXPECTED["xam_17559"]:
+        raise ValueError("unverified XAM identity")
+    exports={int(r["ordinal"],16):one_address(r["address"]) for r in rows(ROOT/"analysis/xam_17559/exports.tsv")}
+    out=[]
+    for r in rows(ROOT/"analysis/hud_17559/imports.tsv"):
+        if r["library"]!="xam.xex":continue
+        o=int(r["ordinal"],16)
+        v,t=one_address(r["value_slots"]),one_address(r["thunk_slots"])
+        a=exports[o]
+        if not section(hud,t,16)&0x20000000 or section(hud,v)&0x20000000 or not section(xam,a)&0x20000000:
+            raise ValueError("HUD import section mismatch")
+        out.append({"ordinal":o,"slot":v,"thunk":t,"target":a,"data":False})
+    if len(out)!=233 or any(len({r[k] for r in out})!=233 for k in ("ordinal","slot","thunk")):
+        raise ValueError("HUD import census mismatch")
+    return sorted(out,key=lambda r:r["ordinal"])
+
+def patched(source,bindings,hud=()):
     if source.count(OLD)!=1 or "metro_retail_function_import" in source:
         raise ValueError("unexpected register phase")
     cases="".join(f"            case 0x{x['ordinal']:04X}: return sym.address == 0x{x['thunk']:08X};\n"
@@ -104,7 +125,77 @@ def patched(source,bindings):
         module_import_count++;
       } else if (exp) {
         if (exp->type == kernel::ExportType::kFunction) {"""
+    if hud:
+        hud_cases="".join(f"            case 0x{x['ordinal']:04X}: return sym.address == 0x{x['thunk']:08X};\n" for x in hud)
+        replacement=replacement.replace("        }();\n      if (metro_retail_function_import)",
+          "        }() || (binary.GetBaseAddress() == 0x913E0000 && lib_name == \"xam\" && [&]() {\n"
+          "          switch (ordinal) {\n"+hud_cases+"            default: return false;\n"
+          "          }\n        }());\n      if (metro_retail_function_import)")
     return source.replace(OLD,replacement,1)
+
+def patch_hud_loader(source,hud):
+    # Only the verified retail HUD in a session that selected retail XAM.
+    # Keep all ordinary titles and SDK XAM loading unchanged.
+    anchor="    if (rex::kernel::ModuleFromName(library.name) || IsKernelModule(library.name)) {"
+    if source.count(anchor)!=1:raise ValueError("HUD import resolver anchor")
+    cases="".join(f"          case 0x{x['ordinal']:04X}: return import.value_address == 0x{x['slot']:08X} && import.thunk_address == 0x{x['thunk']:08X} && target == 0x{x['target']:08X};\n" for x in hud)
+    body=r"""
+    if (xex->GetBaseAddress()==0x913E0000 && xex->GetImageSize()==299008 &&
+        StateOf(runtime_).retail_xam_hmodule && library.name=="xam") {
+      const auto handle=runtime_.FindGuestModule("xam.xex");
+      auto dep=table_.Get<ModuleObject>(handle);
+      if (!dep || dep->hmodule_ptr!=StateOf(runtime_).retail_xam_hmodule ||
+          !dep->GetXEX() || library.imports.size()!=233)
+        return X_STATUS_DLL_NOT_FOUND;
+      std::size_t verified=0;
+      for (const auto& import:library.imports) {
+        const auto target=dep->GetXEX()->GetExportAddress(static_cast<u16>(import.ordinal));
+        const bool exact=[&]() {
+          switch (import.ordinal) {
+"""+cases+r"""            default: return false;
+          }
+        }();
+        if (!exact || !runtime_.FindFunction(target)) return X_STATUS_DRIVER_ORDINAL_NOT_FOUND;
+        ++verified;
+      }
+      AcquireReference(*dep);
+      module.user.dependencies.push_back(handle);
+      for (const auto& import:library.imports)
+        PatchImportSlot(import.value_address,import.thunk_address);
+      REXSYS_INFO("METRO_HUD retail_xam_bindings={}",verified);
+      continue;
+    }
+"""
+    source=source.replace(anchor,body+anchor,1)
+    anchor="  std::string path(raw_name);\n  if (name == raw_name) {"
+    if source.count(anchor)!=1:raise ValueError("HUD load path anchor")
+    body=r"""  std::string path(raw_name);
+  const bool retail_hud=StateOf(runtime_).retail_xam_hmodule &&
+      (rex::string::utf8_equal_case(raw_name,"hud.xex") ||
+       rex::string::utf8_equal_case(raw_name,"flash:\\hud.xex") ||
+       rex::string::utf8_equal_case(raw_name,"\\Device\\Flash\\hud.xex") ||
+       rex::string::utf8_equal_case(raw_name,"\\SystemRoot\\hud.xex"));
+  if (retail_hud) {
+    path="flash:\\hud.xex";
+    if (auto existing=GetModule(path,true)) {
+      AcquireReference(*table_.Get<ModuleObject>(*existing));
+      return *existing;
+    }
+  } else if (name == raw_name) {"""
+    source=source.replace(anchor,body,1)
+    anchor="  auto recomp = FindRecompiledModule(path);"
+    if source.count(anchor)!=1:raise ValueError("HUD registration anchor")
+    source=source.replace(anchor,anchor+r"""
+  if (retail_hud && (!recomp || !module->GetXEX() ||
+      module->GetXEX()->GetBaseAddress()!=0x913E0000 ||
+      module->GetXEX()->GetImageSize()!=299008 ||
+      module->user.entry_point!=0x913F8D00)) {
+    ReleaseDependencies(*module,call_entry);
+    CloseOwned(table_,created);
+    return Err<X_HANDLE>(StatusError(X_STATUS_DLL_NOT_FOUND));
+  }
+""",1)
+    return source
 
 def header(bindings):
     code=[x for x in bindings if not x["data"]]
@@ -124,12 +215,15 @@ def main():
     sdk=catalog((a.sdk/"src/kernel/xam/export_table.inc").read_text())
     bindings=original_inventory(sdk)
     file=a.sdk/"src/codegen/phase_register.cpp"
-    file.write_text(patched(file.read_text(),bindings))
+    hud=hud_inventory()
+    file.write_text(patched(file.read_text(),bindings,hud))
+    loader=a.sdk/"src/kernel/module_registry.cpp"
+    loader.write_text(patch_hud_loader(loader.read_text(),hud))
     subprocess.run(["git","-C",str(a.sdk),"diff","--check"],check=True)
     a.receipt.parent.mkdir(parents=True,exist_ok=True)
     a.receipt.write_text(json.dumps({"functions":521,"variables":1,
          "sdk_kinds":dict(collections.Counter(x["sdk_kind"] for x in bindings)),
-         "bindings":bindings},indent=2)+"\n")
+         "bindings":bindings,"hud_bindings":hud},indent=2)+"\n")
     print("Original XAM routing: 521 callable imports and one data import; no hosted XAM substitution")
 
 if __name__=="__main__":main()

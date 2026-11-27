@@ -182,6 +182,7 @@ jobs:
           python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/dashboard-diagnostics.json
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
           python tools/aot_receipt.py "$folder/generated_xam" --status "$status" --output build/receipts/xam-generated.json
+          python tools/aot_receipt.py "$folder/generated_hud" --status "$status" --output build/receipts/hud-generated.json
       - name: Filter invalid zero-address mappings and refresh generated receipts
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
@@ -189,6 +190,7 @@ jobs:
           python tools/instrument_metro_heap.py "$folder/generated_xam" --receipt build/receipts/metro-heap-probes.json
           python tools/aot_receipt.py "$folder/generated" --status 0 --output build/receipts/dashboard-generated.json
           python tools/aot_receipt.py "$folder/generated_xam" --status 0 --output build/receipts/xam-generated.json
+          python tools/aot_receipt.py "$folder/generated_hud" --status 0 --output build/receipts/hud-generated.json
       - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
@@ -221,7 +223,7 @@ jobs:
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity hud_retail_mapping clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame

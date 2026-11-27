@@ -68,7 +68,8 @@ def main():
     xam = root / "generated_xam/metro_xam_init.cpp"
     if not dash.is_file() or not xam.is_file():
         raise FileNotFoundError("expected dashboard and XAM generated init sources")
-    results = [process(dash, DASH_REQUIRED), process(xam, XAM_REQUIRED)]
+    hud = root / "generated_hud/metro_hud_init.cpp"
+    results = [process(dash, DASH_REQUIRED), process(xam, XAM_REQUIRED), process(hud,(0x913F8D00,))]
     if any(x["removed_zero_address_mappings"] for x in results):
         raise ValueError("corrected loader unexpectedly emitted address-zero mappings")
     a.receipt.parent.mkdir(parents=True, exist_ok=True)

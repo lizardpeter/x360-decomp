@@ -36,6 +36,8 @@ class MetroXamTests(unittest.TestCase):
         self.assertEqual(m["entrypoint"]["includes"], ["verified-entries.toml"])
         self.assertEqual(m["modules"][0]["guest_path"], "xam.xex")
         self.assertTrue(m["modules"][0]["is_dll"])
+        self.assertEqual(m["modules"][1]["guest_path"],"hud.xex")
+        self.assertTrue(m["modules"][1]["is_dll"])
         self.assertNotEqual(m["entrypoint"]["out_directory_path"], m["modules"][0]["out_directory_path"])
 
 if __name__ == "__main__":

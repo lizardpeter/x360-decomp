@@ -149,6 +149,29 @@ public:
             title_.FindGuestModule("unloaded-test-module.xex"))
             return fail("dynamic_xam_isolation");
         std::cout << "METRO_PREFLIGHT pass dynamic_xam_identity" << std::endl;
+        // Load the actual native HUD via the same guest alias as the live
+        // dashboard, without invoking its original entry in this preflight.
+        const auto hud_handle=registry.LoadUserModule("hud.xex",false);
+        if (!hud_handle) return fail("hud_load");
+        auto hud=title_.GetObjectTable().Get<ModuleObject>(*hud_handle);
+        auto* hx=hud?hud->GetXEX():nullptr;
+        if (!hx || hx->GetBaseAddress()!=0x913E0000 || hx->GetImageSize()!=299008 ||
+            hx->GetEntryPoint()!=0x913F8D00 || !title_.FindFunction(0x913F8D00))
+            return fail("hud_identity");
+        std::size_t count=0;
+        for (const auto& lib:hx->GetImportLibraries()) {
+            if (lib.name!="xam") continue;
+            for (const auto& import:lib.imports) {
+                const auto value=title_.GetGuestMemory().Load<rex::be_u32>(import.value_address);
+                const auto target=xam->GetExportAddress(static_cast<rex::u16>(import.ordinal));
+                if (!value || static_cast<rex::u32>(*value)!=import.thunk_address ||
+                    !target || !title_.FindFunction(target) || !title_.FindFunction(import.thunk_address))
+                    return fail("hud_binding");
+                ++count;
+            }
+        }
+        if (count!=233) return fail("hud_binding_count");
+        std::cout<<"METRO_PREFLIGHT pass hud_retail_mapping"<<std::endl;
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");
 

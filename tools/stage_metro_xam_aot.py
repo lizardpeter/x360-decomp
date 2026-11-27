@@ -16,6 +16,8 @@ from verify_aot_hints import verified_manifest
 from patch_rexglue_imports import REVISION
 
 # SDK linker diagnostics, joined to original dash import and XAM export tables.
+HUD_SHA = "37e10612afde211e1d349838704f7cc2648ad5a4d1f8ca459f18ecd2c1f31ac7"
+
 BINDINGS = {
     0x0546: (0x9293C8BC, 0x8168EB50),
     0x0547: (0x9293C89C, 0x8168EB88),
@@ -83,6 +85,13 @@ file_path = "inputs/xam.xex"
 guest_path = "xam.xex"
 out_directory_path = "generated_xam"
 is_dll = true
+
+[[modules]]
+project_name = "metro_hud"
+file_path = "inputs/hud.xex"
+guest_path = "hud.xex"
+out_directory_path = "generated_hud"
+is_dll = true
 '''
 
 def stage_pair(output):
@@ -105,6 +114,14 @@ def stage_pair(output):
             raise ValueError("staged XAM differs")
     else:
         binary.write_bytes(xam)
+    hud = parse_pirs(original("pirs"))["$flash_hud.xex"]["payload"]
+    if sha(hud) != HUD_SHA:
+        raise ValueError("HUD input mismatch")
+    binary = folder/"inputs/hud.xex"
+    if binary.exists() and sha(binary.read_bytes()) != HUD_SHA:
+        raise ValueError("staged HUD differs")
+    if not binary.exists():
+        binary.write_bytes(hud)
     manifest_path.write_text(manifest())
 
 def main():

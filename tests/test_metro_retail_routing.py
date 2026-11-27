@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from patch_metro_retail_routing import OLD,header,patched,inventory,original_inventory,ROOT,rows
+from patch_metro_retail_routing import OLD,header,patched,inventory,original_inventory,ROOT,rows,hud_inventory
 
 class RetailRouting(unittest.TestCase):
     def setUp(self):
@@ -28,6 +28,15 @@ class RetailRouting(unittest.TestCase):
                 self.assertIn(f"case 0x{x['ordinal']:04X}: return sym.address == 0x{x['thunk']:08X};",code)
         for source in ("",OLD+OLD,code):
             with self.assertRaises(ValueError):patched(source,bindings)
+    def test_hud_route_census(self):
+        hud=hud_inventory()
+        self.assertEqual(len(hud),233)
+        self.assertTrue(all(not r["data"] for r in hud))
+        code=patched(OLD,original_inventory(),hud)
+        self.assertIn("binary.GetBaseAddress() == 0x913E0000",code)
+        self.assertEqual(code.count("case 0x"),754)
+        for r in hud:
+            self.assertIn(f"case 0x{r['ordinal']:04X}: return sym.address == 0x{r['thunk']:08X};",code)
     def test_metadata_fail_closed(self):
         for im,ex,dash,xam in [
             (self.im[:-1],[],self.dash,self.xam),
