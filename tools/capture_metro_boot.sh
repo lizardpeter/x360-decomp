@@ -5,12 +5,20 @@ set -euo pipefail
 if [ "$#" -ne 2 ]; then echo "usage: $0 HOST_BUILD_DIR RUNTIME_ROOT" >&2; exit 2; fi
 native="$(realpath "$1")"
 root="$(realpath "$2")"
-out="$native/metro-capture"
+variant="${METRO_CAPTURE_VARIANT:-baseline}"
+case "$variant" in
+  baseline) out="$native/metro-capture"; quad=false;;
+  quad) out="$native/metro-capture-quad"; quad=true;;
+  *) echo "Unknown capture variant: $variant" >&2; exit 2;;
+esac
 mkdir -p "$out"
+# An empty, private per-run user root tests local storage routing without
+# importing a real account or altering the other variant's profile state.
+user_root="$(mktemp -d "$out/user.XXXXXXXX")"
 rm -f "$out"/candidate-*.png "$out"/input-*.png "$out/next.png" "$out/receipt.txt" "$out/boot.log"
 export X360_METRO_BOOT=1
-# CI never mounts a real local profile, including baseline boot.
-export X360_METRO_LOCAL_PROFILES=0
+# CI mounts only a fresh, empty directory, never a real local account.
+export X360_METRO_LOCAL_PROFILES=1
 export X360_METRO_TEXT_CLIP_TRACE=1
 export SDL_AUDIODRIVER=dummy
 export SDL_VIDEODRIVER=x11
@@ -21,20 +29,22 @@ cd "$native"
 profile_args=()
 if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   # Synthetic input only: never mount a real local profile in CI.
-  export X360_METRO_LOCAL_PROFILES=0
   export X360_METRO_PROFILE_TRACE=1
   export X360_METRO_GUIDE_TRACE=1
   export X360_METRO_GUIDE_UI="${X360_METRO_GUIDE_UI:-1}"
   profile_args=(--hid.guide_button=true --hid.keybind_guide=F9)
 fi
-./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
+./dash_17559 --title.game_root="$root" --title.entry=dash.xex --app.user_root="$user_root" \
+  --gpu.vulkan.force_convert_quad_lists_to_triangle_lists="$quad" \
   --ui.title="Metro 17559 Native Boot" --ui.fullscreen=false \
   --ui.window_width=1280 --ui.window_height=720 --ui.video_mode_width=1280 --ui.video_mode_height=720 \
   --gpu.resolution_scale_x=1 --gpu.resolution_scale_y=1 --gpu.xenos.async_shader_compilation=false \
   --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --hid.mnk_mode=true --hid.mnk_mouse=false --hid.mnk_passthrough=false --hid.guide_button=true --hid.keybind_guide=F9 --hid.keybind_dpad_up=W,Up,Shift+Up --hid.keybind_dpad_down=S,Down,Shift+Down --hid.keybind_dpad_left=A,Left,Shift+Left --hid.keybind_dpad_right=D,Right,Shift+Right --hid.keybind_a=Space,Return --hid.keybind_b=Escape,Backspace --hid.keybind_x=X --hid.keybind_y=Y --hid.keybind_left_shoulder=Q --hid.keybind_right_shoulder=E --hid.keybind_left_trigger=1 --hid.keybind_right_trigger=3 --hid.keybind_back=Tab --hid.keybind_start=F10 --hid.keybind_lstick_up=Shift+W --hid.keybind_lstick_down=Shift+S --hid.keybind_lstick_left=Shift+A --hid.keybind_lstick_right=Shift+D --hid.keybind_rstick_up=Ctrl+Up --hid.keybind_rstick_down=Ctrl+Down --hid.keybind_rstick_left=Ctrl+Left --hid.keybind_rstick_right=Ctrl+Right \
   "${profile_args[@]}" --log.level=info --log.flush_level=info > "$out/boot.log" 2>&1 &
 pid=$!
+held_key=""
 cleanup() {
+  if [ -n "$held_key" ]; then xdotool keyup "$held_key" || true; fi
   if kill -0 "$pid" 2>/dev/null; then
     kill "$pid" 2>/dev/null || true
     for _ in 1 2 3 4 5; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
@@ -50,7 +60,7 @@ samples=0
 last_frame=0
 last_sample=0
 : > "$out/receipt.txt"
-printf 'menu_visually_verified=false\n' >> "$out/receipt.txt"
+printf 'menu_visually_verified=false\nvariant=%s\nquad_conversion=%s\nsynthetic_empty_profile_root=true\n' "$variant" "$quad" >> "$out/receipt.txt"
 for tick in $(seq 1 65); do
   kill -0 "$pid" 2>/dev/null || break
   frame="$(grep -E '^METRO_BOOT frames [1-9][0-9]*$' "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
@@ -104,6 +114,12 @@ if [ "$samples" -ne 4 ]; then
   echo "Only $samples of four genuine live frame candidates captured." >&2
   exit 1
 fi
+if [ "$variant" = quad ]; then
+  # Comparison of settled Home text at the same resolution and same cold boot.
+  # Do not double the cost of unrelated navigation/Guide tests.
+  printf 'comparison_only=true\n' >> "$out/receipt.txt"
+  exit 0
+fi
 printf 'navigation_visually_verified=false\n' >> "$out/receipt.txt"
 win="$(xdotool search --all --onlyvisible --pid "$pid" --name 'Metro 17559 Native Boot' 2>/dev/null | head -n 1 || true)"
 if [ -z "$win" ] || ! xdotool windowfocus --sync "$win"; then
@@ -126,6 +142,37 @@ wait_frames() {
     sleep 0.5
   done
   return 1
+}
+# Keep a key held until the original guest actually samples that pad bit.
+# Release on success, timeout, or shutdown. This is input synchronization,
+# not a guest startup delay; no press is fabricated by the harness.
+pulse_key() {
+  local key="$1" expected="$2" start pressed=0 released=0
+  start="$(wc -l < "$out/boot.log")"
+  held_key="$key"
+  xdotool keydown "$key"
+  for _ in $(seq 1 40); do
+    kill -0 "$pid" 2>/dev/null || break
+    if tail -n "+$((start+1))" "$out/boot.log" | grep -F 'METRO_GUEST_PAD context=10000001 user=0' | grep -F "buttons=0x$expected" >/dev/null; then
+      pressed=1; break
+    fi
+    sleep 0.1
+  done
+  xdotool keyup "$key"
+  held_key=""
+  if ((pressed)); then
+    for _ in $(seq 1 40); do
+      kill -0 "$pid" 2>/dev/null || break
+      if tail -n "+$((start+1))" "$out/boot.log" | awk -v wanted="$expected" '
+        /METRO_GUEST_PAD context=10000001 user=0/ {
+          if (index(tolower($0),"buttons=0x" wanted)) p=1
+          else if(p && index(tolower($0),"buttons=0x0000")) r=1
+        } END {exit !(p && r)}'; then released=1; break; fi
+      sleep 0.1
+    done
+  fi
+  printf 'pulse_key=%s mask=%s press=%s release=%s\n' "$key" "$expected" "$pressed" "$released" >> "$out/receipt.txt"
+  ((pressed && released))
 }
 difference() {
   local count status=0
@@ -151,9 +198,10 @@ for axis in vertical horizontal; do
     kill -0 "$pid" 2>/dev/null || exit 1
     line_start="$(wc -l < "$out/boot.log")"
     frame_before="$(read_frame)"
-    xdotool keydown "$key"
-    sleep 0.25
-    xdotool keyup "$key"
+    case "$key" in
+      Up|w) expected=0001;; Down|s) expected=0002;; Left|a) expected=0004;; Right|d) expected=0008;;
+    esac
+    pulse_key "$key" "$expected" || true
     frame_after="$(wait_frames "$frame_before" 10)" || exit 1
     image="$out/input-$key.png"
     import -window "$win" "$image"
@@ -208,23 +256,24 @@ done
 printf 'input_probes_with_frame_progress_and_pad_transition=%s\ninput_probes_with_stable_visual_changes=%s\ninput_reversible_visual_pairs=%s\n' \
   "$pad_observed" "$visual_changes" "$reversible_pairs" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
+navigation_status=0
 if ((pad_observed!=4)); then
-  echo "Not all four directions reached the original guest." >&2; exit 1
+  echo "Not all four directions reached the original guest." >&2
+  navigation_status=1
 fi
 if ((reversible_pairs<1)); then
-  echo "No stable reversible visual navigation candidate yet." >&2; exit 1
+  echo "No stable reversible visual navigation candidate yet." >&2
+  navigation_status=1
 fi
-echo "Captured real guest input and reversible visual candidates; menu/navigation still require visual inspection."
-
-# The optional original Guide test runs only after the four reversible
-# dashboard directions. No sign-in API is injected, no account is created.
+printf 'navigation_gate_exit=%s\n' "$navigation_status" >> "$out/receipt.txt"
+# Guide is independently tested even if an unrelated direction failed.
+# No sign-in API is injected, no account is created.
+guide_status=0
 if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   line_start="$(wc -l < "$out/boot.log")"
   baseline="$(read_frame)"
   import -window "$win" "$out/input-profile-before.png"
-  xdotool keydown F9
-  sleep 0.25
-  xdotool keyup F9
+  pulse_key F9 0400 || guide_status=1
   after="$(wait_frames "$baseline" 10)" || exit 1
   for n in $(seq 1 4); do
     after="$(wait_frames "$after" 5)" || exit 1
@@ -239,9 +288,7 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   grep 'METRO_GUIDE_HW' "$out/boot.log" >> "$out/receipt.txt" || true
   printf 'guide_callback_delivery_traces=%s\nguide_original_callback_traces=%s\nguide_worker_entry_traces=%s\nguide_hud_traces=%s\n' "$guide_callbacks" "$guide_original" "$guide_worker" "$guide_hud" >> "$out/receipt.txt"
   # B is a cancel request. Never send A/confirm at an unknown account dialog.
-  xdotool keydown BackSpace
-  sleep 0.25
-  xdotool keyup BackSpace
+  pulse_key BackSpace 2000 || guide_status=1
   after="$(wait_frames "$after" 10)" || exit 1
   for n in $(seq 1 3); do
     after="$(wait_frames "$after" 5)" || exit 1
@@ -261,7 +308,7 @@ if [ "${X360_METRO_PROFILE_PROBE:-0}" = 1 ]; then
   tail -n 8 "$out/receipt.txt"
   if ((guide!=1 || cancel!=1)); then
     echo "Guide or cancel did not reach original guest." >&2
-    exit 1
+    guide_status=1
   fi
 fi
 
@@ -269,9 +316,7 @@ fi
 # pages on the original UI; record actual visual outcome, not an assumed state.
 for tab in 1 2 3 4 5; do
   before="$(read_frame)"
-  xdotool keydown e
-  sleep 0.25
-  xdotool keyup e
+  pulse_key e 0200 || true
   if ! wait_frames "$before" 15 >/dev/null; then
     printf 'tab_probe_incomplete=%s\n' "$tab" >> "$out/receipt.txt"
     break
@@ -279,3 +324,6 @@ for tab in 1 2 3 4 5; do
   import -window "$win" "$out/input-tab-$tab.png" || break
   (cd "$out" && sha256sum "input-tab-$tab.png") >> "$out/receipt.txt"
 done
+
+# An unsuccessful input check must not suppress other evidence, but still fails CI.
+exit "$((navigation_status || guide_status))"

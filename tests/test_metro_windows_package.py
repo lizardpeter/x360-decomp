@@ -99,3 +99,14 @@ class TestWindowsPackage(unittest.TestCase):
         self.assertIn('tools\\stage_metro_profile.py', IMPORT_PROFILE)
         self.assertIn('--storage-root "%CD%\\user\\metro-17559\\profile-storage"', IMPORT_PROFILE)
         self.assertNotIn("X360_METRO_LOCAL_PROFILES=1", LAUNCH)
+
+    def test_quad_comparison_keeps_720p(self):
+        self.assertIn('if /i "%~1"=="quad" (',LAUNCH)
+        self.assertIn('--gpu.vulkan.force_convert_quad_lists_to_triangle_lists=true',LAUNCH)
+        self.assertIn('set "METRO_LOG=metro-quad.log"',LAUNCH)
+        capture=(Path(__file__).resolve().parents[1]/"tools"/"capture_metro_boot.sh").read_text()
+        self.assertIn('quad) out="$native/metro-capture-quad"; quad=true;;',capture)
+        self.assertIn('pulse_key F9 0400',capture)
+        self.assertIn('pulse_key BackSpace 2000',capture)
+        self.assertIn('exit "$((navigation_status || guide_status))"',capture)
+        self.assertIn('--app.user_root="$user_root"',capture)

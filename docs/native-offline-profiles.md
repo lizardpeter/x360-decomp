@@ -73,3 +73,6 @@ A new original-image storage graph follows direct calls and conservatively bound
 
 ### Default isolated local storage
 The native boot now creates and mounts only the per-installation profile-storage/Content tree by default; the user can explicitly disable it with X360_METRO_LOCAL_PROFILES=0, which CI does. Windows packaging includes a drag-and-drop import launcher using the existing verified-copy staging tool. This enables ordinary startup to see the staged files without a custom launch flag. It does not bypass original XAM enumeration, implement STFS device registration or mark a user signed in. No source profile is opened automatically.
+
+### Empty local-storage CI integration
+The live baseline and quad comparison now each use an explicit fresh isolated app.user_root and enable the ordinary local Content mount. No actual profile package or account is staged. This tests real mount creation and original enumeration with an empty directory instead of disabling the default feature in every graphical run. The original STFS driver and profile enumeration must still be validated with authorized user data locally. No profile contents or credentials enter CI.

@@ -67,6 +67,10 @@ if /i "%~1"=="hd" (
     set "METRO_SCALE_ARGS=--gpu.resolution_scale_x=2 --gpu.resolution_scale_y=2"
     set "METRO_LOG=metro-hd.log"
 )
+if /i "%~1"=="quad" (
+    set "METRO_RENDER_ARGS=--gpu.xenos.async_shader_compilation=false --gpu.vulkan.force_convert_quad_lists_to_triangle_lists=true"
+    set "METRO_LOG=metro-quad.log"
+)
 if /i "%~1"=="1080p" (
     set "METRO_VIDEO_ARGS=--ui.video_mode_width=1920 --ui.video_mode_height=1080"
     set "METRO_LOG=metro-1080p.log"
@@ -172,6 +176,9 @@ needed to prepare the local original inputs.
    including draws into persistent UI textures. 720p/1x is the normal mode.
    This removes that known draw-loss path, but text clipping still needs visual
    confirmation on the original dashboard.
+   Launch Metro 720p Quad Diagnostic.cmd changes only the native quad
+   rendering path, not the original guest geometry or resolution. This is a
+   comparison to isolate terminal text clipping, not a verified fix.
    Launch Metro HD.cmd preserves the 720p guest mode and requests 2x internal
    rendering on both axes (nominally 2560x1440). Launch Metro 1080p Diagnostic.cmd
    instead exposes a 1920x1080 guest mode at the default GPU scale, to distinguish
@@ -218,6 +225,7 @@ def package(folder,output,commit,sdk_source,profile_modules=False):
             if (root/name).is_file():shutil.copy2(root/name,licenses/f"{label}-{name}")
     launchers={"Prepare Inputs.cmd":PREPARE,"Import Local Profile.cmd":IMPORT_PROFILE,"launch.cmd":LAUNCH,
                       "Launch Metro.cmd":'@echo off\ncall "%~dp0launch.cmd"\n',
+                      "Launch Metro 720p Quad Diagnostic.cmd":'@echo off\ncall "%~dp0launch.cmd" quad\n',
                       "Launch Metro HD.cmd":'@echo off\ncall "%~dp0launch.cmd" hd\n',
                       "Launch Metro 1080p Diagnostic.cmd":'@echo off\ncall "%~dp0launch.cmd" 1080p\n',
                       "Launch with Intro.cmd":'@echo off\ncall "%~dp0launch.cmd" intro\n',

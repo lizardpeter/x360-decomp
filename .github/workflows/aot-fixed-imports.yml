@@ -304,7 +304,7 @@ jobs:
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/fixed-imports/dash_17559"
           set +e
-          timeout --kill-after=15s 200s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+          timeout --kill-after=15s 300s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
           status=$?
           set -e
           printf '%s\n' "$status" > build/receipts/metro-boot-exit-code.txt
@@ -324,6 +324,29 @@ jobs:
             grep 'METRO_TEXT_CLIP ' "$log" > build/receipts/metro-text-clip.log || true
           fi
           exit "$status"
+      - name: Compare original 720p glyph rendering using native triangle-list conversion
+        if: always() && steps.preflight.outcome == 'success'
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          set +e
+          METRO_CAPTURE_VARIANT=quad timeout --kill-after=15s 100s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > build/receipts/metro-quad-exit-code.txt
+          python tools/metro_720p_text_probe.py "$folder/native/metro-capture-quad" --output build/receipts/metro-text-720p-quad.json
+          if [ -f "$folder/native/metro-capture-quad/boot.log" ]; then
+            grep 'METRO_TEXT_CLIP ' "$folder/native/metro-capture-quad/boot.log" > build/receipts/metro-text-clip-quad.log || true
+          fi
+          exit "$status"
+      - name: Upload independent quad-conversion frame candidates
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-native-720p-quad-comparison
+          path: |
+            build/fixed-imports/dash_17559/native/metro-capture-quad/candidate-*.png
+            build/fixed-imports/dash_17559/native/metro-capture-quad/receipt.txt
+          if-no-files-found: ignore
       - name: Attempt same-runtime original boot animation to Metro transition
         if: always() && steps.preflight.outcome == 'success'
         run: |
