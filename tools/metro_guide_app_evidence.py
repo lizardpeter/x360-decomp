@@ -252,6 +252,59 @@ def callback_graph(image,base,pe,thunks,records):
             "callback_roots":summaries,"exact_routes":routes,
             "dispatch_body":bounded_entry(image,base,pe,0x816A2B90,thunks,min(funcs.get(0x816A2B90,256),4096))}
 
+def live_callback_stall(image,base,pe,thunks,records):
+    # Run 46050607435, same original worker PCR, fourth dispatch. The
+    # original unavailable extended-key branch completed; a subsequent
+    # callback call did not return. This audit reports control flow only.
+    funcs={a:n for a,n,_ in pe["functions"]}
+    for site,target in ((0x81700CA4,0x81899BB8),(0x81899BF0,0x81898438),(0x818984D0,0x8189A4F0)):
+        if branch(site,word(image,base,site))!=(target,True):
+            raise ValueError("live callback edge mismatch "+hx(site))
+    roots=[0x816FF868,0x81700CA4,0x8189A4F0,0x816A2B90]
+    starts=sorted(funcs)
+    def owner(pc):
+        i=bisect.bisect_right(starts,pc)-1
+        if i<0 or pc>=starts[i]+funcs[starts[i]]:return None
+        return starts[i]
+    actual=owner(0x81700CA4)
+    if actual is None or 0x8189A4F0 not in funcs:
+        raise ValueError("live callback extent missing")
+    # Record direct and indirect dispatch edges from the music app
+    # callback, but do not infer any credential/key material or data.
+    roots=[0x816FF868,actual,0x8189A4F0,0x816A2B90]
+    discovered={}
+    q=collections.deque((x,0) for x in roots)
+    while q:
+        a,depth=q.popleft()
+        if a in discovered or a not in funcs:continue
+        discovered[a]=depth
+        if len(discovered)>128:raise ValueError("unexpected callback stall graph size")
+        if depth>=2:continue
+        for pc in range(a,a+funcs[a],4):
+            b=branch(pc,word(image,base,pc))
+            if b and b[0] in funcs and b[0] not in thunks and b[0]!=a and funcs[b[0]]<=4096:
+                q.append((b[0],depth+1))
+    out={}
+    for a,depth in sorted(discovered.items()):
+        body=bounded_entry(image,base,pe,a,thunks,min(funcs[a],8192))
+        edges=[];loops=[];imps=[];indirect=[]
+        for row in body["operands"]:
+            kind=row["kind"]
+            if kind=="branch":
+                if row.get("import"):
+                    imps.append({"pc":row["pc"],"name":row["import"]["name"],"sdk_stub":row["import"]["sdk_stub"]})
+                else:edges.append({"pc":row["pc"],"target":row["target"],"linked":row["linked"]})
+            elif kind=="conditional_branch" and int(row["target"],16)<int(row["pc"],16):
+                loops.append({"pc":row["pc"],"target":row["target"],"cr_test":row["cr_test"]})
+            elif kind=="indirect_branch":
+                indirect.append({"pc":row["pc"],"via":row["via"],"linked":row["linked"]})
+        out[hx(a)]={"depth":depth,"length":body["bounded_length"],"imports":imps,
+                   "direct_edges":edges,"backward_branches":loops,"indirect_branches":indirect}
+    # Do not export operands or values in the cryptographic fallback;
+    # a count and original control-flow location are sufficient.
+    return {"source_run":46050607435,"actual_caller":hx(actual),
+            "observed_stall_entry":"8189A4F0","functions":out}
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sdk",type=Path,required=True)
@@ -272,6 +325,11 @@ def main():
     result["loaders"]=loader_audit(image,base,pe,thunks,result["records"],members)
     result["policy"]=policy_audit(image,base,pe,thunks,result["records"])
     result["callback_graph"]=callback_graph(image,base,pe,thunks,result["records"])
+    result["live_callback_stall"]=live_callback_stall(image,base,pe,thunks,result["records"])
+    stall=result["live_callback_stall"]
+    print("APP_LIVE_STALL",stall["actual_caller"],"functions",len(stall["functions"]))
+    print("APP_STALL_ENTRY",json.dumps(stall["functions"]["8189A4F0"],sort_keys=True))
+    print("APP_STALL_REACHABLE_IMPORTS",json.dumps({a:r["imports"] for a,r in stall["functions"].items() if r["imports"]},sort_keys=True))
     print("APP_POLICY",json.dumps(result["policy"],sort_keys=True))
     print("APP_CALLBACK_ROOTS",json.dumps(result["callback_graph"]["callback_roots"],sort_keys=True))
     print("APP_CALLBACK_ROUTES",json.dumps(result["callback_graph"]["exact_routes"],sort_keys=True))
