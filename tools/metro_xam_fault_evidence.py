@@ -455,6 +455,82 @@ BACKGROUND_IMPORTS={"ObCreateObject","ObInsertObject","ObDereferenceObject",
                     "NicGetOpt","UsbdGetNatalHardwareVersion","XInputdGetFailedConnectionOrBind",
                     "HalGetCurrentAVPack","VdReadEEDIDBlock","VdSetStudioRGBMode"}
 
+# Actual native audio-worker unwind from run 45955832755. These are not
+# stack-scan guesses. The fault address was guest 0x14 (read).
+AUDIO_UNWIND=(0x819A4158,0x819B6FA0,0x819AFF80,0x819A7918,
+              0x819AF968,0x819A4F00,0x819A50B8,0x819A5878)
+AUDIO_RETURN_HINTS=(0x819A4158,0x819B7020,0x819B008C,None,0x819AF9F8,
+                    0x819A5044,0x819A5170,None)
+AUDIO_IMPORTS={"XAudioRegisterRenderDriverClient","XAudioUnregisterRenderDriverClient",
+               "XAudioSubmitRenderDriverFrame","XAudioGetVoiceCategoryVolume",
+               "XAudioGetVoiceCategoryVolumeChangeMask","XAudioSetDuckerLevel",
+               "XAudioEnableDucker","XAudioRenderDriverLock","XAudioSuspendRenderDriverClients"}
+
+def audio_fault_report(image,base,pe,thunks):
+    from collections import defaultdict,deque
+    funcs={a:s for a,s,_ in pe["functions"]}
+    # Capture full original functions on the actual unwind, and distinguish
+    # direct branch edges from indirect virtual calls.
+    frames=[]
+    for start,hint in zip(AUDIO_UNWIND,AUDIO_RETURN_HINTS):
+        detail=bounded_entry(image,base,pe,start,thunks,8192)
+        if hint is not None and not start<=hint<start+detail["bounded_length"]:
+            raise ValueError("audio unwind PC outside bounded function")
+        frames.append({**detail,"live_pc_hint":hx(hint) if hint is not None else None})
+    fault=operand(AUDIO_UNWIND[0],read_word(image,base,AUDIO_UNWIND[0]))
+    if fault.get("kind")!="memory_load" or fault.get("offset")!=20 or fault.get("width")!=4:
+        raise ValueError("live audio crash operand differs")
+    incoming=defaultdict(list);outgoing=defaultdict(set);sites=[];callback_refs=[]
+    callback=AUDIO_UNWIND[-1]
+    for start,size,_ in pe["functions"]:
+        for pc in range(start,start+size,4):
+            w=read_word(image,base,pc);dest=branch(pc,w)
+            if dest:
+                target,linked=dest
+                if target in thunks and thunks[target]["name"] in AUDIO_IMPORTS:
+                    sites.append({"owner":hx(start),"site":hx(pc),"import":thunks[target],
+                                  "operands":describe(image,base,max(start,pc-80),min(start+size,pc+44)-max(start,pc-80),thunks)})
+                elif target in funcs and target!=start:
+                    incoming[target].append({"owner":hx(start),"site":hx(pc),"target":hx(target),"linked":linked})
+                    outgoing[start].add(target)
+            if pc>start:
+                from metro_import_contracts import variable_reference
+                ref=variable_reference(read_word(image,base,pc-4),w)
+                if ref and ref[0]==callback:
+                    callback_refs.append({"owner":hx(start),"site":hx(pc-4),"kind":ref[1]})
+    # Original registration callers and their reverse graph give context
+    # construction before the callback is dispatched. Include two levels of
+    # actual direct callers; unknown indirect callers remain unknown.
+    registration_roots={int(c["owner"],16) for c in sites if c["import"]["name"]=="XAudioRegisterRenderDriverClient"}
+    roots=registration_roots|set(AUDIO_UNWIND)|{int(c["owner"],16) for c in callback_refs}
+    queue=deque((a,0) for a in sorted(roots));seen={}
+    while queue and len(seen)<180:
+        a,depth=queue.popleft()
+        if a in seen:continue
+        seen[a]=depth
+        if depth<2:
+            for edge in incoming[a]:queue.append((int(edge["owner"],16),depth+1))
+    related=[]
+    for start,depth in sorted(seen.items()):
+        if start not in AUDIO_UNWIND:
+            related.append({"reverse_depth":depth,**bounded_entry(image,base,pe,start,thunks,4096)})
+    # The callback address may reside in read-only or writable original
+    # dispatch data rather than be materialized as an adjacent lis/addi.
+    data_refs=[]
+    for sec in pe["sections"]:
+        if sec["flags"]&0x20000000:continue
+        start=sec["rva"];end=start+sec["loaded_bytes"]
+        for offset in range(start,end-3,4):
+            if read_word(image,base,base+offset)==callback:data_refs.append(hx(base+offset))
+    return {"source_run":45955832755,"fault_guest_address":"00000014",
+            "fault_pc":hx(AUDIO_UNWIND[0]),"fault_operand":fault,
+            "unwind_functions":frames,"unwind_direct_edges":[edge for a in AUDIO_UNWIND for edge in incoming[a]
+                                  if int(edge["owner"],16) in AUDIO_UNWIND],
+            "render_import_sites":sites,"registration_roots":[hx(a) for a in sorted(registration_roots)],
+            "callback_address_construction":callback_refs,"callback_data_pointers":data_refs,
+            "related_functions":related,"reverse_graph_truncated":bool(queue),
+            "scope":"actual original operands, direct call edges and callback address evidence; no inferred register values"}
+
 def background_dependencies(label,image,base,pe,rows,catalog,stubs):
     from collections import defaultdict
     imports_by_pc={}
@@ -622,6 +698,7 @@ def main():
             "verified_device_stats_status":verified_device_stats_status(image,base,thunks),
             "startup_contract_inventory":startup_contract_inventory(image,base,pe,thunks),
             "second_native_fault":second_fault_report(image,base,pe,thunks),
+            "audio_worker_fault":audio_fault_report(image,base,pe,thunks),
             "second_fault_global":global_object_report(image,base,pe,thunks),
             "second_fault_heap_selection":original_system_object_heap_selection(lambda pc:read_word(image,base,pc)),
             "original_xex_module_flags":{"xam":hx(int.from_bytes(raw[4:8],"big")),
