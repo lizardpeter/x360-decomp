@@ -34,7 +34,115 @@ u32 XInputdGetLastTextInputTime_entry(u32 port, u32 output) {
   return X_ERROR_DEVICE_NOT_CONNECTED;
 }
 """
-EXPORTS=("DrvSetUserBindingCallback","XInputdGetCapabilities","XInputdReadState","XInputdGetDeviceStats","XInputdReadTextKeystroke","XInputdGetLastTextInputTime")
+# Original 17559 Guide callback proof: metro_guide_evidence.py.
+# Registration uses only r3 (mapped callback or zero). The original callback
+# receives (device context, subdevice index, system request type). The
+# ordinary Guide press is request zero, independently verified at 816F3E14
+# and the original XamInputSendXenonButtonPress wrapper.
+FIELDS += r"""
+  std::atomic<u64> hosted_sysreq_registration{0};
+  std::array<std::atomic<u64>, rex::hid::IInputSystem::kMaxUsers> hosted_sysreq_samples{};
+  std::atomic<u32> hosted_sysreq_delivered{0};
+"""
+# Install reset in the existing per-title lifetime hook.
+FIELDS=FIELDS.replace("    hosted_pad_binding_callback.store(0);",
+    "    hosted_pad_binding_callback.store(0);\n"
+    "    hosted_sysreq_registration.fetch_add(1ull<<32);\n"
+    "    hosted_sysreq_registration.fetch_and(0xffffffff00000000ull);\n"
+    "    for (auto& sample : hosted_sysreq_samples) sample.store(0);\n"
+    "    hosted_sysreq_delivered.store(0);")
+BODY += r"""
+void DrvSetSysReqCallback_entry(u32 callback) {
+  auto& state=kernel::GetCurrentState();
+  if (callback && !state.GetFunctionDispatcher()->GetFunction(callback)) {
+    REXKRNL_WARN("METRO_SYSREQ rejected unmapped callback={:08X}",callback);
+    return;
+  }
+  auto& registration=state.hosted_sysreq_registration;
+  u64 before=registration.load(std::memory_order_acquire);
+  for (;;) {
+    const u64 after=((before+(1ull<<32))&0xffffffff00000000ull)|callback;
+    if (registration.compare_exchange_weak(before,after,std::memory_order_acq_rel))
+      break;
+  }
+  REXKRNL_INFO("METRO_SYSREQ registration callback={:08X}",callback);
+}
+
+namespace {
+// A complete sample consists of packet serial number and actual Guide bit.
+// Concurrent guest reads of the same controller must not generate duplicate
+// requests or replay an older sample. Signed serial comparison handles wrap.
+bool HostedGuideRisingEdge(std::atomic<u64>& sample,u32 packet,bool pressed) {
+  constexpr u64 valid=1ull<<63;
+  const u64 next=valid|(u64{packet}<<1)|(pressed?1ull:0ull);
+  u64 previous=sample.load(std::memory_order_acquire);
+  for (;;) {
+    if ((previous&valid) &&
+        static_cast<i32>(packet-static_cast<u32>(previous>>1))<=0)
+      return false;
+    if (sample.compare_exchange_weak(previous,next,std::memory_order_acq_rel))
+      return pressed && !(previous&1);
+  }
+}
+
+void DispatchHostedGuide(u32 user,u32 context,u32 packet,u16 buttons) {
+  auto& runtime=kernel::GetCurrent();
+  auto& state=kernel::GetCurrentState();
+  if (user>=state.hosted_pad_state.size() ||
+      state.hosted_pad_state[user].load(std::memory_order_acquire)!=2)
+    return;
+  if (!HostedGuideRisingEdge(state.hosted_sysreq_samples[user],packet,(buttons&0x0400)!=0))
+    return;
+  const u64 registration=state.hosted_sysreq_registration.load(std::memory_order_acquire);
+  const u32 callback=static_cast<u32>(registration);
+  if (!callback) {
+    REXKRNL_INFO("METRO_SYSREQ Guide edge has no registered original callback");
+    return;
+  }
+  const u32 system_process=state.GetSystemProcess();
+  if (!system_process || state.IsTerminatingTitle())return;
+  // Never re-enter the original driver's callback on the polling guest
+  // thread. XAM may hold locks while it reads input. A distinct system
+  // guest thread performs the exact original callback, outside host locks.
+  auto worker=std::make_unique<KernelThread>(runtime,0,0,
+    [&runtime,user,context,registration,callback,system_process]() -> int {
+      auto& current=StateOf(runtime);
+      if (current.hosted_sysreq_registration.load(std::memory_order_acquire)!=registration ||
+          current.hosted_pad_state[user].load(std::memory_order_acquire)!=2 ||
+          current.IsTerminatingTitle())return 0;
+      auto* thread=KernelThread::GetCallingThread();
+      auto* body=thread?thread->GetGuestObject<X_KTHREAD>():nullptr;
+      if (!body || static_cast<u32>(body->process)!=system_process ||
+          body->process_type!=kXProcTypeSystem)return 1;
+      auto* dispatcher=current.GetFunctionDispatcher();
+      if (!dispatcher || !dispatcher->GetFunction(callback))return 1;
+      u64 args[]={context,0,0};
+      REXKRNL_INFO("METRO_SYSREQ deliver callback={:08X} context={:08X} subdevice=0 request=0",
+                   callback,context);
+      dispatcher->Execute(thread->GetThreadState(),callback,args,3);
+      current.hosted_sysreq_delivered.fetch_add(1,std::memory_order_relaxed);
+      REXKRNL_INFO("METRO_SYSREQ callback_return");
+      return 0;
+    },system_process,true);
+  auto launched=runtime.GetThreadRegistry().Launch(std::move(worker));
+  if (!launched) {
+    REXKRNL_WARN("METRO_SYSREQ unable to schedule original callback");
+    return;
+  }
+  CloseOwned(runtime.GetObjectTable(),*launched);
+}
+} // namespace
+"""
+# Forward declaration must precede XInputdReadState. Keep the original
+# gamepad state unchanged; system requests are a separate driver signal.
+BODY=BODY.replace("u32 XInputdReadState_entry(",
+    "namespace { void DispatchHostedGuide(u32 user,u32 context,u32 packet,u16 buttons); }\n\n"
+    "u32 XInputdReadState_entry(",1)
+needle="                 context, *user, static_cast<u32>(value.packet_number), buttons);\n  return X_STATUS_SUCCESS;"
+BODY=replace(BODY,needle,needle.replace("  return X_STATUS_SUCCESS;",
+    "  DispatchHostedGuide(*user,context,static_cast<u32>(value.packet_number),buttons);\n  return X_STATUS_SUCCESS;"))
+
+EXPORTS=("DrvSetSysReqCallback","DrvSetUserBindingCallback","XInputdGetCapabilities","XInputdReadState","XInputdGetDeviceStats","XInputdReadTextKeystroke","XInputdGetLastTextInputTime")
 
 HID_CLOCK_OLD="""/**
  * Writes 0 as the time of the last HID input.
@@ -166,7 +274,7 @@ def patch_sources(sdk,tests):
     outputs[public]=replace(public.read_text(),old,old+"\n\n  /** Announces connected hosted pads to a registered guest binding callback. Guest thread only. */\n  u32 AnnounceHostedPads();")
     source=hid.read_text()
     old="#include <rex/kernel/title_runtime.h>"
-    source=replace(source,old,old+"\n#include <rex/kernel/guest_memory.h>\n#include <rex/kernel/function_dispatcher.h>\n#include <rex/kernel/object/kernel_thread.h>\n#include <initializer_list>\n#include <optional>\n#include \"kernel/title_state.h\"\n#include \"kernel/kernel.h\"\n#include \"kernel/categories.h\"\n#include \"xam/input_convert.h\"")
+    source=replace(source,old,old+"\n#include <rex/kernel/guest_memory.h>\n#include <rex/kernel/function_dispatcher.h>\n#include <rex/kernel/object/kernel_thread.h>\n#include <rex/kernel/thread_registry.h>\n#include <rex/kernel/object/object_table.h>\n#include <rex/kernel/types/thread.h>\n#include <initializer_list>\n#include <optional>\n#include \"kernel/title_state.h\"\n#include \"kernel/kernel.h\"\n#include \"kernel/categories.h\"\n#include \"xam/input_convert.h\"")
     old="}  // namespace rex::kernel::xboxkrnl"
     source=replace(source,old,BODY+"\n"+old+"\n\n"+RUNTIME)
     for name in EXPORTS:

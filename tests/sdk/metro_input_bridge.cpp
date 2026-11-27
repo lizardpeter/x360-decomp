@@ -271,3 +271,97 @@ REX_TEST_CASE("metro_input_bridge: guest callback binding, packet transitions an
   });
   g_fake = {};
 }
+
+
+#include <rex/kernel/object/kernel_thread.h>
+#include <rex/kernel/types/thread.h>
+#include <chrono>
+#include <thread>
+namespace {
+std::atomic<u32> metro_guide_calls{0},metro_guide_context{0},metro_guide_bad{0};
+void MetroGuideCallback(PPCContext& ctx,u8*) {
+  auto* thread=rex::kernel::KernelThread::GetCallingThread();
+  auto* body=thread?thread->GetGuestObject<rex::kernel::X_KTHREAD>():nullptr;
+  if (!body || body->process_type!=rex::kernel::kXProcTypeSystem ||
+      ctx.r4.u32!=0 || ctx.r5.u32!=0) ++metro_guide_bad;
+  metro_guide_context.store(ctx.r3.u32);
+  metro_guide_calls.fetch_add(1,std::memory_order_release);
+}
+}
+
+REX_TEST_CASE("metro_input_bridge: Guide edges reach registered system callback exactly once",
+              "[kernel][input][metro_input_bridge]") {
+  using namespace rex::test_input;
+  g_fake={};
+  FakeProvider provider;
+  g_fake[0].devices={MakePad(1,0),MakePad(2,1)};
+  g_fake[0].states[1]=Buttons(0);
+  g_fake[0].states[2]=Buttons(0);
+  rex::test::KernelFixture fixture({}, {&provider}, {}, {}, "fake_a");
+  fixture.GetInput().SetInputCaptured(true);
+  StateOf(fixture.GetRuntime()).hosted_pad_input=&fixture.GetInput();
+  metro_guide_calls=0;metro_guide_context=0;metro_guide_bad=0;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& runtime=c.GetRuntime();
+    auto& state=StateOf(runtime);
+    auto* dispatcher=state.GetFunctionDispatcher();
+    const u32 binding=dispatcher->AllocateThunk(
+      +[](PPCContext& ctx,u8* base) {
+        base[ctx.r7.u32]=static_cast<u8>(ctx.r3.u32-0x10000001);
+        ctx.r3.u64=0;
+      },0);
+    const u32 callback=dispatcher->AllocateThunk(&MetroGuideCallback,0);
+    REQUIRE(binding);REQUIRE(callback);
+    c.Kernel("DrvSetUserBindingCallback",{binding});
+    REQUIRE(runtime.AnnounceHostedPads()==2);
+    const u32 data=c.Alloc(16),packet=c.Alloc(4),extra=c.Alloc(4);
+    auto read=[&](u32 user) {
+      REQUIRE(c.Kernel("XInputdReadState",{0x10000001u+user,packet,data,extra})==0);
+    };
+    auto await=[&](u32 count) {
+      const auto until=std::chrono::steady_clock::now()+std::chrono::seconds(3);
+      while (state.hosted_sysreq_delivered.load()<count && std::chrono::steady_clock::now()<until)
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+      return state.hosted_sysreq_delivered.load()==count;
+    };
+    read(0);read(1);
+    c.Kernel("DrvSetSysReqCallback",{0xdeadbeec});
+    CHECK(static_cast<u32>(state.hosted_sysreq_registration.load())==0);
+    c.Kernel("DrvSetSysReqCallback",{callback});
+    REQUIRE(static_cast<u32>(state.hosted_sysreq_registration.load())==callback);
+    g_fake[0].states[1]=Buttons(0x0400);
+    read(0);
+    CHECK(c.Load32(data)==0x04000000);
+    REQUIRE(await(1));
+    CHECK(metro_guide_context.load()==0x10000001);
+    for(unsigned i=0;i<16;++i)read(0);
+    CHECK(metro_guide_calls.load()==1);
+    g_fake[0].states[1]=Buttons(0x0408); // unrelated change while held
+    read(0);
+    CHECK(metro_guide_calls.load()==1);
+    g_fake[0].states[2]=Buttons(0x0400);
+    read(1);
+    REQUIRE(await(2));
+    CHECK(metro_guide_context.load()==0x10000002);
+    g_fake[0].states[1]=Buttons(0);read(0);
+    g_fake[0].states[1]=Buttons(0x0400);read(0);
+    REQUIRE(await(3));
+    CHECK(metro_guide_context.load()==0x10000001);
+    c.Kernel("DrvSetSysReqCallback",{0});
+    CHECK(static_cast<u32>(state.hosted_sysreq_registration.load())==0);
+    g_fake[0].states[1]=Buttons(0);read(0);
+    g_fake[0].states[1]=Buttons(0x0400);read(0);
+    CHECK(metro_guide_calls.load()==3);
+    c.Kernel("DrvSetSysReqCallback",{callback});
+    read(0); // never replay the old held press after re-registration
+    CHECK(metro_guide_calls.load()==3);
+    g_fake[0].states[1]=Buttons(0);read(0);
+    g_fake[0].states[1]=Buttons(0x0400);read(0);
+    REQUIRE(await(4));
+    CHECK(metro_guide_bad.load()==0);
+    CHECK(metro_guide_calls.load()==4);
+    state.ResetHostedPadBindings();
+    CHECK(static_cast<u32>(state.hosted_sysreq_registration.load())==0);
+  });
+  g_fake={};
+}
