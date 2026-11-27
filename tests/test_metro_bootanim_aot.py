@@ -15,4 +15,16 @@ class BootanimAOT(unittest.TestCase):
         self.assertNotIn(0x98000000,EXPORTS.values())
         self.assertIn("add_library(metro_bootanim_module SHARED",CMAKE)
         self.assertIn("add_executable(metro_bootanim_live",CMAKE)
+    def test_isolated_graceful_control_matches_integrated_policy(self):
+        root=Path(__file__).resolve().parents[1]
+        source=(root/"tools/native/metro_bootanim_live.cpp").read_text()
+        capture=(root/"tools/capture_bootanim_live.sh").read_text()
+        self.assertIn("GetByAddress(kInitialUpdateEvent)",source)
+        self.assertIn("CreateTaskThread(kControl,0)",source)
+        self.assertNotIn("frames>=",source)
+        self.assertNotIn("110u",source)
+        self.assertNotIn("165u",source)
+        self.assertIn("X360_BOOTANIM_CONTROL=graceful_event",capture)
+        self.assertIn("original_initial_update_event signaled",capture)
+        self.assertIn("control_return argument=0",capture)
 if __name__=="__main__":unittest.main()

@@ -6,6 +6,7 @@ on:
       - 'tools/patch_metro_public_verification.py'
       - 'tools/verify_retail_firmware.py'
       - 'tools/stage_metro_bootanim_aot.py'
+      - 'tools/instrument_metro_intro.py'
       - 'tools/patch_metro_audio_context.py'
       - 'tools/patch_metro_gpu_ring.py'
       - 'tools/patch_metro_graphics_notifications.py'
@@ -126,6 +127,7 @@ jobs:
           python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/bootanim-codegen-diagnostics.json
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/bootanim-generated.json
           test "$status" -eq 0
+          python tools/instrument_metro_intro.py "$folder/generated" --receipt build/receipts/bootanim-phase-probes.json
       - name: Compile and link the original boot-animation module
         run: |
           folder="$PWD/build/bootanim-native"

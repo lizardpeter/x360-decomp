@@ -48,9 +48,10 @@ void metro_intro_phase(unsigned pc,const char* label,unsigned object,unsigned n)
     auto nested=mem->Load<rex::be_u32>(object+224);
     unsigned nested_addr=nested?static_cast<unsigned>(*nested):0;
     int nested_active=nested_addr && nested_addr<=0xffffffffu-196u?byte(nested_addr+196):-1;
-    std::fprintf(stderr,"METRO_INTRO_PHASE pc=%08X stage=%s n=%u phase12=%.9g phase36=%.9g field26=%d field27=%d field29=%d field31=%d field40=%d field41=%d nested196=%d flag_a=%d flag_b=%d\n",
-        pc,label,n,double(fp(object+12)),double(fp(object+36)),byte(object+26),
-        byte(object+27),byte(object+29),byte(object+31),byte(object+40),
+    std::fprintf(stderr,"METRO_INTRO_PHASE pc=%08X stage=%s n=%u phase12=%.9g delta20=%.9g phase36=%.9g field24=%d field25=%d field26=%d field27=%d field28=%d field29=%d field30=%d field31=%d field40=%d field41=%d nested196=%d flag_a=%d flag_b=%d\n",
+        pc,label,n,double(fp(object+12)),double(fp(object+20)),double(fp(object+36)),
+        byte(object+24),byte(object+25),byte(object+26),byte(object+27),byte(object+28),
+        byte(object+29),byte(object+30),byte(object+31),byte(object+40),
         byte(object+41),nested_active,byte(0x98077760u),byte(0x98077761u));
 }
 }
@@ -72,7 +73,7 @@ def insert(source):
         indent=m[1]
         if pc==0x9800EA30:
             out.append(indent+"metro_intro_object=ctx.r3.u32;\n")
-        out.append(indent+'if (std::getenv("X360_METRO_INTRO")) {\n')
+        out.append(indent+'if (std::getenv("X360_METRO_INTRO") || std::getenv("X360_BOOTANIM_CONTROL")) {\n')
         out.append(indent+'  static std::atomic<unsigned> samples{0};\n')
         out.append(indent+'  const unsigned n=samples.fetch_add(1,std::memory_order_relaxed)+1;\n')
         out.append(indent+'  if (n<=4 || (n&(n-1))==0)\n')
@@ -80,7 +81,7 @@ def insert(source):
         out.append(indent+'}\n')
     return (TAG+"\n"+HEADER+"\n"+"".join(out),hits) if hits else (source,hits)
 def instrument(directory):
-    if directory.name!="generated_bootanim" or not directory.is_dir():
+    if directory.name not in ("generated_bootanim","generated") or not directory.is_dir():
         raise ValueError("expected generated bootanim directory")
     pending={};hits=collections.Counter()
     for p in sorted(directory.rglob("*.cpp")):

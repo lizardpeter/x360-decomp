@@ -7,7 +7,7 @@ inputs="$(realpath "$2")"
 out="$(realpath -m "$3")"
 mkdir -p "$out"
 cd "$native"
-export X360_BOOTANIM_FLAGS=0 X360_BOOTANIM_CONTROL=two_phase
+export X360_BOOTANIM_FLAGS=0 X360_BOOTANIM_CONTROL=graceful_event
 export SDL_AUDIODRIVER="${X360_BOOTANIM_AUDIO_DRIVER:-dummy}"
 ./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex > "$out/bootanim-live.log" 2>&1 &
 pid=$!
@@ -47,6 +47,12 @@ grep -E '^BOOTANIM_LIVE ' "$out/bootanim-live.log" | tee "$out/gates.txt" || tru
 cat "$out/receipt.txt"
 grep -q '^BOOTANIM_LIVE original_entry ' "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE presented_frames ' "$out/gates.txt"
+grep -Fxq 'BOOTANIM_LIVE original_initial_update_event signaled' "$out/gates.txt"
+grep -Eq '^BOOTANIM_LIVE control_return argument=0 flag_a=[01] flag_b=1
+test "$count" -gt 0
+test "$timed_out" = false
+test "$status" -eq 0
+ "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE original_return ' "$out/gates.txt"
 test "$count" -gt 0
 test "$timed_out" = false

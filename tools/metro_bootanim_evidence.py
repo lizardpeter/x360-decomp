@@ -255,7 +255,8 @@ def lifecycle_report(raw,image,meta,thunks):
            0x980432B8,0x9800FF08,0x98044400,0x980210F8,0x98020FD0,
            0x9800E910,0x9800F380,0x9800F5A8,0x9800FDB0,0x9800E448,
            0x9800E550,0x98045A60,0x98045A58,0x98045A10,
-           0x9800EA10,0x9800FCB0,0x9800FB30,0x980123A0,0x980215E0,0x98021620)
+           0x9800EA10,0x9800FCB0,0x9800FB30,0x980123A0,0x980215E0,0x98021620,
+           0x98045A00,0x9801F298,0x9801F9F0,0x9800E938,0x9800E6F0)
     details=[bounded_entry(image,base,pe,addr,thunks,8192) for addr in roots]
     by_pc={r["pc"]:r for f in details for r in f["operands"]}
     def absolute_slot(lis,access):
@@ -317,6 +318,15 @@ def lifecycle_report(raw,image,meta,thunks):
             "first_export_arguments":{"r3":"module handle (verified resource lookup flow)",
             "r4":"flags word (verified masks, caller policy not recovered)"},
             "module_handle_global":hx(slot),"startup_flag_masks":masks,
+            "clock_and_phase_sources":{
+                "original_clock_function":"98045A00",
+                "initial_clock_store":"9800FAC8",
+                "first_delta_call":"9800FCDC",
+                "loop_delta_call":"9800FE28",
+                "nested_context_initialization":"9801F9F0",
+                "nested_update":"9801F298",
+                "scope":"Bounded original bodies; timer units and nested activity producer not inferred."
+            },
             "functions":details}
 
 def audit(raw,image,meta,catalog,stubs):

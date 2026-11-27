@@ -41,3 +41,7 @@ Control-task completion uses the SDK's interruptible object wait and a host noti
 ### First graceful-handoff live test
 
 Run 46058836269 successfully entered the original animation and returned from control argument zero with flag B set. It did not return from the animation in the capture window, reporting 367 frames and zero post-handoff frames. The next diagnostic records the actual original phase fields and predicate sites in 9800EA10, with no guest mutations or timer fallback. This is a failed handoff, not a successful boot.
+
+### Independent graceful-transition test
+
+The isolated native animation test now uses the original readiness event and control argument zero, exactly as the integrated path does. Previous diagnostic frame thresholds are removed from the isolated harness as well. The phase probes include the guest delta field at +20 and initialization/transition fields +24 through +31. The source audit additionally recovers bounded bodies of the original clock reader, nested update and initialization. An isolated failure is not a successful boot or proof of a timer defect. The direct dashboard mode remains independent.
