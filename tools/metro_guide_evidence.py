@@ -50,6 +50,54 @@ def literal_mask(w):
             return {"kind":"single_original_bit_10","shift":shift,"mask_start":mb,"mask_end":me}
     return None
 
+# Independently recovered original D3D device publication and retirement
+# routines. Both modules select the system slot only for process type 2.
+DEVICE_PATHS={
+    "xam":((0x8184B8F4,0x8184B900,0x8184B90C,0x8184B914,31),
+           (None,0x8184B5A0,0x8184B5C4,0x8184B5CC,30)),
+    "dash":((0x921B6E54,0x921B6E60,0x921B6E6C,0x921B6E74,31),
+            (None,0x921B6B00,0x921B6B24,0x921B6B2C,30)),
+}
+
+def device_trace_plan(label,image,base,raw,thunks):
+    if label not in DEVICE_PATHS:return {}
+    variable_slots={}
+    for row in imports(image,base,parse_xex(raw)):
+        if library(row["library"])=="xboxkrnl" and int(row["ordinal"],16) in (0x1be,0x1bf):
+            if row["thunk_slots"] or len(row["value_slots"])!=1:raise ValueError("graphics device variable layout")
+            variable_slots[int(row["ordinal"],16)]=row["value_slots"][0]
+    if set(variable_slots)!={0x1be,0x1bf}:raise ValueError("missing original graphics device slots")
+    def word(pc):return struct.unpack_from(">I",image,pc-base)[0]
+    def op(pc):return operand(pc,word(pc))
+    def slot(pc,ordinal):
+        ref=variable_reference(word(pc),word(pc+4))
+        if not ref or ref[0]!=variable_slots[ordinal]:
+            raise ValueError(f"graphics device slot mismatch {pc:08X}")
+    plan={}
+    def add(pc,name,phase,kind="observed"):
+        plan[hx(pc)]={"name":name,"phase":phase,"result_kind":kind}
+    for call,title,system,store,reg in DEVICE_PATHS[label]:
+        slot(system,0x1bf)
+        # Publication selects one of the two variables. Retirement may
+        # clear the user slot at a distinct store, before the system path.
+        phase="publish" if reg==31 else "retire"
+        if call is not None:
+            b=branch(call,word(call))
+            if not b or not b[1] or thunks.get(b[0],{}).get("name")!="KeGetCurrentProcessType":
+                raise ValueError("device process type import mismatch")
+            compare=op(call+4)
+            if compare.get("kind")!="compare_immediate" or compare.get("register")!=3 or compare.get("value")!=2:
+                raise ValueError("device process selection compare mismatch")
+            slot(title,0x1be)
+            add(call+4,"device_process_type","compare","r3_process_type")
+            add(title,"device_title_slot","select")
+        add(system,"device_system_slot_"+phase,"select")
+        row=op(store)
+        if any(row.get(k)!=v for k,v in {"kind":"memory_store","source":reg,"base":11,"offset":0,"width":4}.items()):
+            raise ValueError("device publication store mismatch")
+        add(store,"device_"+phase,"store","r"+str(reg)+"_nonzero")
+    return plan
+
 def deferred_trace_plan(rows):
     """Trace all bounded direct calls, actual compares, and branch exits.
 
@@ -362,6 +410,7 @@ def scan(label,raw,image,meta,catalog,stubs):
             a=int(c["site"],16);mark(a,c["import"]["name"],"call")
             if c["linked"]:mark(a+4,c["import"]["name"],"return")
     if label=="hud":mark(0x913F8D00,"HUD","entry")
+    for pc,entry in device_trace_plan(label,image,base,raw,thunks).items():trace.setdefault(pc,entry)
     return {"exports":{k:hx(v) for k,v in exports.items()},"sysreq_registrations":callbacks,
       "input_and_ui_calls":call_sites,"possible_guide_bit_tests":mask_sites,
       "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"computed_callback_refs":nonadjacent_refs,"startup_work_items":startup_arguments,"callback_candidates":[hx(a) for a in sorted(extra)],

@@ -44,3 +44,10 @@ class DeferredStartup(unittest.TestCase):
     def test_unknown_class_rejected(self):
         with self.assertRaises(ValueError):
             insert("  // METRO_GUEST_PC 00001004\n","xam",{"00001004":{"name":"deferred_bad","phase":"compare","result_kind":"r4_class"}})
+
+    def test_device_scope_categorizes_without_pointer_values(self):
+        code,_=insert("  // METRO_GUEST_PC 8184B914\n","xam",{"8184B914":{"name":"device_publish","phase":"store","result_kind":"r31_nonzero"}})
+        self.assertIn('ctx.r31.u32?"nonzero":"zero"',code)
+        self.assertNotIn("negative",code)
+        code,_=insert("  // METRO_GUEST_PC 8184B8F8\n","xam",{"8184B8F8":{"name":"device_process_type","phase":"compare","result_kind":"r3_process_type"}})
+        self.assertIn('ctx.r3.u32==2?"system"',code)

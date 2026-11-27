@@ -134,11 +134,33 @@ def scan(label,raw,image,meta,catalog,stubs):
                 path.append(nxt)
             selected.update(path)
             paths.append({"worker_call":hx(pc),"path":[hx(a) for a in path]})
+        # An empty direct path is not an absent runtime call. Find exact
+        # references to the observed entry and its immediate PDATA callers.
+        # PDATA unwind pointers are identified separately from data refs.
+        candidates={owner}|reverse[owner]
+        data_refs=[]
+        for sec in pe["sections"]:
+            if sec["flags"]&0x20000000:continue
+            lo=sec["rva"];hi=lo+sec["loaded_bytes"]
+            for off in range(lo,hi-3,4):
+                v=struct.unpack_from(">I",image,off)[0]
+                if v in candidates:
+                    data_refs.append({"slot":hx(base+off),"target":hx(v),"section":sec["name"]})
+        code_refs=[]
+        for a,n in funcs.items():
+            for i in range(4,n-3,4):
+                prev,w=struct.unpack_from(">II",image,a-base+i-4)
+                ref=variable_reference(prev,w)
+                if ref and ref[0] in candidates:
+                    code_refs.append({"owner":hx(a),"site":hx(a+i-4),"target":hx(ref[0]),"kind":ref[1]})
+        print("DEFERRED_INDIRECT_CANDIDATES",json.dumps({"immediate_direct_callers":[hx(a) for a in sorted(reverse[owner])],
+                    "data_refs":data_refs,"code_refs":code_refs},sort_keys=True))
         # Record exact entry extents and original return/status branches
         # along the shortest candidates; not cryptographic key material.
         startup={"worker":hx(worker),"last_observed_import_site":hx(site),
             "import_owner":hx(owner),"import":"XeKeysExGetKey",
-            "direct_path_candidates":paths,
+            "direct_path_candidates":paths,"immediate_direct_callers":[hx(a) for a in sorted(reverse[owner])],
+            "data_pointer_candidates":data_refs,"code_pointer_candidates":code_refs,
             "bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,min(funcs[a],4096))
                       for a in sorted(selected)}}
         print("DEFERRED_STARTUP_PATHS",json.dumps({k:v for k,v in startup.items() if k!="bodies"},sort_keys=True))
