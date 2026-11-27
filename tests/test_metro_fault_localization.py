@@ -65,4 +65,6 @@ class FaultLocalization(unittest.TestCase):
         self.assertIn("if ((pad_observed!=4)); then",source)
         self.assertIn("if ((reversible_pairs<1)); then",source)
         self.assertIn("changed>threshold && motion<=threshold && restored<=threshold",source)
+        self.assertIn("if ((streak>=2)); then break; fi",source)
+        self.assertIn("for sample in $(seq 1 8); do",source)
 if __name__=="__main__":unittest.main()

@@ -139,14 +139,28 @@ for axis in vertical horizontal; do
     frame_after="$(wait_frames "$frame_before" 10)" || exit 1
     image="$out/input-$key.png"
     import -window "$win" "$image"
-    settled_frame="$(wait_frames "$frame_after" 5)" || exit 1
+    # Original animations can take longer than 15 frames, especially on
+    # software Vulkan. Sample until two consecutive intervals are stable,
+    # not a fixed delay. Preserve each real captured frame.
+    settled_frame="$frame_after"
     stable="$out/input-$key-settled.png"
-    import -window "$win" "$stable"
+    prior="$image"
+    streak=0
+    motion=0
+    for sample in $(seq 1 8); do
+      settled_frame="$(wait_frames "$settled_frame" 5)" || exit 1
+      next="$out/input-$key-motion-$sample.png"
+      import -window "$win" "$next"
+      motion="$(difference "$prior" "$next")" || exit 1
+      if ((motion<=threshold)); then streak=$((streak+1)); else streak=0; fi
+      prior="$next"
+      if ((streak>=2)); then break; fi
+    done
+    cp "$prior" "$stable"
     changed="$(difference "$previous" "$stable")" || exit 1
-    motion="$(difference "$image" "$stable")" || exit 1
     restored="$(difference "$pair-idle-b.png" "$stable")" || exit 1
-    printf 'input_key=Shift+%s frames_before=%s frames_after=%s settled_frame=%s idle_noise=%s changed_pixels=%s settling_pixels=%s from_pair_baseline=%s threshold=%s\n' \
-      "$key" "$frame_before" "$frame_after" "$settled_frame" "$idle" "$changed" "$motion" "$restored" "$threshold" >> "$out/receipt.txt"
+    printf 'input_key=Shift+%s frames_before=%s frames_after=%s settled_frame=%s idle_noise=%s changed_pixels=%s settling_pixels=%s from_pair_baseline=%s threshold=%s stable_intervals=%s\n' \
+      "$key" "$frame_before" "$frame_after" "$settled_frame" "$idle" "$changed" "$motion" "$restored" "$threshold" "$streak" >> "$out/receipt.txt"
     case "$key" in
       Up) expected=0001;; Down) expected=0002;; Left) expected=0004;; Right) expected=0008;;
     esac
@@ -160,11 +174,11 @@ for axis in vertical horizontal; do
       }
       END {exit !(pressed && released)}
     ' "$trace"; then pad_observed=$((pad_observed+1)); fi
-    if ((changed>threshold && motion<=threshold)); then
+    if ((streak>=2 && changed>threshold && motion<=threshold)); then
       visual_changes=$((visual_changes+1))
       if [[ "$key" == "$first" ]]; then first_settled=1; fi
     fi
-    if [[ "$key" == "$second" ]] && ((first_settled && changed>threshold && motion<=threshold && restored<=threshold)); then
+    if [[ "$key" == "$second" ]] && ((first_settled && streak>=2 && changed>threshold && motion<=threshold && restored<=threshold)); then
       reversible_pairs=$((reversible_pairs+1))
     fi
     previous="$stable"

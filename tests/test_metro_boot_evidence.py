@@ -58,4 +58,17 @@ class BootEvidence(unittest.TestCase):
         self.assertEqual(result["font_probes"][1]["path"],"null")
         self.assertEqual([r["actual"] for r in result["resource_reads"]],[4096,0])
         self.assertFalse(result["menu_visually_verified"])
+    def test_font_return_contract_and_shutdown_cancellation(self):
+        result=summarize([
+            "METRO_UI pc=92202490 label=dash_font_register phase=entry count=1 r3=7014F500 r4=00000000 r5=00000000 r6=00000000 r7=00000000 r8=00000000",
+            "METRO_UI pc=92265758 label=dash_font_register_1 phase=return count=1 r3=00000000 r4=00000000 r5=00000000 r6=00000000 r7=00000000 r8=00000000",
+            "METRO_UI pc=92202518 label=dash_font_validate_base phase=return count=1 r3=00000001 r4=00000000 r5=00000000 r6=00000000 r7=00000000 r8=00000000",
+            "METRO_UI_OPEN name=SegoeXbox-Light.xtt status=00000000 handle=F8000004 count=1 share=00000001 options=00000060",
+            "METRO_GPU packet_stream_cancelled during shutdown"],{"dash":[]})
+        self.assertNotIn("dash_font_register",result["font_call_results"])
+        self.assertEqual(result["font_call_results"]["dash_font_register_1"]["observed_r3"],["00000000"])
+        self.assertEqual(result["font_call_results"]["dash_font_validate_base"]["observed_r3"],["00000001"])
+        self.assertEqual(result["resource_opens"][0]["options"],"00000060")
+        self.assertEqual(result["gpu_shutdown_cancellations"],1)
+        self.assertFalse(result["menu_visually_verified"])
 if __name__=="__main__":unittest.main()
