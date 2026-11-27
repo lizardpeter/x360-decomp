@@ -62,7 +62,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 007A	KeInsertQueueApc	function	1	1	1	1	missing
 007B	KeInsertQueueDpc	function	1	1	1	1	missing
 007D	KeLeaveCriticalRegion	function	1	1	1	1	missing
-007F	KePulseEvent	function	0	0	1	1	missing
+007F	KePulseEvent	function	0	0	1	1	host_adapter
 0081	KeQueryBasePriorityThread	function	1	1	1	1	missing
 0082	KeQueryInterruptTime	function	1	1	1	1	missing
 0083	KeQueryPerformanceFrequency	function	1	1	1	1	missing
@@ -86,7 +86,7 @@ ordinal	name	reference_kind	dash_value_slots	dash_thunks	xam_value_slots	xam_thu
 00A9	KeSuspendThread	function	0	0	1	1	missing
 00AD	KeTimeStampBundle	variable	1	0	1	0	missing
 00AE	KeTryToAcquireSpinLockAtRaisedIrql	function	0	0	1	1	missing
-00AF	KeWaitForMultipleObjects	function	1	1	1	1	missing
+00AF	KeWaitForMultipleObjects	function	1	1	1	1	host_adapter
 00B0	KeWaitForSingleObject	function	1	1	1	1	host_adapter
 00B1	KfAcquireSpinLock	function	1	1	1	1	missing
 00B2	KfRaiseIrql	function	0	0	1	1	missing
