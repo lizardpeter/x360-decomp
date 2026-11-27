@@ -169,7 +169,7 @@ def patch_profile_loader(source,report):
         aliases=[leaf,flash,"\\Device\\Flash\\"+leaf,"\\SystemRoot\\"+leaf]
         tests=" || ".join("rex::string::utf8_equal_case(raw_name,"+cpp_string(a)+")" for a in aliases)
         names.append(f"    if ({tests}) return {cpp_string(leaf)};")
-        path_checks.append(f"    if (rex::string::utf8_equal_case(path,{cpp_string(flash)})) return {cpp_string(leaf)};")
+        path_checks.append(f"      if (rex::string::utf8_equal_case(path,{cpp_string(flash)})) return {cpp_string(leaf)};")
         identity=f"xex->GetBaseAddress()==0x{m['base']:08X}u && xex->GetImageSize()=={m['size']}u && module.user.entry_point==0x{m['entry']:08X}u"
         cases="\n".join(f"            case 0x{b['ordinal']:04X}u: return import.value_address==0x{b['slot']:08X}u && import.thunk_address==0x{b['thunk']:08X}u && target==0x{b['target']:08X}u;" for b in m["xam_bindings"])
         identify.append(f'''        if (metro_profile_name=={cpp_string(leaf)}) {{
@@ -240,10 +240,11 @@ def patch_profile_loader(source,report):
     source=source.replace(resolve_anchor,resolve+resolve_anchor,1)
     checks=[]
     for name,m in report["modules"].items():
-        checks.append(f'''    if (metro_profile_name=={cpp_string(name+".xex")})
-      return module->GetXEX()->GetBaseAddress()==0x{m['base']:08X}u &&
-             module->GetXEX()->GetImageSize()=={m['size']}u &&
-             module->user.entry_point==0x{m['entry']:08X}u;''')
+        checks.append(f'''      if (metro_profile_name=={cpp_string(name+".xex")}) {{
+        return module->GetXEX()->GetBaseAddress()==0x{m['base']:08X}u &&
+               module->GetXEX()->GetImageSize()=={m['size']}u &&
+               module->user.entry_point==0x{m['entry']:08X}u;
+      }}''')
     registration='''
   if (!metro_profile_name.empty()) {
     const bool exact=recomp && module->GetXEX() && module->user.is_dll_module && [&]() {
