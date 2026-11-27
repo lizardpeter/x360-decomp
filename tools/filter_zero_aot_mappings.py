@@ -69,8 +69,8 @@ def main():
     if not dash.is_file() or not xam.is_file():
         raise FileNotFoundError("expected dashboard and XAM generated init sources")
     results = [process(dash, DASH_REQUIRED), process(xam, XAM_REQUIRED)]
-    if results[0]["removed_zero_address_mappings"] != 1:
-        raise ValueError("expected exactly one invalid dashboard mapping at address zero")
+    if any(x["removed_zero_address_mappings"] for x in results):
+        raise ValueError("corrected loader unexpectedly emitted address-zero mappings")
     a.receipt.parent.mkdir(parents=True, exist_ok=True)
     a.receipt.write_text(json.dumps({"files": results}, indent=2) + "\n")
     print(json.dumps({"files": results}, indent=2))

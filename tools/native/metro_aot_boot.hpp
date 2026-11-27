@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include "metro_preflight_bindings.hpp"
 #include "metro_retail_bindings.hpp"
+#include "metro_kernel_variables.hpp"
 
 namespace metro_boot {
 inline constexpr char kXamPath[] = "game:\\xam.xex";
@@ -34,9 +35,16 @@ inline bool mount_flash(rex::kernel::TitleRuntime& title) {
         return false;
     if (!fs.Link("flash:", "\\Device\\Flash"))
         return false;
+    // The original dashboard creates media: -> \SystemRoot itself.
+    // Mount the verified flat flash tree at the physical system name.
+    if (!fs.Mount({"\\SystemRoot", rex::filesystem::ProviderType::kHostDirectory,
+                   root, rex::filesystem::MountFlags::kNone, {}}))
+        return false;
     return bool(fs.Stat("flash:\\dash.xex")) &&
            bool(fs.Stat("flash:\\xam.xex")) &&
-           bool(fs.Stat("flash:\\shrdres.xzp"));
+           bool(fs.Stat("flash:\\shrdres.xzp")) &&
+           bool(fs.Stat("\\SystemRoot\\shrdres.xzp")) &&
+           bool(fs.Stat("\\SystemRoot\\SegoeXbox-Light.xtt"));
 }
 
 
@@ -138,6 +146,59 @@ inline bool verify_retail_routes(rex::kernel::TitleRuntime& title,
     return passed == kRetailFunctionBindings.size();
 }
 
+// Observe all original kernel data imports. Only a verified target can be
+// relocated; no missing variable is supplied a fabricated value.
+template<std::size_t N>
+inline bool verify_kernel_variables(rex::kernel::TitleRuntime& title,
+                                    const rex::kernel::XEXModule& image,
+                                    const std::array<KernelVariableBinding,N>& bindings,
+                                    const char* module) {
+    const auto kernel=title.GetModuleRegistry().FindKernelModule("xboxkrnl");
+    if (!kernel) return false;
+    auto object=title.GetObjectTable().Get<rex::kernel::ModuleObject>(*kernel);
+    if (!object) return false;
+    auto& memory=title.GetGuestMemory();
+    std::size_t passed=0, unknown=0, failures=0;
+    for (const auto& binding:bindings) {
+        std::size_t matches=0;
+        for(const auto& library:image.GetImportLibraries()) {
+            if(library.name!="xboxkrnl")continue;
+            for(const auto& item:library.imports)
+                if(item.ordinal==binding.ordinal && item.value_address==binding.slot &&
+                    !item.thunk_address)++matches;
+        }
+        const auto target=object->GetVariable(binding.ordinal);
+        auto actual=memory.Load<rex::be_u32>(binding.slot);
+        const rex::u32 value=actual?static_cast<rex::u32>(*actual):0u;
+        const rex::u32 marker=0xD000BEEFu | (static_cast<rex::u32>(binding.ordinal)<<16);
+        const bool unresolved_value=actual && (!value || value==marker || (value&0xFF00FFFFu)==binding.ordinal);
+        const bool verified=matches==1 && target && actual && bool(memory.Load<rex::be_u32>(target));
+        if(verified && value!=target && unresolved_value) {
+            const bool writable=bool(memory.GetWritableSpan(binding.slot,sizeof(rex::u32)));
+            if(writable || memory.Protect(binding.slot,sizeof(rex::u32),rex::kernel::GuestProtect::kReadWrite)){
+                const auto stored=memory.Store(binding.slot,rex::be_u32(target));
+                const bool restored=writable || bool(memory.Protect(binding.slot,sizeof(rex::u32),rex::kernel::GuestProtect::kReadOnly));
+                if(stored&&restored)actual=memory.Load<rex::be_u32>(binding.slot);
+                else actual=memory.Load<rex::be_u32>(binding.slot); // still fail below if conflicting
+                if(!stored||!restored){++failures;continue;}
+            }
+        }
+        const bool valid=verified && actual && static_cast<rex::u32>(*actual)==target;
+        // The original base-version value is not known. Keep its missing
+        // state explicit, rather than treating it as a successful binding.
+        const bool unresolved=matches==1 && !target && binding.ordinal==0x157 && unresolved_value;
+        std::cout<<"METRO_KERNEL_VAR module="<<module<<" ordinal=0x"<<std::hex<<binding.ordinal
+                 <<" slot=0x"<<binding.slot<<" target=0x"<<target
+                 <<" actual=0x"<<(actual?static_cast<rex::u32>(*actual):0u)<<std::dec
+                 <<" records="<<matches<<" state="<<(valid?"mapped":unresolved?"unknown_base_version":"invalid")
+                 <<std::endl;
+        if(valid)++passed;else if(unresolved)++unknown;else ++failures;
+    }
+    std::cout<<"METRO_KERNEL_VARS module="<<module<<" mapped="<<passed
+             <<" unresolved="<<unknown<<" invalid="<<failures<<" expected="<<N<<std::endl;
+    return failures==0 && passed+unknown==N;
+}
+
 struct EntryBinding {
     PPCFunc* dashboard{};
     rex::kernel::FunctionDispatcher* dispatcher{};
@@ -203,6 +264,8 @@ protected:
         if (!xx || xx->GetBaseAddress() != kXamBase || xx->GetImageSize() != kXamSize ||
             xx->GetEntryPoint() != kXamEntry || !xam->user.is_dll_module ||
             !xam->hmodule_ptr || !title.FindFunction(kXamEntry)) return fail("xam_identity");
+        if (!verify_kernel_variables(title,*dx,kDashKernelVariables,"dash") ||
+            !verify_kernel_variables(title,*xx,kXamKernelVariables,"xam")) return fail("kernel_variables");
         if (!verify_retail_routes(title, *dx, *xx)) return fail("retail_export_mapping");
         if (!verify_live_binding(title, *dx, *xx, kXamDataBinding, true))
             return fail("data_mapping");

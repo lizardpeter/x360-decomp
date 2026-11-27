@@ -129,6 +129,9 @@ public:
             return fail("xam_identity");
         std::cout << "METRO_PREFLIGHT pass xam_load" << std::endl;
 
+        if (!metro_boot::verify_kernel_variables(title_,*dash_xex,kDashKernelVariables,"dash") ||
+            !metro_boot::verify_kernel_variables(title_,*xam,kXamKernelVariables,"xam")) return fail("kernel_variables");
+        std::cout << "METRO_PREFLIGHT pass kernel_variables" << std::endl;
         if (!metro_boot::verify_retail_routes(title_, *dash_xex, *xam))
             return fail("retail_export_mapping");
         std::cout << "METRO_PREFLIGHT pass all_retail_export_mappings" << std::endl;
