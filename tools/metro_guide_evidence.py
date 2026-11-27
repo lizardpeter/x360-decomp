@@ -27,7 +27,7 @@ GUIDE_EXPORTS={"XamShowGuideUI":0x816C3580,"XamInputSendXenonButtonPress":0x816F
  "XamInputGetKeystrokeHudEx":0x816F4C78}
 SYSREQ_OWNERS={0x816F0368,0x816F0410,0x816F0AE0,0x816F0DF0}
 INPUT_OWNERS={0x816F14E8,0x816F28A8,0x816F19C0,0x816F2A70,0x816F2B98,
- 0x816F2C50,0x816F2D88,0x816DA550,0x816F17E0,0x81696068,0x816D9060,0x816F06E8,0x816F0E70}
+ 0x816F2C50,0x816F2D88,0x816DA550,0x816F17E0,0x81696068,0x816D9060,0x816F06E8,0x816F0E70,0x816F3C48,0x816D8AA8,0x816F0400,0x816F0DE0,0x816C7D78,0x816CAF08,0x816E16E0,0x816C2AF0,0x81696AF0}
 KERNEL={"DrvSetSysReqCallback","DrvSetUserBindingCallback","XInputdReadState",
  "XInputdRawState","XInputdNotify","XInputdGetCapabilities"}
 UI={"XamShowGuideUI","XamInputSendXenonButtonPress","XamIsGuideDisabled",
@@ -64,6 +64,12 @@ def scan(label,raw,image,meta,catalog,stubs):
             if name in GUIDE_EXPORTS:exports[name]=a
         if exports!=GUIDE_EXPORTS:raise ValueError("original Guide export join differs")
         for a in exports.values():
+            if a not in funcs and (extent:=linear_export_extent(image,base,pe,a)):
+                funcs[a]=extent[0]
+    # Include exact bounded tail wrappers for the observed callback dispatch
+    # and startup path. These are not promoted to PDATA.
+    if label=="xam":
+        for a in INPUT_OWNERS:
             if a not in funcs and (extent:=linear_export_extent(image,base,pe,a)):
                 funcs[a]=extent[0]
     inbound=collections.defaultdict(set);outbound=collections.defaultdict(set)
@@ -124,6 +130,47 @@ def scan(label,raw,image,meta,catalog,stubs):
             m=literal_mask(w)
             if m:mask_sites.append({"owner":hx(a),"site":hx(a+i*4),**m})
     roots|=extra
+    lifecycle_refs=[]
+    data_refs=[]
+    if label=="xam":
+        targets=SYSREQ_OWNERS|extra|{0x816F0E70,0x816F0DE0,0x816F0AE0,0x816F3C48,0x816F0400}
+        global_slots={0x81AAC260,0x81AAC264}
+        # A constructor may be reached from a callback table, not via bl.
+        # Find exact data words and original code materializations separately.
+        for sec in pe["sections"]:
+            if sec["flags"]&0x20000000 or sec["name"] not in (".rdata",".data"):continue
+            lo=sec["rva"];hi=lo+sec["loaded_bytes"]
+            for off in range(lo,hi-3,4):
+                w=struct.unpack_from(">I",image,off)[0]
+                if w in targets:
+                    data_refs.append({"slot":hx(base+off),"target":hx(w),"section":sec["name"],
+                      "neighbor_pointer_candidates":[{"slot":hx(base+j),"target":hx(v)}
+                       for j in range(max(lo,off-24),min(hi-3,off+28),4)
+                       if executable(pe,base,(v:=struct.unpack_from(">I",image,j)[0]))]})
+        slot_targets={int(r["slot"],16) for r in data_refs}
+        for a,n in sorted(funcs.items()):
+            words=body_words(image,base,a,n)
+            for i in range(1,len(words)):
+                ref=variable_reference(words[i-1],words[i])
+                if ref and ref[0] in targets|global_slots|slot_targets:
+                    lifecycle_refs.append({"owner":hx(a),"pc":hx(a+4*(i-1)),"address":hx(ref[0]),"kind":ref[1]})
+                    roots.add(a)
+        # Explicitly identify original callers (including non-PDATA direct
+        # branches) of the selected entrypoints; bounded owner evidence only.
+        for sec in pe["sections"]:
+            if not sec["flags"]&0x20000000:continue
+            lo=sec["rva"];hi=lo+sec["loaded_bytes"]
+            for off in range(lo,hi-3,4):
+                w=struct.unpack_from(">I",image,off)[0]
+                b=branch(base+off,w)
+                if not b or b[0] not in targets:continue
+                owners=[a for a,n in pe["functions"] if a<=base+off<a+n]
+                if len(owners)==1:
+                    roots.add(owners[0])
+                    lifecycle_refs.append({"owner":hx(owners[0]),"pc":hx(base+off),
+                                           "address":hx(b[0]),"kind":"direct_branch"})
+                else:lifecycle_refs.append({"owner":None,"pc":hx(base+off),"address":hx(b[0]),"kind":"unowned_direct_branch"})
+
     # Include the adjacent original leaf/tail targets and first two levels
     # of exact direct calls from the narrowly chosen input/Guide roots.
     chosen,truncated=forward(roots,outbound,limit=300,depth=2)
@@ -141,6 +188,12 @@ def scan(label,raw,image,meta,catalog,stubs):
     for name,a in exports.items():mark(a,name,"entry")
     for a in SYSREQ_OWNERS|extra if label=="xam" else ():
         mark(a,"sysreq_"+hx(a),"entry")
+    if label=="xam":
+        for a in (0x816F0E70,0x816F0DF0,0x816F0AE0,0x816F06E8,0x816F3C48,0x816F0400,0x816F0DE0,
+                  0x816D8AA8,0x816F0E84,0x816F0E88,0x816F0EC8,0x816F0ED0,0x816F0E40,0x816F0E44,
+                  0x816F0710,0x816F0724,0x816F0734,0x816F0760,0x816F0764,0x816F0794,0x816F0C8C,0x816F0C90,
+                  0x816F0D08,0x816F0DAC,0x816F0DCC,0x816F03F0):
+            mark(a,"guide_lifecycle_"+hx(a),"observed")
     for c in callbacks:
         pc=int(c["site"],16)
         mark(pc,"DrvSetSysReqCallback","call")
@@ -159,7 +212,7 @@ def scan(label,raw,image,meta,catalog,stubs):
     if label=="hud":mark(0x913F8D00,"HUD","entry")
     return {"exports":{k:hx(v) for k,v in exports.items()},"sysreq_registrations":callbacks,
       "input_and_ui_calls":call_sites,"possible_guide_bit_tests":mask_sites,
-      "export_address_references":pointer_refs,"callback_candidates":[hx(a) for a in sorted(extra)],
+      "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"callback_candidates":[hx(a) for a in sorted(extra)],
       "reverse_graph":ancestors(roots,inbound,max_depth=3,max_nodes=1000),
       "forward_graph":{"nodes":{hx(a):n for a,n in chosen.items()},"truncated":truncated},
       "bodies":bodies,"trace_points":trace}
@@ -181,6 +234,7 @@ def main():
         print(label,"sysreq",len(row["sysreq_registrations"]),"callback candidates",row["callback_candidates"],
             "trace points",len(row["trace_points"]),"bodies",len(row["bodies"]))
         for c in row["sysreq_registrations"]:print(c["site"],c["argument_provenance"],c["nearby_code_address_constructions"])
+        print("lifecycle pointer references",row["data_pointer_refs"],"code refs",len(row["lifecycle_refs"]))
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(result,indent=2,sort_keys=True)+"\n")
 if __name__=="__main__":main()
