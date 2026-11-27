@@ -206,6 +206,49 @@ def control_flag_references(image,base,pe,addresses):
                              "address":hx(found[0]),"access":"read" if w>>26==34 else "write"})
     return refs
 
+def graceful_phase_constants(image,base):
+    # Recover original floating-point comparisons; no host timing estimate.
+    # Only resolve absolute addresses when the base register's exact lis
+    # definition is locally known. Register-based instance fields stay fields.
+    def word(pc):
+        return struct.unpack_from(">I",image,pc-base)[0]
+    def lis(pc):
+        w=word(pc)
+        if w>>26!=15 or (w>>16)&31:raise ValueError("expected absolute lis")
+        return (w>>21)&31,(w&0xffff)<<16
+    def load(pc,base_pc=None):
+        w=word(pc)
+        if w>>26!=48:raise ValueError("expected original lfs")
+        fd,ra,disp=(w>>21)&31,(w>>16)&31,struct.unpack(">h",struct.pack(">H",w&0xffff))[0]
+        out={"site":hx(pc),"fpr":fd,"base":ra,"offset":disp}
+        if base_pc is not None:
+            register,address=lis(base_pc)
+            if ra!=register:raise ValueError("original floating base differs")
+            addr=(address+disp)&0xffffffff
+            if not base<=addr<=base+len(image)-4:raise ValueError("floating constant range")
+            value=struct.unpack_from(">f",image,addr-base)[0]
+            import math
+            if not math.isfinite(value):raise ValueError("nonfinite original constant")
+            out.update({"address":hx(addr),"value":value})
+        return out
+    def compare(pc):
+        w=word(pc)
+        if w>>26!=63 or (w>>1)&1023 not in (0,32):
+            raise ValueError("expected original floating comparison")
+        return {"site":hx(pc),"cr_field":(w>>23)&7,"lhs_fpr":(w>>16)&31,"rhs_fpr":(w>>11)&31,
+                "ordered":((w>>1)&1023)==32}
+    # First gate uses a pre-existing FPR and a loaded value. Do not invent
+    # its producer; trace the full FP instruction window for follow-up.
+    comparisons=[compare(0x9800EB38),compare(0x9800EB5C)]
+    loads=[load(0x9800EB34),load(0x9800EB54),load(0x9800EB58)]
+    # The two lfs at EB54 and EB58 can use either the immediately preceding
+    # original absolute lis or an animation-context register.
+    reg,addr=lis(0x9800EB50)
+    for i,site in enumerate((0x9800EB54,0x9800EB58),1):
+        if loads[i]["base"]==reg:loads[i]=load(site,0x9800EB50)
+    return {"comparisons":comparisons,"loads":loads,
+            "scope":"Original FP operands and locally resolved static floats; no invented wall-clock duration."}
+
 def lifecycle_report(raw,image,meta,thunks):
     base=meta["image_base"];pe=pe_info(image,base)
     roots=(0x98020E60,0x98020EC8,0x98020ED8,0x98020EF0,
@@ -258,11 +301,15 @@ def lifecycle_report(raw,image,meta,thunks):
             raise ValueError("animation lifecycle operand changed: "+pc)
     if ready!=0x980590BC or by_pc["9800FDEC"]["import"]["name"]!="KeSetEvent":
         raise ValueError("initial-update notification identity")
+    header=image[ready-base:ready-base+16]
+    if header[:8]!=bytes(8) or struct.unpack_from(">II",header,8)!=(ready+8,ready+8):
+        raise ValueError("initial-update original notification header")
     return {"initial_update_notification":{"event":hx(ready),"signal_site":"9800FDEC",
                "initial_update_call":"9800FDCC","event_header_hex":image[ready-base:ready-base+16].hex(),
                "scope":"Original signal after successful first update, not retail caller policy."},
             "graceful_control":{"argument":0,"flag_b":"98077761","original_flag_a_publication":"9800EB68",
                 "original_phase_gate":["9800EB30","9800EB3C","9800EB4C","9800EB60"],
+                "floating_point":graceful_phase_constants(image,base),
                 "original_exit_call":"9800EB90"},
             "control_export":{"address":"98020EC8","tail":"9800E910",
             "flag_addresses":[hx(a) for a in flags],"exact_adjacent_references":references,
