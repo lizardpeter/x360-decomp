@@ -324,7 +324,7 @@ jobs:
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           set +e
-          timeout --kill-after=10s 130s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_intro.sh "$folder/native" "$folder/inputs" "$PWD/build/integrated-intro"
+          METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480 timeout --kill-after=10s 130s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_intro.sh "$folder/native" "$folder/inputs" "$PWD/build/integrated-intro"
           status=$?
           set -e
           if [ -f build/integrated-intro/integrated.log ]; then

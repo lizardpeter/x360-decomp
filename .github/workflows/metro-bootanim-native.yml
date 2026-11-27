@@ -154,14 +154,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/bootanim-native"
-          timeout --kill-after=10s 125s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-capture"
+          METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480 timeout --kill-after=10s 125s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-capture"
       - name: Verify original animation host PCM output on an isolated audio device
         if: always() && steps.live.outcome == 'success'
         run: |
           sudo apt-get install -y pulseaudio pulseaudio-utils
           folder="$PWD/build/bootanim-native"
           set +e
-          timeout --kill-after=10s 145s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_audio.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-audio"
+          METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480 timeout --kill-after=10s 145s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_audio.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-audio"
           status=$?
           set -e
           for f in pcm-evidence.json pulse-info.txt sinks.txt before-inputs.txt pulse.log parec.log; do

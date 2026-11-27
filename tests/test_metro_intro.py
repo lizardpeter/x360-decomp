@@ -57,3 +57,12 @@ class TestMetroIntro(unittest.TestCase):
         self.assertIn("target_compile_options(${_metro_bootanim_targets} PRIVATE",new)
         self.assertIn(":-O2>",new)
         with self.assertRaises(ValueError):optimized_scaffold("wrong target")
+
+    def test_software_capture_display_mode_not_runtime_policy(self):
+        root=Path(__file__).resolve().parents[1]
+        capture=(root/"tools/capture_metro_intro.sh").read_text()
+        self.assertIn('--ui.video_mode_width="$mode_width"',capture)
+        self.assertIn('--ui.video_mode_height="$mode_height"',capture)
+        self.assertIn('requested_guest_mode=',capture)
+        workflow=(root/".github/workflows/aot-fixed-imports.yml").read_text()
+        self.assertIn("METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480",workflow)

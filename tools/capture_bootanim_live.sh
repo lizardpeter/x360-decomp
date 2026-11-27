@@ -9,7 +9,14 @@ mkdir -p "$out"
 cd "$native"
 export X360_BOOTANIM_FLAGS=0 X360_BOOTANIM_CONTROL=graceful_event
 export SDL_AUDIODRIVER="${X360_BOOTANIM_AUDIO_DRIVER:-dummy}"
-./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex > "$out/bootanim-live.log" 2>&1 &
+# Real supported guest video mode, chosen only by the software-runner test.
+# The original firmware still queries the SDK display mode normally.
+mode_width="${METRO_CAPTURE_WIDTH:-1280}"
+mode_height="${METRO_CAPTURE_HEIGHT:-720}"
+./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex \
+  --ui.fullscreen=false --ui.window_width="$mode_width" --ui.window_height="$mode_height" \
+  --ui.video_mode_width="$mode_width" --ui.video_mode_height="$mode_height" \
+  > "$out/bootanim-live.log" 2>&1 &
 pid=$!
 trap 'kill -KILL "$pid" 2>/dev/null || true' EXIT
 count=0;last_sample_time=-2
@@ -45,15 +52,12 @@ set -e
 trap - EXIT
 printf 'exit_code=%s\ncaptured_frames=%s\ntimed_out=%s\nanimation_visually_verified=false\naudio_audibly_verified=false\n' "$status" "$count" "$timed_out" > "$out/receipt.txt"
 grep -E '^BOOTANIM_LIVE ' "$out/bootanim-live.log" | tee "$out/gates.txt" || true
+printf 'requested_guest_mode=%sx%s\n' "$mode_width" "$mode_height" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
 grep -q '^BOOTANIM_LIVE original_entry ' "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE presented_frames ' "$out/gates.txt"
 grep -Fxq 'BOOTANIM_LIVE original_initial_update_event signaled' "$out/gates.txt"
-grep -Eq '^BOOTANIM_LIVE control_return argument=0 flag_a=[01] flag_b=1
-test "$count" -gt 0
-test "$timed_out" = false
-test "$status" -eq 0
- "$out/gates.txt"
+grep -Eq '^BOOTANIM_LIVE control_return argument=0 flag_a=[01] flag_b=1$' "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE original_return ' "$out/gates.txt"
 test "$count" -gt 0
 test "$timed_out" = false

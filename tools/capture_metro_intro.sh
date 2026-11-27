@@ -9,10 +9,13 @@ mkdir -p "$out/xdg"
 chmod 700 "$out/xdg"
 export XDG_RUNTIME_DIR="$out/xdg" SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=x11
 export X360_METRO_BOOT=1 X360_METRO_INTRO=1
+mode_width="${METRO_CAPTURE_WIDTH:-1280}"
+mode_height="${METRO_CAPTURE_HEIGHT:-720}"
 cd "$native"
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
   --ui.title="Metro integrated original boot" --ui.fullscreen=false \
-  --ui.window_width=1280 --ui.window_height=720 \
+  --ui.window_width="$mode_width" --ui.window_height="$mode_height" \
+  --ui.video_mode_width="$mode_width" --ui.video_mode_height="$mode_height" \
   --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false \
   --hid.mnk_mode=true --log.level=info --log.flush_level=info > "$out/integrated.log" 2>&1 &
 pid=$!
@@ -71,6 +74,7 @@ trap - EXIT
 printf 'intro_frames=%s\npost_handoff_frames=%s\nalive_at_capture_end=%s\nexit_code=%s\nmenu_visually_verified=false\naudio_audibly_verified=false\n' \
   "$intro" "$dash" "$alive" "$status" > "$out/receipt.txt"
 grep -E '^METRO_(INTRO|BOOT) (pass|fail|original_entry|original_return|original_initial_update_event|post_handoff_frames|guest_exit)' "$out/integrated.log" >> "$out/receipt.txt" || true
+printf 'requested_guest_mode=%sx%s\n' "$mode_width" "$mode_height" >> "$out/receipt.txt"
 cat "$out/dashboard-samples.txt" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
 for gate in "METRO_INTRO pass loaded_as_user_module" "METRO_INTRO pass original_completion" "METRO_BOOT pass xam_attach" "METRO_BOOT pass dashboard_entry"; do
