@@ -15,7 +15,7 @@ class IoRuntime(unittest.TestCase):
                        "u32 NtCreateFile_entry(",
                        CREATE_START_OLD,
                        "if (object_attrs->root_directory != 0 && object_attrs->root_directory != 1) use(object_attrs->root_directory);",
-                       CREATE_END_OLD, "u32 NtOpenFile_entry(", DISMOUNT_OLD])
+                       CREATE_END_OLD, OPEN_FILE_OLD, DISMOUNT_OLD])
         result=patch_io(text)
         self.assertIn(IO_BODY,result)
         self.assertNotIn("REX_ASSERT_ALWAYS",IO_BODY)
@@ -30,6 +30,12 @@ class IoRuntime(unittest.TestCase):
         self.assertNotIn("object_attrs->root_directory",result)
         self.assertNotIn(DISMOUNT_OLD,result)
         with self.assertRaises(ValueError):patch_io(result)
+    def test_original_six_argument_open(self):
+        out=patch_open_file(OPEN_FILE_OLD)
+        self.assertIn("u32 share_access,",out)
+        self.assertIn("share_access, std::to_underlying",out)
+        self.assertIn("open_options",out)
+        with self.assertRaises(ValueError):patch_open_file(out)
     def test_file_cursor(self):
         source="\n".join(['#include <rex/kernel/title_runtime.h>',READ_CURSOR_OLD,
                           WRITE_CURSOR_OLD,VIRTUAL_READ_OLD])

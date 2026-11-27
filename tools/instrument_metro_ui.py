@@ -24,6 +24,9 @@ CALLS = {
         0x922656EC:"dash_font_enumerate",0x9226570C:"dash_font_release",
         0x92265754:"dash_font_register_1",0x92265778:"dash_font_register_2",
         0x922657B8:"dash_font_register_3",
+        0x92202514:"dash_font_validate_base",0x92202544:"dash_font_validate_patch",
+        0x922025A8:"dash_font_construct",0x922025D4:"dash_font_insert",
+        0x92218A1C:"dash_stream_open1",0x92218C74:"dash_stream_open2",
     },
     "generated_xam": {
         0x817DD348:"xam_section_lookup",0x81903F94:"xam_section_lookup2",

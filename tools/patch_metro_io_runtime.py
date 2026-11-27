@@ -18,7 +18,7 @@ def replace(source, old, new):
     return source.replace(old,new,1)
 
 IO_HEADER = '#include <rex/kernel/title_runtime.h>'
-IO_HEADER_NEW = IO_HEADER + '\n#include <rex/kernel/guest_memory.h>\n#include <cstring>'
+IO_HEADER_NEW = IO_HEADER + '\n#include <rex/kernel/guest_memory.h>\n#include <cstring>\n#include <atomic>\n#include <cstdlib>\n#include <string_view>'
 IO_START = '  const u32 cache_size = 0xFF000;'
 IO_END = '\n}\n\n/**\n * Allocates a device structure'
 IO_BODY = """  // Preserve the established utility-drive geometry contract. Other
@@ -182,7 +182,20 @@ CREATE_END_OLD = """  if (io_status_block) {
   }
 
   *handle_out = handle;"""
-CREATE_END_NEW = """  if (status_address) {
+CREATE_END_NEW = r"""  if (std::getenv("X360_METRO_BOOT")) {
+    const auto slash=target_path.find_last_of("/\\");
+    const auto name=std::string_view(target_path).substr(slash==std::string::npos?0:slash+1);
+    if(name.ends_with(".xtt") || name.ends_with(".XTT") ||
+       name.ends_with(".xzp") || name.ends_with(".XZP") ||
+       name.ends_with(".xur") || name.ends_with(".XUR")) {
+      static std::atomic_uint count{0};
+      const auto n=count.fetch_add(1,std::memory_order_relaxed)+1;
+      if(n<=96 || (n&(n-1))==0)
+        REXKRNL_INFO("METRO_UI_OPEN name={} status={:08X} handle={:08X} count={} share={:08X} options={:08X}",
+                     name,static_cast<u32>(result),handle,n,share_access,create_options);
+    }
+  }
+  if (status_address) {
     X_IO_STATUS_BLOCK block{};
     block.status = result;
     block.information = static_cast<u32>(file_action);
@@ -221,6 +234,25 @@ u32 IoDismountVolumeByName_entry(GuestPtrT<X_ANSI_STRING> name) {
   return X_STATUS_NOT_SUPPORTED;
 }"""
 
+OPEN_FILE_OLD = """u32 NtOpenFile_entry(MappedU32 handle_out, u32 desired_access,
+                     GuestPtrT<X_OBJECT_ATTRIBUTES> object_attrs,
+                     GuestPtrT<X_IO_STATUS_BLOCK> io_status_block, u32 open_options) {
+  return NtCreateFile_entry(handle_out, desired_access, object_attrs, io_status_block, nullptr, 0,
+                            0, std::to_underlying(filesystem::Disposition::kOpen), open_options);
+}"""
+OPEN_FILE_NEW = """u32 NtOpenFile_entry(MappedU32 handle_out, u32 desired_access,
+                     GuestPtrT<X_OBJECT_ATTRIBUTES> object_attrs,
+                     GuestPtrT<X_IO_STATUS_BLOCK> io_status_block, u32 share_access,
+                     u32 open_options) {
+  // Original PPC 922186D0: r7 is share access (1), r8 is open options (0x60).
+  // Losing r8 turns a synchronous regular-file request into directory flags.
+  return NtCreateFile_entry(handle_out, desired_access, object_attrs, io_status_block, nullptr, 0,
+                            share_access, std::to_underlying(filesystem::Disposition::kOpen), open_options);
+}"""
+
+def patch_open_file(source):
+    return replace(source,OPEN_FILE_OLD,OPEN_FILE_NEW)
+
 def patch_create_and_dismount(source):
     source=replace(source,CREATE_START_OLD,CREATE_START_NEW)
     source=replace(source,"u32 NtCreateFile_entry(",CREATE_HELPER+"u32 NtCreateFile_entry(")
@@ -233,7 +265,7 @@ def patch_create_and_dismount(source):
     body=body.replace("object_attrs->root_directory","attributes->root_directory")
     body=replace(body,CREATE_END_OLD,CREATE_END_NEW)
     source=source[:start]+body+source[end:]
-    return replace(source,DISMOUNT_OLD,DISMOUNT_NEW)
+    return replace(patch_open_file(source),DISMOUNT_OLD,DISMOUNT_NEW)
 
 def patch_io(source):
     if source.count(ATA_BRANCH)!=1:

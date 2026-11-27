@@ -292,3 +292,40 @@ REX_TEST_CASE("metro_io_runtime: scatter explicit zero and short read preserve e
     CHECK(c.Kernel("NtClose",{handle})==0);
   });
 }
+
+#include <rex/kernel/object/file_object.h>
+#include <rex/kernel/object/object_table.h>
+REX_TEST_CASE("metro_io_runtime: original six-argument file open keeps r7 share separate from r8 flags",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) {
+    WriteScratch(root,"font.xtt",64);
+    std::filesystem::create_directories(root/"scratch"/"folder");
+  });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    auto& table=c.GetRuntime().GetObjectTable();
+    const u32 h=c.Alloc(4),iosb=c.Alloc(8),data=c.Alloc(4);
+    // Exact r4/r7/r8 values from original 922186D0.
+    for(u32 share:{0u,1u,3u}) {
+      REQUIRE(c.Kernel("NtOpenFile",{h,0x80100000,c.AllocAttributes("scratch:\\font.xtt"),
+                                    iosb,share,0x60})==0);
+      const u32 handle=c.Load32(h);
+      auto file=table.Get<FileObject>(handle);
+      REQUIRE(file);
+      CHECK(file->is_synchronous);
+      REQUIRE(c.Kernel("NtReadFile",{handle,0,0,0,iosb,data,4,0})==0);
+      CHECK(c.Load32(iosb+4)==4);
+      REQUIRE(c.Kernel("NtClose",{handle})==0);
+    }
+    // The last argument alone controls synchronous versus asynchronous.
+    REQUIRE(c.Kernel("NtOpenFile",{h,0x80100000,c.AllocAttributes("scratch:\\font.xtt"),iosb,1,0x40})==0);
+    {
+      auto file=table.Get<FileObject>(c.Load32(h));
+      REQUIRE(file);
+      CHECK_FALSE(file->is_synchronous);
+    }
+    REQUIRE(c.Kernel("NtClose",{c.Load32(h)})==0);
+    CHECK(c.Kernel("NtOpenFile",{h,0x80100000,c.AllocAttributes("scratch:\\folder"),iosb,1,0x60})!=0);
+  });
+}
