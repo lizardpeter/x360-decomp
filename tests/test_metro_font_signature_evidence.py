@@ -34,3 +34,11 @@ class FontSignatures(unittest.TestCase):
         self.assertEqual(rotsum_sha(bytes.fromhex("0000000000000001")),
                          hashlib.sha1(prefix*2+bytes.fromhex("0000000000000001")+
                                       bytes(x^255 for x in prefix)*2).digest())
+
+    def test_post_signature_length_metadata_is_considered(self):
+        data=bytearray(1024)
+        data[260:264]=(48).to_bytes(4,"big")
+        ranges=candidate_ranges(bytes(data),4)
+        self.assertIn((260,308),ranges)
+        self.assertIn((264,312),ranges)
+        self.assertTrue(all(a<b and (b<=4 or a>=260) for a,b in ranges))

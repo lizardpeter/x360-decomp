@@ -94,9 +94,23 @@ def candidate_ranges(data,offset):
     # Prefer contiguous bytes immediately before/after the found signature.
     size=len(data);after=offset+256
     candidates=[(after,size),(0,offset)]
-    header=data[:min(64,len(data))&~3]
-    values={int.from_bytes(header[i:i+4],endian) for i in range(0,len(header),4)
-            for endian in ("big","little")}
+    # The original reader requests 260 bytes first and obtains the signed
+    # buffer separately. The length metadata therefore lives after the
+    # 256-byte signature, not in the signature itself.
+    values=set()
+    for begin,end in ((0,min(offset,64)),(after,min(after+64,size))):
+        for i in range(begin,end-3,4):
+            for endian in ("big","little"):
+                v=int.from_bytes(data[i:i+4],endian)
+                if 0<v<=size:values.add(v)
+    starts=[i for i in range(after,min(after+64,size),4)]
+    # Test header-derived lengths first, before expensive whole-file ranges.
+    priority=[]
+    for start in starts:
+        for v in sorted(values):
+            if start+v<=size:priority.append((start,start+v))
+            if start<v<=size:priority.append((start,v))
+    candidates=priority+candidates
     boundaries=sorted({0,after,size,offset}|{v for v in values if 0<v<size})
     for start in (after,0):
         for end in boundaries:
@@ -127,8 +141,7 @@ def inspect_signature(data,n,e,salt):
                       "hash_budget_limited":limited})
     return {"bytes":len(data),"signature_locations_examined":count,
             "matching_encoded_signatures":found,"hash_bytes_examined":MAX_HASH_BYTES-budget,
-            "complete_file_signature_verified":any(any(r["offset"]==0 and r["length"]==len(data)
-                for r in item["signed_contiguous_ranges"]) for item in found),
+            "signed_range_verified":any(item["signed_contiguous_ranges"] for item in found),
             "scope":"Bounded original public signature and contiguous-range evidence; no acceptance override."}
 
 def original_module(label,raw,lzx):
@@ -152,7 +165,8 @@ def original_module(label,raw,lzx):
         raise ValueError("original signature caller extent")
     index=next(i for i,o in enumerate(body["operands"]) if o["pc"]==hx(call))
     return salt,{"wrapper":hx(wrapper),"caller":hx(parent),"callsite":hx(call),"salt_address":hx(address),
-                 "salt_bytes":len(salt),"setup_operands":body["operands"][max(0,index-32):index+8]}
+                 "salt_bytes":len(salt),"setup_operands":body["operands"][:index+8],
+                 "verification_wrapper":bounded_entry(image,base,pe,wrapper,{},4096)}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
