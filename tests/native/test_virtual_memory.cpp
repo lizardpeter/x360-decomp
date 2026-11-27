@@ -21,6 +21,18 @@ int main(){
     check(m.load_be32(0x40000,n)&&n==3,"right fragment");
     check(!m.load_be32(0x30000,n),"middle inaccessible");
     check(m.commit(0x30000,65536,false)&&m.load_be32(0x30000,n)&&!n&&!m.store_be32(0x30000,1),"zeroed readonly recommit");
+    check(m.protect(0x30000,65536,true),"protect committed page");
+    check(m.store_be32(0x2fffe,0xaabbccdd)&&m.load_be32(0x2fffe,n)&&n==0xaabbccdd,"cross adjacent commit boundary");
+    check(m.protect(0x30000,65536,false),"restore readonly");
+    check(!m.store_be32(0x2fffe,0xffffffff)&&m.load_be32(0x2fffe,n)&&n==0xaabbccdd,"cross readonly write is atomic");
+    check(m.protect(0x20000,0x30000,false)&&!m.store_be32(0x20000,9)&&!m.store_be32(0x40000,9),"protect across regions");
+    check(m.protect(0x20000,0x30000,true)&&m.load_be32(0x40000,n)&&n==3,"restore permission preserves data");
+    check(m.decommit(0x30000,65536),"decommit for hole checks");
+    check(!m.protect(0x20000,0x30000,false)&&m.store_be32(0x20000,1),"failed protect leaves prior permissions");
+    std::array<std::uint8_t,4> unchanged{9,8,7,6};
+    check(!m.read(0x2fffe,unchanged)&&unchanged==std::array<std::uint8_t,4>{9,8,7,6},"read across hole leaves output untouched");
+    check(!m.store_be32(0x2fffe,0xffffffff),"write across hole rejected");
+    check(m.commit(0x30000,65536,true)&&m.load_be32(0x2fffe,n)&&n==0xaabb0000,"failed write preserved left bytes");
     check(!m.release(0x30000)&&m.release(0x20000)&&!m.load_be32(0x40000,n),"release whole range");
     check(m.map(0x30000,words,true),"released free for regular mapping");
     auto first=m.reserve_first(0x20000,0x60000,0x20000,65536);

@@ -4,8 +4,8 @@
 #include <optional>
 #include <vector>
 namespace x360::machine {
-// Explicitly mapped, non-overlapping contiguous regions. Cross-region access
-// is not supported yet, and must fail without partial output or writes.
+// Explicitly mapped, non-overlapping regions. Adjacent regions form a
+// contiguous access range; holes or incompatible permissions fail atomically.
 struct RegionMapping {abi::Address base;std::span<const std::uint8_t> bytes;bool writable;};
 struct Reservation {abi::Address base;std::uint32_t size,page_size;};
 class AddressSpace final : public abi::GuestMemory {
@@ -20,6 +20,8 @@ public:
                                               std::uint32_t size,std::uint32_t page_size);
     std::optional<Reservation> reservation(abi::Address address) const noexcept;
     bool commit(abi::Address base,std::uint32_t size,bool writable);
+    // Change access only on a fully committed range within one reservation.
+    bool protect(abi::Address base,std::uint32_t size,bool writable);
     bool decommit(abi::Address base,std::uint32_t size);
     bool release(abi::Address base);
     bool writable_range(abi::Address address,std::size_t size) const noexcept;
@@ -27,6 +29,7 @@ public:
     bool write(abi::Address address,std::span<const std::uint8_t> bytes) noexcept override;
 private:
     struct Region { std::vector<std::uint8_t> bytes; bool writable; };
+    bool accessible(abi::Address address,std::size_t size,bool write) const noexcept;
     std::map<abi::Address,Region> regions_;
     std::map<abi::Address,Reservation> reservations_;
 };
