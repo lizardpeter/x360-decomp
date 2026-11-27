@@ -5,6 +5,8 @@ on:
     paths:
       - 'tools/metro_text_draw_evidence.py'
       - 'tools/metro_header_resource_evidence.py'
+      - 'tools/metro_xui_text_twins.py'
+      - 'tests/test_metro_xui_text_twins.py'
       - 'tests/test_metro_header_resource_evidence.py'
       - 'tests/test_metro_text_draw_evidence.py'
       - '.github/workflows/metro-text-draw-evidence.yml'
@@ -40,10 +42,13 @@ jobs:
           python tools/metro_text_draw_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-text-draw-evidence.json
           python -m unittest discover -s tests -p test_metro_header_resource_evidence.py
           python tools/metro_header_resource_evidence.py --lzx build/lzx_adapter.so --output build/receipts/metro-header-resource-evidence.json
+          python -m unittest discover -s tests -p test_metro_xui_text_twins.py
+          python tools/metro_xui_text_twins.py --lzx build/lzx_adapter.so --output build/receipts/metro-xui-text-twins.json
       - uses: actions/upload-artifact@v4
         with:
           name: metro-text-draw-evidence
           path: |
             build/receipts/metro-text-draw-evidence.json
             build/receipts/metro-header-resource-evidence.json
+            build/receipts/metro-xui-text-twins.json
           if-no-files-found: error
