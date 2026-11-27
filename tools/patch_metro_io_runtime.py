@@ -573,6 +573,7 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
   const auto firmware = GetTemp() / "firmware";
   const auto storage = GetTemp() / "storage";
   WriteHost(firmware / "dash.xex", "original");
+  WriteHost(firmware / "Content" / "shadowed.bin", "never exposed");
   WriteHost(storage / "profile" / "fixture.bin", "local");
   auto& fs = GetFileSystem();
   REQUIRE(fs.Mount({"\\Device\\Harddisk0\\Partition1", ProviderType::kHostDirectory,
@@ -597,7 +598,7 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
       {.disposition = Disposition::kCreate, .access = Access::kWriteAccess});
   REQUIRE(created);
   CHECK(std::filesystem::exists(storage / "profile" / "new.bin"));
-  CHECK_FALSE(std::filesystem::exists(firmware / "Content"));
+  CHECK_FALSE(std::filesystem::exists(firmware / "Content" / "profile" / "new.bin"));
   CHECK_FALSE(fs.OpenRelative(*partition.file, "forbidden.bin",
       {.disposition = Disposition::kCreate, .access = Access::kWriteAccess}));
   CHECK(ReadText(*Open("game:\\dash.xex").file) == "original");
@@ -625,7 +626,6 @@ REX_TEST_CASE_METHOD(Fixture, "Metro explicit content mount supports relative op
   REQUIRE(no_match);
   CHECK_FALSE((*no_match)->Next());
   // Shadowed physical directory must not duplicate the writable alias.
-  WriteHost(firmware / "Content" / "shadowed.bin", "never exposed");
   auto fresh = Open("game:");
   auto all = fresh.file->List("");
   REQUIRE(all);

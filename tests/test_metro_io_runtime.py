@@ -63,14 +63,32 @@ class IoRuntime(unittest.TestCase):
         self.assertNotIn("X_STATUS_SUCCESS",result)
         with self.assertRaises(ValueError):patch_storage_notifications(result)
     def test_profile_mount_routes_explicit_alias_and_respects_provider_ownership(self):
-        source="\n".join([RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD])
+        source="\n".join([RELATIVE_OPEN_OLD,CROSS_PROVIDER_CHILD_OLD,CROSS_PROVIDER_READONLY_OLD,
+          "  return Opened{std::make_unique<NodeFile>(*node, access, std::move(stream)), action};",
+          "  return std::unique_ptr<IDirectory>(std::make_unique<NodeDirectory>(*node, pattern));",
+          "Result<void> FileSystem::Mount(const MountEntry& entry) {"])
         result=patch_filesystem(source)
-        self.assertIn("FindLink(absolute)",result)
+        self.assertNotIn("FindLink(absolute)",result)
+        self.assertIn("ChildMountEntries(*node)",result)
+        self.assertIn("resolved->provider == &directory.GetProvider()",result)
+        self.assertIn("utf8_equal_case(base, parent)",result)
+        self.assertIn("for (const auto& link : links_)",result)
+        self.assertIn("for (const auto& provider : providers_)",result)
         self.assertIn("resolved->provider != &root_node.GetProvider()",result)
         self.assertIn("parent->GetProvider() == &node->GetProvider()",result)
         self.assertIn("root_node.IsDirectory()",result)
         self.assertIn("OpenFrom(nullptr, absolute, options)",result)
         with self.assertRaises(ValueError):patch_filesystem(result)
+    def test_stfs_verified_request_abi_never_fabricates_success(self):
+        patched=patch_stfs_contract(STFS_OLD)
+        self.assertEqual(patched,STFS_NEW)
+        self.assertIn("request_bytes != 88",patched)
+        self.assertIn("GetReadOnlySpan(request, request_bytes)",patched)
+        self.assertIn("GetWritableSpan(request, request_bytes)",patched)
+        self.assertIn("ioctl > 5",patched)
+        self.assertNotIn("X_STATUS_SUCCESS",patched)
+        self.assertNotIn("memory.Store",patched)
+        with self.assertRaises(ValueError):patch_stfs_contract(patched)
     def test_storage_queries_bound_and_retry(self):
         source="\n".join([ATTR_QUERY_OLD,DIRECTORY_QUERY_OLD,DIRECTORY_COUNT_OLD])
         patched=patch_storage_queries(source)
