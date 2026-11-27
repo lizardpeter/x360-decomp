@@ -17,3 +17,8 @@ __pycache__/
 *.tar.gz
 *.gpr
 *.rep/
+
+# Private staged profiles and local runtime state
+/profile-storage/
+/user-data/
+/local-profiles/
