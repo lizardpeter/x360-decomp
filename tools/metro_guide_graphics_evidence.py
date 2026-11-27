@@ -110,6 +110,26 @@ def main():
         data[label]=scan(label,raw,image,meta,catalog,stubs)
         print(label,"graphics-related calls",len(data[label]["calls"]),"data references",len(data[label]["data_refs"]),"bounded bodies",len(data[label]["bodies"]))
         if data[label]["hud_load"]:print("Original UI load:",data[label]["hud_load"])
+    skin=members["$flash_huduiskin.xex"]["payload"]
+    if sha(skin)!="fdbe68d20fa6b013282ce8f21cebddc34fe4e3a92a71c28983d63f288d2252cc":
+        raise ValueError("HUD skin identity mismatch")
+    image,meta=decode(skin,a.lzx.resolve())
+    if meta["sha256"]!="d7cc1f96a9ac09853d325c9522ba257e5e23c43c819de5007f36fb49e33cedf4":
+        raise ValueError("decoded HUD skin identity mismatch")
+    header=parse_xex(skin)
+    security=struct.unpack_from(">I",skin,16)[0]
+    count=struct.unpack_from(">I",skin,security+0x180)[0]
+    runs=[struct.unpack_from(">I",skin,security+0x184+24*i)[0] for i in range(count)]
+    data["skin"]={"meta":meta,"header":header,"page_types":[v&15 for v in runs],
+                  "page_counts":[v>>4 for v in runs]}
+    print("HUD_SKIN_LAYOUT",json.dumps(data["skin"],sort_keys=True))
+    for label in ("xam","hud","dash"):
+        for call in data[label]["calls"]:
+            if call["import"]["name"] in {"VdRegisterXamGraphicsNotification","VdRegisterGraphicsNotification","VdCallGraphicsNotificationRoutines"}:
+                print("GRAPHICS_NOTIFY_CALL",label,json.dumps({k:call[k] for k in ("owner","site","import","arguments")},sort_keys=True))
+    callback=data["xam"]["bodies"].get(hx(CALLBACK))
+    if not callback:raise ValueError("original graphics callback body missing")
+    print("GRAPHICS_NOTIFY_CALLBACK",json.dumps(callback["operands"][:64],sort_keys=True))
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(data,indent=2,sort_keys=True)+"\n")
 if __name__=="__main__":main()
