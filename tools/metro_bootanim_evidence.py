@@ -191,12 +191,28 @@ def direct_audio_contract(registration,callback,register_pc,callback_pc):
             "object_argument":"direct r3","object_read_offset":304,
             "object_write_offset":300,"descriptor_words":2}
 
+def control_flag_references(image,base,pe,addresses):
+    # Exact consecutive lis + byte access pairs only; extended window
+    # candidates are deliberately not promoted to verified references.
+    refs=[]
+    for start,size,_ in pe["functions"]:
+        words=body_words(image,base,start,size)
+        for i in range(1,len(words)):
+            w=words[i]
+            if w>>26 not in (34,38):continue
+            found=variable_reference(words[i-1],w)
+            if found and found[0] in addresses:
+                refs.append({"owner":hx(start),"site":hx(start+4*i),
+                             "address":hx(found[0]),"access":"read" if w>>26==34 else "write"})
+    return refs
+
 def lifecycle_report(raw,image,meta,thunks):
     base=meta["image_base"];pe=pe_info(image,base)
     roots=(0x98020E60,0x98020EC8,0x98020ED8,0x98020EF0,
            0x980432B8,0x9800FF08,0x98044400,0x980210F8,0x98020FD0,
            0x9800E910,0x9800F380,0x9800F5A8,0x9800FDB0,0x9800E448,
-           0x9800E550,0x98045A60,0x98045A58,0x98045A10)
+           0x9800E550,0x98045A60,0x98045A58,0x98045A10,
+           0x9800EA10,0x9800FCB0,0x9800FB30,0x980123A0,0x980215E0,0x98021620)
     details=[bounded_entry(image,base,pe,addr,thunks,8192) for addr in roots]
     by_pc={r["pc"]:r for f in details for r in f["operands"]}
     def absolute_slot(lis,access):
@@ -215,7 +231,18 @@ def lifecycle_report(raw,image,meta,thunks):
         if op["kind"]!="rotate_mask" or op["source"]!=4 or op["mask_start"]!=op["mask_end"]:
             raise ValueError("startup flags shape")
         masks.append(f"{1<<(31-op['mask_start']):08X}")
-    return {"first_export_arguments":{"r3":"module handle (verified resource lookup flow)",
+    flags=[]
+    for hi_pc,store_pc in ((0x9800E920,0x9800E924),(0x9800E92C,0x9800E930)):
+        row=by_pc[hx(store_pc)]
+        if row.get("kind")!="memory_store" or row.get("width")!=1 or row.get("source")!=11:
+            raise ValueError("original control flag store")
+        flags.append(absolute_slot(hi_pc,store_pc))
+    if flags!=[0x98077760,0x98077761]:raise ValueError("original control flag identity")
+    references=control_flag_references(image,base,pe,set(flags))
+    return {"control_export":{"address":"98020EC8","tail":"9800E910",
+            "flag_addresses":[hx(a) for a in flags],"exact_adjacent_references":references,
+            "scope":"original control branches; retail caller policy not recovered"},
+            "first_export_arguments":{"r3":"module handle (verified resource lookup flow)",
             "r4":"flags word (verified masks, caller policy not recovered)"},
             "module_handle_global":hx(slot),"startup_flag_masks":masks,
             "functions":details}

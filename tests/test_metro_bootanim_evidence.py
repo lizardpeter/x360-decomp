@@ -3,7 +3,7 @@ import struct
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from metro_bootanim_evidence import riff_metadata,loader_references,xma1_format,matching_functions,direct_audio_contract
+from metro_bootanim_evidence import riff_metadata,loader_references,xma1_format,matching_functions,direct_audio_contract,control_flag_references
 
 def wave():
     fmt=struct.pack("<HHIIHH",1,2,48000,192000,4,16)
@@ -54,6 +54,14 @@ class BootanimEvidence(unittest.TestCase):
         self.assertEqual(direct_audio_contract(registration,callback,pc,cb)["registration_return"],"980517C8")
         callback["operands"][1]["offset"]=4
         with self.assertRaises(ValueError):direct_audio_contract(registration,callback,pc,cb)
+    def test_control_flag_references(self):
+        # lis r10,0x9807; stb r11,0x7760(r10);
+        # lis r11,0x9807; lbz r10,0x7761(r11)
+        image=struct.pack(">4I",0x3d409807,0x996a7760,0x3d609807,0x894b7761)
+        result=control_flag_references(image,0x1000,{"functions":[(0x1000,16,0)]},
+                                      {0x98077760,0x98077761})
+        self.assertEqual([(r["address"],r["access"]) for r in result],
+                         [("98077760","write"),("98077761","read")])
     def test_loader_reference(self):
         base=0x10000000;image=bytearray(128)
         image[:13]=b"bootanim.xex\0"

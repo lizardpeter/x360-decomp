@@ -10,6 +10,7 @@
 #include <rex/kernel/object/module_object.h>
 #include <rex/kernel/object/object_table.h>
 #include <rex/kernel/title_paths.h>
+#include <rex/kernel/thread_registry.h>
 #include <rex/ppc/image.h>
 #include <atomic>
 #include <cstddef>
@@ -24,6 +25,10 @@ extern "C" const rex::ppc::PPCImage* ReXGetModuleImage();
 namespace {
 constexpr rex::u32 kStart=0x98020E60u;
 PPCFunc* original_start{};
+PPCFunc* original_control{};
+constexpr rex::u32 kControl=0x98020EC8u;
+constexpr rex::u32 kControlFlagA=0x98077760u,kControlFlagB=0x98077761u;
+std::atomic<unsigned> completed_controls{0};
 rex::u32 guest_module{};
 std::atomic<bool> original_entered{false},original_returned{false};
 
@@ -47,6 +52,38 @@ void launch_original(PPCContext& ctx,rex::u8* base) {
     std::cout<<"BOOTANIM_LIVE original_return r3=0x"<<std::hex<<ctx.r3.u32<<std::dec<<std::endl;
 }
 
+// Run the original second export on a real guest thread. Its two branches
+// publish different byte flags. Never write either flag from the host.
+void run_control(PPCContext& ctx,rex::u8* base) {
+    auto* thread=rex::kernel::KernelThread::GetCallingThread();
+    if (!thread || !original_control) {
+        std::cout<<"BOOTANIM_LIVE fail control_thread_binding"<<std::endl;
+        if (thread)thread->Exit(1);
+        return;
+    }
+    const auto argument=ctx.r3.u32;
+    auto& memory=thread->GetRuntime().GetGuestMemory();
+    auto a=memory.Load<rex::u8>(kControlFlagA);
+    auto b=memory.Load<rex::u8>(kControlFlagB);
+    if (!a || !b) {
+        std::cout<<"BOOTANIM_LIVE fail control_flags_unmapped"<<std::endl;
+        thread->Exit(1);
+    }
+    std::cout<<"BOOTANIM_LIVE control_begin argument="<<argument
+             <<" flag_a="<<unsigned(*a)<<" flag_b="<<unsigned(*b)<<std::endl;
+    original_control(ctx,base);
+    a=memory.Load<rex::u8>(kControlFlagA);
+    b=memory.Load<rex::u8>(kControlFlagB);
+    if (!a || !b || (*a!=1 && *b!=1)) {
+        std::cout<<"BOOTANIM_LIVE fail control_flag_publication"<<std::endl;
+        thread->Exit(1);
+    }
+    std::cout<<"BOOTANIM_LIVE control_return argument="<<argument
+             <<" flag_a="<<unsigned(*a)<<" flag_b="<<unsigned(*b)<<std::endl;
+    completed_controls.fetch_add(1,std::memory_order_release);
+    ctx.r3.u64=0;
+}
+
 class BootanimLive final : public rex::app::TitleApp {
 public:
     BootanimLive():TitleApp("metro_bootanim_live",*ReXGetModuleImage()) {}
@@ -61,8 +98,11 @@ protected:
         auto& paths=title.GetTitlePaths();
         if (paths.entry.Get()!="bootanim.xex" || paths.game_root.Get().empty() ||
             paths.game_writable.Get()) return fail("input_settings");
-        original_start=nullptr;guest_module=0;
-        original_entered=false;original_returned=false;
+        original_start=nullptr;original_control=nullptr;guest_module=0;
+        original_entered=false;original_returned=false;completed_controls=0;
+        const char* control=std::getenv("X360_BOOTANIM_CONTROL");
+        diagnostic_control_=control && std::string_view(control)=="two_phase";
+        controls_issued_=0;
         auto& registry=title.GetModuleRegistry();
         const auto exe=registry.GetExecutable();
         if (!exe)return fail("module_handle");
@@ -137,6 +177,14 @@ protected:
         if (!function || !dispatcher || *function==&launch_original)return fail("entry_dispatch");
         original_start=*function;guest_module=object->hmodule_ptr;
         if (!dispatcher->SetFunction(kStart,&launch_original))return fail("entry_install");
+        if (diagnostic_control_) {
+            auto control=title.FindFunction(kControl);
+            if (!control || *control==&run_control ||
+                !mem.GetWritableSpan(kControlFlagA,2))return fail("control_export_mapping");
+            original_control=*control;
+            if (!dispatcher->SetFunction(kControl,&run_control))return fail("control_install");
+            std::cout<<"BOOTANIM_LIVE diagnostic_control two_phase"<<std::endl;
+        }
         // Select the verified export for this isolated TitleRuntime launch,
         // not a fabricated XEX entrypoint. No guest image/header is altered.
         object->user.entry_point=kStart;
@@ -149,6 +197,25 @@ protected:
         std::uint64_t last=0;
         while (RunFrame()) {
             const auto frames=GetGraphics().GetFrameStats().frame_count;
+            // The retail kernel's control-call timing is not known. For
+            // this explicitly selected diagnostic only, exercise each
+            // original branch after substantial actual presentation.
+            if (diagnostic_control_ && original_entered.load(std::memory_order_acquire) &&
+                !original_returned.load(std::memory_order_acquire) &&
+                controls_issued_<2 && completed_controls.load(std::memory_order_acquire)==controls_issued_ &&
+                frames>=(controls_issued_==0?110u:165u)) {
+                auto& runtime=GetTitleRuntime();
+                const auto argument=controls_issued_==0?1u:0u;
+                auto result=runtime.GetThreadRegistry().CreateTaskThread(kControl,argument);
+                if (!result) {
+                    std::cout<<"BOOTANIM_LIVE fail control_thread_launch "
+                             <<result.error().GetDescription()<<std::endl;
+                    diagnostic_control_=false;
+                } else {
+                    ++controls_issued_;
+                    rex::kernel::CloseOwned(runtime.GetObjectTable(),*result);
+                }
+            }
             if (original_entered.load(std::memory_order_acquire) && frames>last) {
                 last=frames;
                 if (frames<=10 || frames%5==0)
@@ -161,6 +228,9 @@ protected:
                  <<original_returned.load(std::memory_order_acquire)<<std::endl;
         rex::app::RequestShutdown(original_returned.load()?0:1);
     }
+private:
+    bool diagnostic_control_=false;
+    unsigned controls_issued_=0;
 };
 }
 REX_TITLE_APP(BootanimLive)
