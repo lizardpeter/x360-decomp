@@ -183,6 +183,7 @@ jobs:
           python tools/instrument_metro_heap.py "$folder/generated_xam" --receipt build/receipts/windows-heap-probes.json
           python tools/instrument_metro_ui.py "$folder" --receipt build/receipts/windows-ui-probes.json
           python tools/instrument_metro_audio.py "$folder/generated_xam" --receipt build/receipts/windows-audio-probes.json
+          python tools/instrument_metro_intro.py "$folder/generated_bootanim" --receipt build/receipts/windows-intro-phase-probes.json
       - name: Verify exact original profile module bindings and install Guide probes
         if: env.METRO_PROFILE_MODULES == '1'
         run: |

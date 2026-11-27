@@ -36,3 +36,13 @@ class TestMetroIntro(unittest.TestCase):
         self.assertIn("METRO_INTRO original_initial_update_event signaled",capture)
         self.assertIn("METRO_INTRO pass control_return argument=0 flag_b=1",capture)
         self.assertIn("events!=sorted(set(events))",capture)
+
+    def test_original_intro_phase_probe_coverage(self):
+        from instrument_metro_intro import POINTS,insert
+        body="DEFINE_REX_FUNC(sub_9800EA10) {\n"+''.join(f"    // METRO_GUEST_PC {pc:08X}\n" for pc in POINTS)+"}\n"
+        changed,hits=insert(body)
+        self.assertEqual(set(hits),set(POINTS))
+        self.assertEqual(changed.count("unsigned metro_intro_object=0;"),1)
+        self.assertEqual(changed.count("metro_intro_object=ctx.r3.u32;"),1)
+        self.assertNotIn("mem->Store",changed)
+        with self.assertRaises(ValueError):insert(body.replace("sub_9800EA10","sub_98000000"))
