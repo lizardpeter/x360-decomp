@@ -1,0 +1,7 @@
+# Hosted native console preferences
+
+The verified full-routing boot now reaches XAM's entry, but its logs contain repeated unsupported category-7 XConfig reads. Public independent XConfig documentation identifies category 7 as console preferences. The new SDK patch exposes six documented non-security preferences as actual configurable host settings: screensaver, idle shutdown, camera flags, keyboard layout, captions and caption-style flags. It implements matching read/write operations with known 1/2/4-byte widths, endian conversion, input validation, explicit errors and checked guest memory. Unknown keys or categories remain unsupported and no security-related values are added or writable. Default values are hosted policy choices, not extracted flash data. These preferences can be changed and read back while the app is running; physical camera behavior, host sleep and caption rendering are not claimed. Persistence beyond the SDK settings lifecycle is not established.
+
+The native test calls the actual exports on guest threads, covers each width, size queries, round trips, wrong buffer sizes, invalid values, unmapped and overlapping addresses, and restoration of defaults. It is pending execution. The running fault-localization and original module identity jobs are left untouched.
+
+Reference evidence: XeniOS xconfig.h, xconfig.cc and xboxkrnl_xconfig.cc at 0761cac73829cbb7dc2b85ba4060fe01e6d4bb27; category list also documented by Free60 wiki. Authored SDK patch, not reference source copied.
