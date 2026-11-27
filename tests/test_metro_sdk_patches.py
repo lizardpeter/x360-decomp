@@ -11,6 +11,8 @@ from patch_metro_import_slots import (  # noqa: E402
     BINDINGS, VALUE_SLOTS, VARIABLE_ORDINAL, VARIABLE_SLOT, VARIABLE_THUNK_SLOT, VARIABLE_TARGET,
     VARIABLE_OLD, VARIABLE_NEW, OLD as IMPORT_OLD, NEW as IMPORT_NEW,
     corrected as corrected_imports, rows, verify_slots,
+    corrected_skin, verify_skin_inventory, SKIN_HEADER_ANCHOR, SKIN_DECODE_OLD,
+    SKIN_LOAD_START, SKIN_LOAD_END,
 )
 from patch_rexglue_function_tables import (  # noqa: E402
     ALLOC, RELEASE, FIXED_ALLOC, FIXED_RELEASE,
@@ -70,6 +72,23 @@ class MetroSDKPatchTests(unittest.TestCase):
             corrected_imports(patched)
         with self.assertRaises(ValueError):
             corrected_imports(source.replace("Patched function import", "Patched function imports", 1))
+
+    def test_hud_skin_inventory_and_strict_resource_loader(self):
+        verify_skin_inventory()
+        header = SKIN_HEADER_ANCHOR + "interface\n" + SKIN_HEADER_ANCHOR
+        decoder = SKIN_DECODE_OLD + "\n"
+        loader = SKIN_LOAD_START + "\n    payload);\n  if (!parsed_pe) return false;\n" + SKIN_LOAD_END
+        h,d,l = corrected_skin(header,decoder,loader)
+        self.assertIn("IsMetroHudSkinResource",h)
+        self.assertIn("sec.export_table",h)
+        self.assertIn("kXEXSectionReadOnlyData",h)
+        self.assertIn("IsExecutable(image) || IsMetroHudSkinResource",d)
+        self.assertIn("METRO_HUD_SKIN resource-only image mapped",l)
+        self.assertIn("if (!parsed_pe) return false;",l)
+        with self.assertRaises(ValueError):
+            corrected_skin(h,d,l)
+        with self.assertRaises(ValueError):
+            corrected_skin(header,decoder,"missing loader")
 
     def test_g_xui_automation_data_binding_is_exact(self):
         imports = rows(ROOT / "analysis/dash_17559/imports.tsv")

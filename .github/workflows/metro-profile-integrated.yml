@@ -14,6 +14,8 @@ on:
       - 'tools/capture_metro_boot.sh'
       - 'tools/stage_metro_profile_modules.py'
       - 'tools/patch_metro_retail_routing.py'
+      - 'tools/patch_metro_import_slots.py'
+      - 'tests/test_metro_sdk_patches.py'
       - 'tools/native/metro_profile_mapping.hpp'
       - 'tools/patch_metro_public_verification.py'
       - '.github/workflows/metro-profile-integrated.yml'

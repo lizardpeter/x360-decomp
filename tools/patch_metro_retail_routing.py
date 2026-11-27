@@ -176,8 +176,13 @@ def patch_hud_loader(source,hud):
        rex::string::utf8_equal_case(raw_name,"flash:\\hud.xex") ||
        rex::string::utf8_equal_case(raw_name,"\\Device\\Flash\\hud.xex") ||
        rex::string::utf8_equal_case(raw_name,"\\SystemRoot\\hud.xex"));
-  if (retail_hud) {
-    path="flash:\\hud.xex";
+  const bool retail_skin=StateOf(runtime_).retail_xam_hmodule &&
+      (rex::string::utf8_equal_case(raw_name,"huduiskin.xex") ||
+       rex::string::utf8_equal_case(raw_name,"flash:\\huduiskin.xex") ||
+       rex::string::utf8_equal_case(raw_name,"\\Device\\Flash\\huduiskin.xex") ||
+       rex::string::utf8_equal_case(raw_name,"\\SystemRoot\\huduiskin.xex"));
+  if (retail_hud || retail_skin) {
+    path=retail_skin ? "flash:\\huduiskin.xex" : "flash:\\hud.xex";
     if (auto existing=GetModule(path,true)) {
       AcquireReference(*table_.Get<ModuleObject>(*existing));
       return *existing;
@@ -187,6 +192,16 @@ def patch_hud_loader(source,hud):
     anchor="  auto recomp = FindRecompiledModule(path);"
     if source.count(anchor)!=1:raise ValueError("HUD registration anchor")
     source=source.replace(anchor,anchor+r"""
+  if (retail_skin && (recomp || !module->GetXEX() ||
+      module->GetXEX()->GetBaseAddress()!=0x90F90000 ||
+      module->GetXEX()->GetImageSize()!=233472 ||
+      module->user.entry_point!=0 || !module->GetXEX()->GetImportLibraries().empty())) {
+    ReleaseDependencies(*module,call_entry);
+    CloseOwned(table_,created);
+    return Err<X_HANDLE>(StatusError(X_STATUS_DLL_NOT_FOUND));
+  }
+  if (retail_skin)
+    REXSYS_INFO("METRO_HUD_SKIN registered original resource image");
   if (retail_hud && (!recomp || !module->GetXEX() ||
       module->GetXEX()->GetBaseAddress()!=0x913E0000 ||
       module->GetXEX()->GetImageSize()!=299008 ||

@@ -100,6 +100,89 @@ def corrected(source):
         raise ValueError("unexpected or previously patched XEX loader")
     return source.replace(VARIABLE_OLD, VARIABLE_NEW, 1).replace(OLD, NEW, 1)
 
+# 17559 huduiskin is a non-executable resource image, not a PE.
+SKIN_HEADER_ANCHOR = "}  // namespace rex::filesystem\n"
+SKIN_HELPER = r"""
+// Exact original 17559 HUD skin layout. Normal compressed-block verification
+// still applies; no entry point, imports, exports or code pages are accepted.
+inline bool IsMetroHudSkinResource(const IXEXImage& xex, std::span<const u8> bytes) {
+  using namespace rex::kernel;
+  constexpr u32 base = 0x90F90000, size = 233472;
+  const auto& sec = xex.GetSecurity();
+  const auto header = xex.GetHeaderBytes();
+  if (xex.IsPatch() || sec.load_address != base || sec.image_size != size ||
+      xex.GetImageSize() != size || bytes.size() != size || header.size() != 4096 ||
+      sec.export_table || !xex.GetImports().empty() ||
+      xex.GetOptHeaderValue(kXEXHeaderEntryPoint).value_or(0) ||
+      xex.GetOptHeaderValue(kXEXHeaderImageBaseAddress).value_or(base) != base ||
+      xex.GetOptHeader<XEXOptDataDirectory>(kXEXHeaderExportsByName))
+    return false;
+  if (sec.pages.empty()) return false;
+  for (const auto& page : sec.pages)
+    if (page.type != kXEXSectionReadOnlyData && page.type != kXEXSectionData) return false;
+  const auto* format = xex.GetOptHeader<XEXOptFileFormatInfo>(kXEXHeaderFileFormatInfo);
+  const auto* info = xex.GetOptHeader<XEXOptResourceInfo>(kXEXHeaderResourceInfo);
+  if (!format || reinterpret_cast<const u8*>(format) != header.data()+704 ||
+      static_cast<u16>(format->encryption_type) != kXEXEncryptionNone ||
+      static_cast<u16>(format->compression_type) != kXEXCompressionNormal ||
+      !info || reinterpret_cast<const u8*>(info) != header.data()+668 ||
+      static_cast<u32>(info->size) != 36)
+    return false;
+  constexpr u8 expected[] = {
+    's','k','i','n',0,0,0,0, 0x90,0xF9,0x00,0x00, 0x00,0x01,0x28,0x4B,
+    'x','a','m',0,0,0,0,0, 0x90,0xFA,0x28,0x80, 0x00,0x02,0x61,0xA5
+  };
+  for (size_t i=0;i<sizeof(expected);++i)
+    if (header[672+i]!=expected[i]) return false;
+  for (const size_t off : {size_t{0},size_t{0x12880}})
+    if (bytes[off]!='X' || bytes[off+1]!='U' || bytes[off+2]!='I' || bytes[off+3]!='Z')
+      return false;
+  return true;
+}
+
+"""
+SKIN_DECODE_OLD = "    if (decoded && IsExecutable(image)) {"
+SKIN_DECODE_NEW = "    if (decoded && (IsExecutable(image) || IsMetroHudSkinResource(*this, image))) {"
+SKIN_LOAD_START = "  auto parsed_pe = GetKernelServices()->file_system->ParsePE("
+SKIN_LOAD_END = "  std::vector<u8>().swap(pending_image_);\n  for (auto& section : pe_->sections)"
+def corrected_skin(header, decoder, loader):
+    if "IsMetroHudSkinResource" in header or header.count(SKIN_HEADER_ANCHOR)!=2:
+        raise ValueError("unexpected SDK XEX interface")
+    pos=header.rindex(SKIN_HEADER_ANCHOR)
+    header=header[:pos]+SKIN_HELPER+header[pos:]
+    if decoder.count(SKIN_DECODE_OLD)!=1 or SKIN_DECODE_NEW in decoder:
+        raise ValueError("unexpected SDK XEX decoder")
+    decoder=decoder.replace(SKIN_DECODE_OLD,SKIN_DECODE_NEW,1)
+    if loader.count(SKIN_LOAD_START)!=1 or loader.count(SKIN_LOAD_END)!=1 or "IsMetroHudSkinResource" in loader:
+        raise ValueError("unexpected SDK XEX PE load")
+    begin=loader.index(SKIN_LOAD_START)
+    end=loader.index(SKIN_LOAD_END,begin)
+    original=loader[begin:end]
+    replacement="""  if (filesystem::IsMetroHudSkinResource(*image_,
+          std::span<const u8>(pending_image_.data(), image_end))) {
+    *pe_ = {};
+    std::memcpy(GetAddressSpace()->TranslateVirtual(base_address_),
+                pending_image_.data(), image_end);
+    REXSYS_INFO("METRO_HUD_SKIN resource-only image mapped at {:08X} bytes={}",
+                base_address_, image_end);
+  } else {
+"""+ "".join("  "+line+"\n" for line in original.splitlines())+"  }\n"
+    loader=loader[:begin]+replacement+loader[end:]
+    return header,decoder,loader
+
+def verify_skin_inventory():
+    meta=json.loads((ROOT/"analysis/huduiskin_17559/decoded.json").read_text())
+    if (meta.get("state")!="verified" or meta.get("pe") is not None or
+        meta.get("source_sha256")!="fdbe68d20fa6b013282ce8f21cebddc34fe4e3a92a71c28983d63f288d2252cc" or
+        meta.get("sha256")!="d7cc1f96a9ac09853d325c9522ba257e5e23c43c819de5007f36fb49e33cedf4" or
+        meta.get("image_base")!=0x90F90000 or meta.get("image_bytes")!=233472 or
+        meta.get("distinct_imports")!=0 or meta.get("resource_count")!=2):
+        raise ValueError("original HUD skin inventory mismatch")
+    records=json.loads((ROOT/"analysis/huduiskin_17559/resource_hashes.json").read_text())
+    if [(r["id"],r["address"],r["bytes"],r["magic"]) for r in records]!=[
+            ("skin","90F90000",75851,"5855495a"),("xam","90FA2880",156069,"5855495a")]:
+        raise ValueError("original HUD skin resource layout mismatch")
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk", type=Path)
@@ -111,7 +194,13 @@ def main():
                  rows(ROOT/"analysis/xam_17559/exports.tsv"))
     verify_variable_catalog((a.sdk/"src/kernel/xam/export_table.inc").read_text())
     path = a.sdk/"src/kernel/xex_module.cpp"
-    path.write_text(corrected(path.read_text()))
+    verify_skin_inventory()
+    header = a.sdk/"include/rex/filesystem/xex.h"
+    decoder = a.sdk/"src/filesystem/xex.cpp"
+    h,d,l = corrected_skin(header.read_text(),decoder.read_text(),corrected(path.read_text()))
+    header.write_text(h)
+    decoder.write_text(d)
+    path.write_text(l)
     subprocess.run(["git", "-C", str(a.sdk), "diff", "--check"], check=True)
 
 if __name__ == "__main__":
