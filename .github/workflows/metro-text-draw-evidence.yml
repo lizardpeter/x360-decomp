@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'tools/metro_text_draw_evidence.py'
+      - 'tools/metro_header_resource_evidence.py'
+      - 'tests/test_metro_header_resource_evidence.py'
       - 'tests/test_metro_text_draw_evidence.py'
       - '.github/workflows/metro-text-draw-evidence.yml'
 permissions:
@@ -36,8 +38,12 @@ jobs:
           source=build/mspack/libmspack/mspack
           cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
           python tools/metro_text_draw_evidence.py --sdk build/sdk-source --lzx build/lzx_adapter.so --output build/receipts/metro-text-draw-evidence.json
+          python -m unittest discover -s tests -p test_metro_header_resource_evidence.py
+          python tools/metro_header_resource_evidence.py --lzx build/lzx_adapter.so --output build/receipts/metro-header-resource-evidence.json
       - uses: actions/upload-artifact@v4
         with:
           name: metro-text-draw-evidence
-          path: build/receipts/metro-text-draw-evidence.json
+          path: |
+            build/receipts/metro-text-draw-evidence.json
+            build/receipts/metro-header-resource-evidence.json
           if-no-files-found: error
