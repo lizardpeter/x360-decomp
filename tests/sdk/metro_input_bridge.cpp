@@ -298,6 +298,7 @@ REX_TEST_CASE("metro_input_bridge: Guide edges reach registered system callback 
   g_fake[0].states[1]=Buttons(0);
   g_fake[0].states[2]=Buttons(0);
   rex::test::KernelFixture fixture({}, {&provider}, {}, {}, "fake_a");
+  REQUIRE(fixture.GetInput().GetSettings().guide_button.Set(true));
   fixture.GetInput().SetInputCaptured(true);
   StateOf(fixture.GetRuntime()).hosted_pad_input=&fixture.GetInput();
   metro_guide_calls=0;metro_guide_context=0;metro_guide_bad=0;

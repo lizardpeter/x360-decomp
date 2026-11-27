@@ -30,7 +30,7 @@ def insert(source,module,plan):
         if not re.fullmatch(r"[A-Za-z0-9_]+",name) or not re.fullmatch(r"[A-Za-z0-9_]+",phase):
             raise ValueError("invalid guide trace metadata")
         result='"observed"'
-        if pc in STATUS:result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
+        if pc in STATUS or (phase=='return' and name.startswith('ui_init_')):result='(ctx.r3.u32==0?"zero":(ctx.r3.u32&0x80000000u?"negative":"positive"))'
         if pc in INIT_OBJECT:result='(ctx.r3.u32?"nonzero_object":"null_object")'
         out.extend([p+'if (std::getenv("X360_METRO_GUIDE_TRACE")) {\n',
           p+'  static std::atomic<unsigned> metro_guide_count{0};\n',
