@@ -270,7 +270,10 @@ static bool IsMetroUIResource(std::string_view name) {
 def patch_file_information(source):
     source=replace(source,"#include <rex/kernel/title_runtime.h>",
         "#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>")
-    source=replace(source,"  info_ptr.Zero(info_length);",
+    start=source.index("u32 NtQueryInformationFile_entry(")
+    end=source.index("u32 GetSetFileMinimumLength(",start)
+    prefix,query,suffix=source[:start],source[start:end],source[end:]
+    source=replace(query,"  info_ptr.Zero(info_length);",
         """  auto& guest=kernel::GetCurrent().GetGuestMemory();
   const u32 output=info_ptr.GetGuestAddress(), iosb=io_status_block.GetGuestAddress();
   if (!output || !guest.GetWritableSpan(output,info_length) ||
@@ -303,7 +306,7 @@ def patch_file_information(source):
       break;
     }
     case XFileNetworkOpenInformation: {""")
-    return source
+    return prefix+source+suffix
 
 def patch_scatter(source):
     old="""  be_u32* segments = reinterpret_cast<be_u32*>(
