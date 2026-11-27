@@ -149,6 +149,25 @@ def original_system_object_heap_selection(read):
                              "descriptor_address":f"{0x81AABFF8+28*selector:08X}" if selector<9 else None,
                              "normalizer_assumed_calls":normalized["calls"],
                              "selector_path":[f"{pc:08X}" for pc in index["path"]]})
+    process_cases=[]
+    for process_type in (0,1,2):
+        # Evaluate the real process-type helper with a null per-thread object.
+        # A real system attach has its own KPROCESS and TLS, not a fabricated
+        # KeGetCurrentProcessType return injected into the kernel API.
+        helper=evaluate(read,0x816B81A4,{0x816B81EC},{3:process_type},
+                        {0x816B7F30:0})
+        boolean=helper["registers"][31]
+        default=evaluate(read,0x816BA7AC,{0x816BA7BC},{3:boolean})["registers"][31]
+        category=254 if process_type==2 else 238
+        candidates=[r for r in rows if r["category"]==category and r["helper_boolean"]==boolean
+                    and r["default_flags"]==f"{default:08X}"]
+        if len(candidates)!=1:
+            raise ValueError("missing process-derived heap scenario")
+        process_cases.append({"process_type":process_type,"assumed_tls_object":0,
+                              "category_if_tls_index_initialized":category,
+                              "helper_boolean":boolean,"default_flags":f"{default:08X}",
+                              "heap_selector":candidates[0]["heap_selector"],
+                              "descriptor_address":candidates[0]["descriptor_address"]})
     return {"scope":"original scalar path, explicit hypothetical helper return values; not a live observation",
             "allocation_bytes":6536,"tag":15,"normalizer_input":f'{regs[3]:08X}',
-            "tag_word":f'{regs[30]:08X}',"scenarios":rows}
+            "tag_word":f'{regs[30]:08X}',"scenarios":rows,"process_cases":process_cases}
