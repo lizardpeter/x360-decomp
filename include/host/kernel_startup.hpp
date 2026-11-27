@@ -4,6 +4,7 @@
 #include "host/virtual_memory.hpp"
 #include "host/kernel_objects.hpp"
 #include "host/kernel_pool.hpp"
+#include "host/kernel_files.hpp"
 #include <map>
 namespace x360::host {
 struct Notification {abi::Address routine;std::uint32_t priority;};
@@ -20,7 +21,9 @@ public:
     void enable_kernel_services(machine::AddressSpace& memory){
         if(!objects_)objects_.emplace(memory);
         if(!pool_)pool_.emplace(memory);
+        if(!files_)files_.emplace(memory);
     }
+    KernelFiles* files() noexcept{return files_?&*files_:nullptr;}
     static constexpr abi::Address hardware_info_address=0x71000100;
     bool install_hardware_info(machine::AddressSpace& memory,const std::array<std::uint8_t,16>& bytes);
     enum class ProcessType:std::uint32_t {idle=0,user=1,system=2};
@@ -32,6 +35,7 @@ private:
     std::optional<VirtualMemory> virtual_memory_;
     std::optional<KernelObjects> objects_;
     std::optional<KernelPool> pool_;
+    std::optional<KernelFiles> files_;
     std::optional<ProcessType> process_type_;
     abi::Address diagnostic_thread_{};
     bool hardware_ready_{};
