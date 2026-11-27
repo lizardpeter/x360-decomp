@@ -136,3 +136,89 @@ REX_TEST_CASE("metro_system_attach: invalid thread output is rejected before sta
     CHECK(c.Load32(out)==0xdeadbeef);
   });
 }
+
+#include <rex/kernel/types/io.h>
+
+REX_TEST_CASE("metro_system_attach: current-thread pseudo handle survives closure of the creation handle",
+              "[kernel][metro_system_attach]") {
+  using namespace rex::kernel;
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    const u32 out=c.Alloc(4), observed=c.Alloc(16), event_out=c.Alloc(4), wait_handle=c.Alloc(4);
+    const u32 context=rex::test::Caller::RegisterBody([observed](rex::test::Caller& worker) {
+      const u32 dup=worker.Alloc(4), object=worker.Alloc(4);
+      auto* self=KernelThread::GetCallingThread();
+      worker.Store32(observed,self->GetGuestObject());
+      worker.Store32(observed+4,worker.Kernel("NtDuplicateObject",{0xfffffffe,dup,0}));
+      if (worker.Load32(observed+4)==0) {
+        worker.Store32(observed+8,worker.Kernel("ObReferenceObjectByHandle",{worker.Load32(dup),0,object}));
+        worker.Store32(observed+12,worker.Load32(object));
+        if (worker.Load32(object)) worker.Kernel("ObDereferenceObject",{worker.Load32(object)});
+        worker.Kernel("NtClose",{worker.Load32(dup)});
+      }
+      CHECK(worker.Kernel("NtClose",{0xfffffffe})==X_STATUS_INVALID_HANDLE);
+    });
+    REQUIRE(c.Kernel("ExCreateThread",{out,0,0,0,rex::test::Caller::start_thunk,context,0x83})==0);
+    const u32 pointer=c.Load32(out);
+    REQUIRE(pointer);
+    // Reuse a handle slot while the new system thread is still suspended.
+    REQUIRE(c.Kernel("NtCreateEvent",{event_out,0,0,0})==0);
+    REQUIRE(c.Kernel("ObOpenObjectByPointer",{pointer,wait_handle})==0);
+    REQUIRE(c.Kernel("KeResumeThread",{pointer})==0);
+    REQUIRE(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(wait_handle),1,0,c.AllocQuad(-50000000)})==0);
+    CHECK(c.Load32(observed)==pointer);
+    CHECK(c.Load32(observed+4)==0);
+    CHECK(c.Load32(observed+8)==0);
+    CHECK(c.Load32(observed+12)==pointer);
+    CHECK(c.Kernel("NtClose",{c.Load32(event_out)+1})==X_STATUS_INVALID_HANDLE);
+    CHECK(c.Kernel("NtClose",{c.Load32(event_out)})==0);
+    CHECK(c.Kernel("NtClose",{c.Load32(wait_handle)})==0);
+    c.Kernel("ObDereferenceObject",{pointer});
+  });
+}
+
+REX_TEST_CASE("metro_system_attach: overlapped APC targets original pointer-owned thread",
+              "[kernel][metro_system_attach]") {
+  using namespace rex::kernel;
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    const u32 out=c.Alloc(4), seen=c.Alloc(16), wait_handle=c.Alloc(4), event_out=c.Alloc(4);
+    const u32 overlapped=c.Alloc(sizeof(XOVERLAPPED)+4);
+    c.Store32(overlapped+sizeof(XOVERLAPPED),seen);
+    const u32 routine=StateOf(c.GetRuntime()).GetFunctionDispatcher()->AllocateThunk(
+      +[](PPCContext& ctx,u8* base) {
+        auto* self=KernelThread::GetCallingThread();
+        rex::test::Caller worker(ctx,base,self->GetRuntime());
+        const u32 block=ctx.r5.u32;
+        const u32 output=worker.Load32(block+sizeof(XOVERLAPPED));
+        worker.Store32(output,ctx.r3.u32);
+        worker.Store32(output+4,ctx.r4.u32);
+        worker.Store32(output+8,self->GetGuestObject());
+        worker.Store32(output+12,1);
+      },0);
+    REQUIRE(routine);
+    c.Store32(overlapped+offsetof(XOVERLAPPED,completion_routine),routine);
+    const u32 context=rex::test::Caller::RegisterBody([overlapped,seen](rex::test::Caller& worker) {
+      StateOf(worker.GetRuntime()).GetOverlappedDispatcher().CompleteDeferred(
+        overlapped,[] { return CompletionOptions{.result=0,.length=73}; });
+      const u32 delay=worker.AllocQuad(-1000000);
+      for (int i=0;i<30 && !worker.Load32(seen+12);++i)
+        worker.Kernel("KeDelayExecutionThread",{1,1,delay});
+    });
+    REQUIRE(c.Kernel("ExCreateThread",{out,0,0,0,rex::test::Caller::start_thunk,context,0x83})==0);
+    const u32 pointer=c.Load32(out);
+    REQUIRE(pointer);
+    REQUIRE(c.Kernel("NtCreateEvent",{event_out,0,0,0})==0);
+    REQUIRE(c.Kernel("ObOpenObjectByPointer",{pointer,wait_handle})==0);
+    REQUIRE(c.Kernel("KeResumeThread",{pointer})==0);
+    REQUIRE(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(wait_handle),1,0,c.AllocQuad(-50000000)})==0);
+    CHECK(c.Load32(seen)==0);
+    CHECK(c.Load32(seen+4)==73);
+    CHECK(c.Load32(seen+8)==pointer);
+    CHECK(c.Load32(seen+12)==1);
+    CHECK(c.Load32(overlapped+offsetof(XOVERLAPPED,length))==73);
+    c.Kernel("NtClose",{c.Load32(event_out)});
+    c.Kernel("NtClose",{c.Load32(wait_handle)});
+    c.Kernel("ObDereferenceObject",{pointer});
+  });
+}

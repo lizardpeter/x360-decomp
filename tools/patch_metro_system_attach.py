@@ -60,13 +60,19 @@ Result<TitleRuntime::HostedSystemAttach> TitleRuntime::AttachHostedSystemModule(
   auto launched=GetThreadRegistry().Launch(std::move(worker));
   if (!launched) return Err<HostedSystemAttach>(launched.error());
   const auto handle=*launched;
+  struct OwnedHandle {
+    IObjectTable& table;
+    X_HANDLE handle;
+    ~OwnedHandle() { CloseOwned(table,handle); }
+  } owned{GetObjectTable(),handle};
   // No retry and no fallback to the title process. A stalled attach is a
   // boot failure; the runtime's ordinary stop path owns worker teardown.
   u64 timeout=static_cast<u64>(-30LL*10000000LL);
   const auto waited=GetThreadRegistry().GetObjectWaiter().WaitGuestObject(handle,0,0,0,&timeout);
-  CloseOwned(GetObjectTable(),handle);
-  if (waited!=X_STATUS_SUCCESS)
+  if (waited!=X_STATUS_SUCCESS) {
+    if (auto thread=GetThreadRegistry().FindByHandle(handle)) thread->RequestStop();
     return Err<HostedSystemAttach>(StatusError(waited));
+  }
   if (!completion->done.load(std::memory_order_acquire))
     return Err<HostedSystemAttach>(StatusError(X_STATUS_UNSUCCESSFUL));
   return completion->value;
@@ -127,6 +133,59 @@ def patch_thread_creation(source):
     return source[:start]+body+source[end:]
 
 
+
+def patch_thread_identity(source):
+    source=replace(source,"  if (handle == 0xFFFFFFFE) {\n    return KernelThread::IsInThread() ? KernelThread::GetCurrentThreadHandle() : 0;\n  }","  if (handle == 0xFFFFFFFE) return 0; // never a real handle slot")
+    source=replace(source,"  if (handle < kHandleBase) {","  if (handle < kHandleBase || (handle & 3)) {")
+    source=replace(source,"Result<X_HANDLE> ObjectTable::Duplicate(X_HANDLE handle) {\n  handle = Translate(handle);",
+        """Result<X_HANDLE> ObjectTable::Duplicate(X_HANDLE handle) {
+  if (handle == 0xFFFFFFFE) {
+    auto current=Get(handle);
+    if (!current) return Err<X_HANDLE>(StatusError(X_STATUS_INVALID_HANDLE));
+    return Open(current);
+  }
+  handle = Translate(handle);""")
+    source=replace(source,"ObjectPin ObjectTable::Get(X_HANDLE handle) {\n  handle = Translate(handle);",
+        """ObjectPin ObjectTable::Get(X_HANDLE handle) {
+  if (handle == 0xFFFFFFFE) {
+    if (!KernelThread::IsInThread()) return {};
+    auto* current=KernelThread::GetCallingThread();
+    if (!current || &current->GetRuntime()!=owner_) return {};
+    // The guest thread holds its own object reference until exit, even
+    // when every user-visible handle (or the pointer-returning creation
+    // handle) has been closed. Numeric handle slots can be reused.
+    return GetByAddress(current->GetGuestObject());
+  }
+  handle = Translate(handle);""")
+    return source
+
+def patch_completion_identity(header,source):
+    header=replace(header,"void CompleteOverlappedEx(u32 overlapped, X_RESULT result, u32 extended_error, u32 length);",
+        "void CompleteOverlappedEx(u32 overlapped, X_RESULT result, u32 extended_error, u32 length,\n                            u32 submitting_thread_id);")
+    source=replace(source,"                                      u32 length) {\n  auto ptr",
+        "                                      u32 length, u32 submitting_thread_id) {\n  auto ptr")
+    source=replace(source,"    X_HANDLE thread_handle = XOverlappedGetContext(ptr);\n    auto thread = runtime_.GetThreadRegistry().FindByHandle(thread_handle);",
+        """    // Completion belongs to the original submitting thread, not a
+    // possibly recycled handle slot. The ID is captured by the host when
+    // the request is queued, rather than reread from guest memory.
+    auto thread = runtime_.GetThreadRegistry().Find(submitting_thread_id);""")
+    source=replace(source,"  XOverlappedSetContext(ptr, KernelThread::GetCurrentThreadHandle());\n  CompleteOverlappedEx(overlapped, options.result, ExtendedError(options), Length(options));",
+        """  auto* submitting=KernelThread::GetCallingThread();
+  const u32 id=submitting ? submitting->GetThreadID() : 0;
+  XOverlappedSetContext(ptr,id); // reserved system context, no handle ownership
+  CompleteOverlappedEx(overlapped, options.result, ExtendedError(options), Length(options),id);""")
+    source=replace(source,"  XOverlappedSetContext(ptr, KernelThread::GetCurrentThreadHandle());\n  std::lock_guard lock(dispatch_mutex_);",
+        """  auto* submitting=KernelThread::GetCallingThread();
+  const u32 id=submitting ? submitting->GetThreadID() : 0;
+  XOverlappedSetContext(ptr,id);
+  std::lock_guard lock(dispatch_mutex_);""")
+    source=replace(source,"dispatch_queue_.push_back([this, work = std::move(work), overlapped, pre = std::move(pre),",
+        "dispatch_queue_.push_back([this, work = std::move(work), overlapped, id, pre = std::move(pre),")
+    source=replace(source,"    CompleteOverlappedEx(overlapped, options.result, ExtendedError(options), Length(options));",
+        "    CompleteOverlappedEx(overlapped, options.result, ExtendedError(options), Length(options),id);")
+    return header,source
+
+
 def patch_sources(sdk,tests):
     header=sdk/"include/rex/kernel/object/kernel_thread.h"
     thread=sdk/"src/kernel/kernel_thread.cpp"
@@ -134,8 +193,13 @@ def patch_sources(sdk,tests):
     runtime=sdk/"src/kernel/title_runtime.cpp"
     test=sdk/"tests/unit/kernel/xam_input_test.cpp"
     exports=sdk/"src/kernel/xboxkrnl/xboxkrnl_threading.cpp"
+    table=sdk/"src/kernel/object_table.cpp"
+    dispatcher_h=sdk/"src/kernel/dispatcher.h"
+    dispatcher_cpp=sdk/"src/kernel/dispatcher.cpp"
     out={}
     out[exports]=patch_thread_creation(exports.read_text())
+    out[table]=patch_thread_identity(table.read_text())
+    out[dispatcher_h],out[dispatcher_cpp]=patch_completion_identity(dispatcher_h.read_text(),dispatcher_cpp.read_text())
     out[header]=replace(header.read_text(),
         "               rex::MoveOnlyFunction<int()> host_fn);",
         "               rex::MoveOnlyFunction<int()> host_fn, u32 process = 0,\n               bool guest_thread = false);")
