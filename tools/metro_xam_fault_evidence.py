@@ -494,6 +494,8 @@ def background_dependencies(label,image,base,pe,rows,catalog,stubs):
             if value in literal_hits:data_refs[base+offset].update(literal_hits[value])
     lookup={k:v for k,v in literal_hits.items()}
     lookup.update(data_refs)
+    if label=="xam":
+        lookup[0x81A85484]={"custom_default_object"}
     refs=[];groups=set();calls=[]
     for start,size,_ in pe["functions"]:
         known={}
@@ -534,7 +536,7 @@ def background_dependencies(label,image,base,pe,rows,catalog,stubs):
     groups.update(int(row["function"],16) for row in observations)
     custom_types=[]
     if label=="xam":
-        groups.update((0x816E05D0,0x818612D0,0x816AEAC0,0x816AF458))
+        groups.update((0x816E05D0,0x818612D0,0x816AEAC0,0x816AF458,0x816A8A48,0x816E6AB0,0x816E6B68,0x816E63D8))
         for address in (0x81A821E0,0x81A82574,0x81A85494,0x81A93738):
             words=[read_word(image,base,address+i) for i in range(0,28,4)]
             callbacks=[]
@@ -561,6 +563,7 @@ def background_dependencies(label,image,base,pe,rows,catalog,stubs):
             "function_groups":functions,
             "custom_type_words":[hx(read_word(image,base,0x81A821E0+i)) for i in range(0,28,4)] if label=="xam" else [],
             "custom_types":custom_types,
+            "custom_default_object_words":[hx(read_word(image,base,0x81A85484+i)) for i in range(0,16,4)] if label=="xam" else [],
             "scope":"direct original operand and literal-reference evidence; no inferred device or object ABI"}
 
 def main():

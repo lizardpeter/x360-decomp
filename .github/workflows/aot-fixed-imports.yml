@@ -223,7 +223,7 @@ jobs:
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity hud_retail_mapping clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame

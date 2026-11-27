@@ -128,6 +128,25 @@ public:
             !title_.FindFunction(kXamEntry))
             return fail("xam_identity");
         std::cout << "METRO_PREFLIGHT pass xam_load" << std::endl;
+        // Data-referenced leaf entries are not guaranteed by PDATA or exports.
+        // Fail before original XAM initialization if any actual callback is
+        // absent from the native dispatch table.
+        constexpr rex::u32 callback_types[][8] = {
+            {0x81A821E0,0x81A72B54,0x81A72734,0,0x816A7EE0,0,0xC,0x66746F4E},
+            {0x81A82574,0x816E6CE0,0x816E6B10,0,0x816BB030,0,0x81A85484,7},
+            {0x81A85494,0x816E6CE0,0x816E6B10,0x816F1200,0,0,0x81A85484,6},
+            {0x81A93738,0x81897C50,0x8188B380,0x8188B388,0,0,0x81A85484,0x5370744D},
+        };
+        for (const auto& descriptor : callback_types) {
+            for (rex::u32 index=0; index<7; ++index) {
+                auto live=title_.GetGuestMemory().Load<rex::be_u32>(descriptor[0]+index*4);
+                if (!live || static_cast<rex::u32>(*live)!=descriptor[index+1])
+                    return fail("custom_object_descriptor");
+                if (index<5 && descriptor[index+1] && !title_.FindFunction(descriptor[index+1]))
+                    return fail("custom_object_callback_mapping");
+            }
+        }
+        std::cout << "METRO_PREFLIGHT pass custom_object_callbacks" << std::endl;
 
         if (!metro_boot::verify_kernel_variables(title_,*dash_xex,kDashKernelVariables,"dash") ||
             !metro_boot::verify_kernel_variables(title_,*xam,kXamKernelVariables,"xam")) return fail("kernel_variables");
