@@ -9,6 +9,7 @@ on:
       - 'tools/stage_metro_profile_modules.py'
       - 'tools/patch_metro_retail_routing.py'
       - 'tools/native/metro_profile_mapping.hpp'
+      - 'tools/patch_metro_public_verification.py'
       - '.github/workflows/metro-profile-integrated.yml'
 permissions:
   contents: read

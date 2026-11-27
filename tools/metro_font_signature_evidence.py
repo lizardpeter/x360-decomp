@@ -28,6 +28,11 @@ MODULES={
 MASK=(1<<64)-1
 MAX_HEADER=4096
 MAX_HASH_BYTES=128*1024*1024
+ORIGINAL_SIGNED_RANGES={
+    "SegoeXbox-Light.xtt":(260,3836),
+    "XenonCLatin.xtt":(260,48892),
+    "XenonJKLatin.xtt":(260,98044),
+}
 
 def rot(value,count):
     return ((value<<count)|(value>>(64-count)))&MASK
@@ -168,6 +173,20 @@ def original_module(label,raw,lzx):
                  "salt_bytes":len(salt),"setup_operands":body["operands"][:index+8],
                  "verification_wrapper":bounded_entry(image,base,pe,wrapper,{},4096)}
 
+def verify_original_range(name,data,n,e,salt):
+    # Exact recovered payload, not a runtime candidate search. Only checked
+    # signature validity is reported; no signature or signed hash is exported.
+    start,length=ORIGINAL_SIGNED_RANGES[name]
+    end=start+length
+    if end>len(data):return False
+    expected=recover_block(data[4:260],n,e,salt)
+    if expected is None:return False
+    payload=data[start:end]
+    if hashlib.sha1(bytes(8)+rotsum_sha(payload)+salt).digest()!=expected:return False
+    changed=bytearray(payload)
+    changed[len(changed)//2]^=1
+    return hashlib.sha1(bytes(8)+rotsum_sha(changed)+salt).digest()!=expected
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--lzx",type=Path,required=True)
@@ -188,6 +207,11 @@ def main():
     report={"original_modules":{"dash":dash,"xam":xam_info},
             "original_salt_agrees":True,
             "fonts":{name:inspect_signature(data,modulus(),3,ds) for name,data in sorted(fonts.items())}}
+    if set(fonts)!=set(ORIGINAL_SIGNED_RANGES):raise ValueError("unexpected original font inventory")
+    for name,data in fonts.items():
+        passed=verify_original_range(name,data,modulus(),3,ds)
+        report["fonts"][name]["exact_original_range_and_mutation_rejection"]=passed
+        if not passed:raise ValueError("original signed range or mutation check failed: "+name)
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     for name,item in report["fonts"].items():

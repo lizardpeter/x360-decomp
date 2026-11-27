@@ -25,3 +25,7 @@ The live run 46023340012 reached the original font verification path with a succ
 ## Public signature block evidence (run 46027614232)
 
 The independently recovered public signature encoding and the original matching salt identify exactly one valid encoded signature block at byte offset 4 in each of SegoeXbox-Light.xtt, XenonCLatin.xtt and XenonJKLatin.xtt. This is actual original-container evidence, not a fabricated fixture. The first candidate-range search did not identify the signed payload. The original parser reads a 260-byte prefix and separately supplies the signed buffer length. The follow-up audit checks post-signature length fields and includes the full original operand setup. No acceptance is overridden; actual payload authentication and readable dashboard text still require live validation.
+
+## Exact signed payloads (run 46028136171)
+
+The follow-up evidence run independently authenticated the exact contiguous range of each original signed font: SegoeXbox-Light.xtt offset 260 length 3836; XenonCLatin.xtt offset 260 length 48892; XenonJKLatin.xtt offset 260 length 98044. The regression now pins those independently recovered ranges and requires rejection of a one-bit payload modification. No runtime signature bypass or alternative key is used. This evidence establishes authentication of the signed ranges, not the entire font file or readable dashboard text.

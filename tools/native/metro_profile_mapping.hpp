@@ -59,9 +59,9 @@ inline bool verify_load_cycles(rex::kernel::TitleRuntime& title,
                                rex::kernel::X_HANDLE retail_handle,
                                rex::u32 dashboard_entry,rex::u32 hud_entry) {
     auto& registry=title.GetModuleRegistry();
-    const auto original_dash=title.FindFunction(dashboard_entry);
-    const auto original_hud=title.FindFunction(hud_entry);
-    const auto original_xam=title.FindFunction(xam.GetEntryPoint());
+    const auto original_dash=title.FindFunction(dashboard_entry).value_or(nullptr);
+    const auto original_hud=title.FindFunction(hud_entry).value_or(nullptr);
+    const auto original_xam=title.FindFunction(xam.GetEntryPoint()).value_or(nullptr);
     if (!original_dash || !original_hud || !original_xam || title.IsRunning()) return false;
     std::size_t bindings=0,cycles=0;
     for (unsigned round=0;round<2;++round) {
@@ -96,9 +96,9 @@ inline bool verify_load_cycles(rex::kernel::TitleRuntime& title,
                 if (title.FindFunction(proof.kernel[i].thunk)) return false;
             // Other live native modules and the selected XAM stay mapped.
             if (title.FindGuestModule("xam.xex")!=retail_handle ||
-                title.FindFunction(dashboard_entry)!=original_dash ||
-                title.FindFunction(hud_entry)!=original_hud ||
-                title.FindFunction(xam.GetEntryPoint())!=original_xam || title.IsRunning())
+                title.FindFunction(dashboard_entry).value_or(nullptr)!=original_dash ||
+                title.FindFunction(hud_entry).value_or(nullptr)!=original_hud ||
+                title.FindFunction(xam.GetEntryPoint()).value_or(nullptr)!=original_xam || title.IsRunning())
                 return false;
             ++cycles;
             bindings+=proof.xam_count;

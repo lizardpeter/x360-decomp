@@ -13,10 +13,23 @@ def summarize(text):
     unresolved = []
     validation_totals = []
     compiler_diagnostics = []
+    build_failures = collections.Counter()
     current_group = None
     addresses = collections.defaultdict(set)
+    # Clang/Ninja may color the location and error marker even in a redirected
+    # build. Strip terminal controls before matching; no raw source is emitted.
     for line in text.splitlines():
+        line = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', line)
         low = line.lower()
+        for pattern,label in (
+            (r'out of memory|cannot allocate memory|unable to execute command: killed|killed signal','memory_exhaustion'),
+            (r'no space left on device|disk full','disk_exhaustion'),
+            (r'undefined reference|undefined symbol|unresolved external symbol','link_unresolved'),
+            (r'ninja: build stopped|subcommand failed','build_stopped'),
+            (r'linker command failed','linker_failed'),
+            (r'failed: .*?(?:\.obj|\.o)(?:\s|$)','compile_target_failed'),
+        ):
+            if re.search(pattern,low):build_failures[label]+=1
         # Keep only compiler diagnostic locations and a classified cause;
         # never include generated source lines, paths, operands or raw text.
         match = re.search(r'([^/\\\\\s:]+\.(?:cpp|cc|cxx|h|hpp)):(\d+):(\d+): (?:fatal )?error: (.*)', line)
@@ -29,6 +42,7 @@ def summarize(text):
                 (r'file not found|no such file', 'missing_header'),
                 (r'no matching function|no viable', 'no_matching_overload'),
                 (r'redefinition', 'redefinition'),
+                (r'invalid operands|invalid binary expression|incompatible operand', 'invalid_operand'),
                 (r'expected', 'syntax'),
             ) if re.search(pattern,message,re.I)), 'other_compiler_error')
             item = {'file':name,'line':int(row),'column':int(col),'cause':cause}
@@ -66,7 +80,7 @@ def summarize(text):
             addresses[kind].add(a.upper())
     return {"categories":dict(categories),"guest_addresses":{k:sorted(v) for k,v in addresses.items()},
             "unresolved_branches":unresolved,"validation_totals":validation_totals,
-            "compiler_diagnostics":compiler_diagnostics}
+            "compiler_diagnostics":compiler_diagnostics,"build_failures":dict(build_failures)}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
