@@ -29,7 +29,16 @@ int main(){
     require(k.call("xboxkrnl.exe",21,s,m)==ImportCallResult::completed&&k.notifications().size()==1,"duplicate registration");
     s.gpr[4]=0;require(k.call("xboxkrnl.exe",21,s,m)==ImportCallResult::completed&&k.notifications().empty(),"unregister");
     s.gpr[3]=0x3010;require(k.call("xboxkrnl.exe",21,s,m)==ImportCallResult::fault,"invalid record");
-    before=s;require(k.call("xboxkrnl.exe",300,s,m)==ImportCallResult::unsupported&&s==before,"unknown ordinal");
+    before=s;require(k.call("xboxkrnl.exe",0xffff,s,m)==ImportCallResult::unsupported&&s==before,"unknown ordinal");
+    s.gpr[3]=0x3000;s.gpr[4]=0;
+    require(k.call("xboxkrnl.exe",0x12c,s,m)==ImportCallResult::completed&&
+            m.load_be32(0x3000,word)&&word==0,"RTL string service routing");
+    s.gpr[3]=0x3000;s.gpr[4]=0;s.gpr[5]=1;
+    require(k.call("xboxkrnl.exe",0x70,s,m)==ImportCallResult::completed&&
+            m.load_be32(0x3004,word)&&word==1,"dispatcher initialization routing");
+    s.gpr[3]=0x3000;
+    require(k.call("xboxkrnl.exe",0x8f,s,m)==ImportCallResult::completed&&s.gpr[3]==1&&
+            m.load_be32(0x3004,word)&&word==0,"dispatcher reset routing");
     host::KernelStartup bad;machine::AddressSpace other;put(header,44,63);
     require(!bad.install(other,header,0x80001000,0x80002000)&&!other.load_be32(host::KernelStartup::handle_cell,word),"malformed header rollback");
     std::cout<<"Hosted header field, module object and notification registration contracts passed\n";
