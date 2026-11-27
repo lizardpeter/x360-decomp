@@ -14,4 +14,5 @@ class BootanimAOT(unittest.TestCase):
         self.assertEqual({int(a,16) for a in functions},set(EXPORTS.values()))
         self.assertNotIn(0x98000000,EXPORTS.values())
         self.assertIn("add_library(metro_bootanim_module SHARED",CMAKE)
+        self.assertIn("add_executable(metro_bootanim_live",CMAKE)
 if __name__=="__main__":unittest.main()

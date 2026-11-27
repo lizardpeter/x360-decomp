@@ -5,6 +5,8 @@ on:
     paths:
       - 'tools/stage_metro_bootanim_aot.py'
       - 'tools/native/metro_bootanim_module_probe.cpp'
+      - 'tools/native/metro_bootanim_live.cpp'
+      - 'tools/capture_bootanim_live.sh'
       - 'tests/test_metro_bootanim_aot.py'
       - '.github/workflows/metro-bootanim-native.yml'
 permissions:
@@ -129,6 +131,28 @@ jobs:
           for addr in 98020e60 98020ec8 98020ed8; do
             grep -Fxq "BOOTANIM_NATIVE pass export $addr" "$GITHUB_WORKSPACE/build/receipts/bootanim-native-registration.txt"
           done
+      - name: Attempt isolated original graphical animation
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
+          folder="$PWD/build/bootanim-native"
+          timeout --kill-after=10s 70s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-capture"
+      - name: Upload actual original animation candidate frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-bootanim-frame-candidates
+          path: |
+            build/bootanim-capture/frame-*.png
+            build/bootanim-capture/receipt.txt
+            build/bootanim-capture/gates.txt
+          if-no-files-found: ignore
+      - name: Retain original execution log
+        if: always()
+        run: |
+          if [ -f build/bootanim-capture/bootanim-live.log ]; then
+            cp build/bootanim-capture/bootanim-live.log build/receipts/
+          fi
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4
