@@ -7,7 +7,7 @@ native="$(realpath "$1")"
 root="$(realpath "$2")"
 out="$native/metro-capture"
 mkdir -p "$out"
-rm -f "$out"/candidate-*.png "$out/next.png" "$out/receipt.txt" "$out/boot.log"
+rm -f "$out"/candidate-*.png "$out"/input-*.png "$out/next.png" "$out/receipt.txt" "$out/boot.log"
 export X360_METRO_BOOT=1
 export SDL_AUDIODRIVER=dummy
 export SDL_VIDEODRIVER=x11
@@ -18,7 +18,7 @@ cd "$native"
 ./dash_17559 --title.game_root="$root" --title.entry=dash.xex \
   --ui.title="Metro 17559 Native Boot" --ui.fullscreen=false \
   --ui.window_width=1280 --ui.window_height=720 \
-  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false \
+  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --hid.mnk_mode=true \
   --log.level=info --log.flush_level=info > "$out/boot.log" 2>&1 &
 pid=$!
 cleanup() {
@@ -38,7 +38,7 @@ last_frame=0
 last_sample=0
 : > "$out/receipt.txt"
 printf 'menu_visually_verified=false\n' >> "$out/receipt.txt"
-for tick in $(seq 1 90); do
+for tick in $(seq 1 65); do
   kill -0 "$pid" 2>/dev/null || break
   frame="$(grep -E '^METRO_BOOT frames [1-9][0-9]*$' "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
   if grep -Fxq "METRO_BOOT pass dashboard_entry" "$out/boot.log" &&
@@ -79,4 +79,43 @@ if ! kill -0 "$pid" 2>/dev/null; then
   tail -n 100 "$out/boot.log" >&2
   exit 1
 fi
+# Input probes are diagnostic, not proof of navigation. A changing image
+# could still be an animated splash, and a pad read alone does not certify UI.
+printf 'navigation_visually_verified=false\n' >> "$out/receipt.txt"
+if [ "$samples" -ge 4 ]; then
+  win="$(xdotool search --all --onlyvisible --pid "$pid" --name 'Metro 17559 Native Boot' 2>/dev/null | head -n 1 || true)"
+  if [ -n "$win" ] && xdotool windowfocus --sync "$win"; then
+    import -window "$win" "$out/input-00-idle.png" || true
+    sleep 2
+    import -window "$win" "$out/input-01-idle.png" || true
+    for key in Right Left; do
+      kill -0 "$pid" 2>/dev/null || break
+      line_start="$(wc -l < "$out/boot.log")"
+      frame_before="$(grep -E '^METRO_BOOT frames [1-9][0-9]*
+ "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
+      xdotool keydown Shift_L
+      xdotool keydown "$key"
+      sleep 0.25
+      xdotool keyup "$key"
+      xdotool keyup Shift_L
+      sleep 3
+      frame_after="$(grep -E '^METRO_BOOT frames [1-9][0-9]*
+ "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
+      if kill -0 "$pid" 2>/dev/null; then
+        import -window "$win" "$out/input-$key.png" || true
+      fi
+      printf 'input_key=Shift+%s frames_before=%s frames_after=%s\n' "$key" "$frame_before" "$frame_after" >> "$out/receipt.txt"
+      tail -n "+$((line_start+1))" "$out/boot.log" | grep -F 'METRO_PAD ' >> "$out/receipt.txt" || true
+    done
+    for file in "$out"/input-*.png; do
+      [ -f "$file" ] || continue
+      (cd "$out" && sha256sum "$(basename "$file")") >> "$out/receipt.txt"
+    done
+  fi
+fi
+if ! kill -0 "$pid" 2>/dev/null; then
+  echo "Guest exited during navigation probe." >&2
+  exit 1
+fi
+cat "$out/receipt.txt"
 echo "Captured actual guest-frame candidates; visual inspection is still required."
