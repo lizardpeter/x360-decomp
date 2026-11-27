@@ -107,4 +107,38 @@ class IoRuntime(unittest.TestCase):
         self.assertIn("GetWritableSpan",out)
         self.assertNotIn("XeCryptBnQwBeSigVerify_entry",out)
         with self.assertRaises(ValueError):corrected(out)
+    def test_encoded_signature_oracle_and_patch(self):
+        from patch_metro_public_verification import (PUBLIC_TEST_VECTORS,TEST_HASH,TEST_SALT,
+            reference_signature_result,corrected_signature_verifier,SIG_VERIFY_OLD,SIG_VERIFY_NEW)
+        import hashlib
+        def rc4(key,data):
+            s=list(range(256))
+            j=0
+            for i in range(256):
+                j=(j+s[i]+key[i%len(key)])&255
+                s[i],s[j]=s[j],s[i]
+            i=j=0
+            out=bytearray()
+            for b in data:
+                i=(i+1)&255
+                j=(j+s[i])&255
+                s[i],s[j]=s[j],s[i]
+                out.append(b^s[(s[i]+s[j])&255])
+            return bytes(out)
+        digest=hashlib.sha1(bytes(8)+TEST_HASH+TEST_SALT).digest()
+        block=bytearray(rc4(digest,bytes(224)+b"\1"+TEST_SALT)+digest+b"\xbc")
+        block[0]&=127
+        expected=int.from_bytes(block,"big")
+        for e,n,s in PUBLIC_TEST_VECTORS:
+            n,s=int(n,16),int(s,16)
+            self.assertEqual(reference_signature_result(s,e,n),expected)
+            self.assertNotEqual(pow(s,e,n),expected)
+            self.assertNotEqual(reference_signature_result(s^1,e,n),expected)
+            self.assertIsNone(reference_signature_result(n,e,n))
+        self.assertEqual(corrected_signature_verifier(SIG_VERIFY_OLD),SIG_VERIFY_NEW)
+        self.assertNotIn("XeCryptBnQwNeRsaPubCrypt_entry",SIG_VERIFY_NEW)
+        self.assertIn("GetReadOnlySpan",SIG_VERIFY_NEW)
+        self.assertIn("std::memcmp",SIG_VERIFY_NEW)
+        with self.assertRaises(ValueError):corrected_signature_verifier(SIG_VERIFY_NEW)
+
 if __name__=="__main__":unittest.main()
