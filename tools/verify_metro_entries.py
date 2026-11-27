@@ -13,7 +13,8 @@ from analyze_decoded import pe_info, ordinal_exports
 from decode_image import decode
 from pirs import parse as parse_pirs
 from prepare_recompilation import ROOT, EXPECTED, original, sha
-from patch_metro_retail_routing import original_inventory
+from patch_metro_retail_routing import original_inventory,hud_inventory
+from stage_metro_profile_modules import inventory as profile_inventory
 from stage_metro_xam_aot import manifest
 from verify_aot_hints import verified_manifest
 
@@ -118,7 +119,11 @@ def xam_hints(image,base,pe,raw):
     code=sections(pe,base,True)
     funcs=pe["functions"];starts=[a for a,_,_ in funcs];known=set(starts)
     result=[];interior=[];seen=set()
-    for b in original_inventory():
+    # Every dependent original module needs callable XAM export coverage,
+    # not just the dashboard. Keep unresolved interior targets explicit.
+    profiles=profile_inventory()["modules"]
+    bindings=original_inventory()+hud_inventory()+[dict(b,data=False) for m in profiles.values() for b in m["xam_bindings"]]
+    for b in bindings:
         if b["data"]:continue
         a=b["target"]
         if exports.get(b["ordinal"])!=a or a&3 or not inside(a,code):

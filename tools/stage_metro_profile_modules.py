@@ -11,6 +11,7 @@ import itertools
 import json
 import re
 import subprocess
+import tomllib
 from pathlib import Path
 from analyze_decoded import imports, pe_info, ordinal_exports
 from decode_image import decode
@@ -101,36 +102,198 @@ def inventory():
             "pdata_functions":sum(m["pdata_functions"] for m in modules.values()),
             "overlapping_guest_images":overlaps,"guest_executed":False}
 
-def patch_codegen(source,report):
-    if source.count(OLD)!=1 or "metro_profile_module_import" in source:
-        raise ValueError("unexpected SDK register phase")
-    by_base=collections.defaultdict(dict)
+def codegen_profile_guard(report):
+    # Three modules share the base address. The exact image size AND entry
+    # distinguish them, so no union of same-base ordinal/thunk allowlists.
+    candidates=[]
     for m in report["modules"].values():
-        for b in m["xam_bindings"]:
-            if b["thunk"] in by_base[m["base"]]:raise ValueError("ambiguous native thunk address")
-            by_base[m["base"]][b["thunk"]]=b["ordinal"]
-    bases=" || ".join(f"binary.GetBaseAddress()==0x{a:08X}u" for a in sorted(by_base))
-    code=""
-    for base,items in sorted(by_base.items()):
-        code+=f"          case 0x{base:08X}u:\n            switch (sym.address) {{\n"
-        code+="".join(f"              case 0x{t:08X}u: return ordinal==0x{o:04X}u;\n" for t,o in sorted(items.items()))
-        code+="              default: return false;\n            }\n"
-    replacement='''      // Profile UI modules are isolated compile trials, not hosted XAM shims.
-      const bool metro_profile_module_import=lib_name=="xam" && ('''+bases+''');
-      if (metro_profile_module_import) {
+        identity=(f"binary.GetBaseAddress()==0x{m['base']:08X}u && "
+                  f"binary.GetImageSize()=={m['size']}u && "
+                  f"binary.GetEntryPoint()==0x{m['entry']:08X}u")
+        candidates.append((identity,m))
+    candidates_expr=" || ".join("("+identity+")" for identity,_ in candidates)
+    lines=[]
+    for identity,m in candidates:
+        lines.append("          if ("+identity+") {")
+        lines.append("            switch (sym.address) {")
+        lines.extend(f"              case 0x{b['thunk']:08X}u: return ordinal==0x{b['ordinal']:04X}u;"
+                     for b in m["xam_bindings"])
+        lines+=["              default: return false;","            }","          }"]
+    return ('''      // Exact original profile module identity and callable XAM slots.
+      const bool metro_profile_module_import=lib_name=="xam" && ('''+candidates_expr+''');
+''',
+'''      if (metro_profile_module_import) {
         const bool exact=[&]() {
-          switch (binary.GetBaseAddress()) {
-'''+code+'''            default: return false;
-          }
+'''+ "\n".join(lines)+'''
+          return false;
         }();
         if (!exact)
           return Err(ErrorCategory::kValidation, "Unverified Metro profile XAM import");
         resolved_name=std::format("sub_{:X}", sym.address);
         state.module_imports[sym.address]={lib_name,ordinal};
         module_import_count++;
-      } else if (exp) {
-        if (exp->type == kernel::ExportType::kFunction) {'''
-    return source.replace(OLD,replacement,1)
+      }''')
+
+def patch_codegen(source,report,integrated=False):
+    if "metro_profile_module_import" in source:
+        raise ValueError("unexpected SDK register phase")
+    selection,branch=codegen_profile_guard(report)
+    if integrated:
+        anchor="      // Explicit original dashboard-to-XAM forwarding."
+        branch_anchor="      if (metro_retail_function_import) {"
+        if source.count(anchor)!=1 or source.count(branch_anchor)!=1:
+            raise ValueError("missing integrated retail routing anchor")
+        return (source.replace(anchor,selection+anchor,1)
+                .replace(branch_anchor,branch+" else if (metro_retail_function_import) {",1))
+    if source.count(OLD)!=1:raise ValueError("unexpected SDK register phase")
+    return source.replace(OLD,selection+branch+" else if (exp) {\n        if (exp->type == kernel::ExportType::kFunction) {",1)
+
+def cpp_string(value):
+    # All names are pinned ASCII firmware members. Use JSON string escaping
+    # to express literal guest path separators in generated C++.
+    return json.dumps(value)
+
+def patch_profile_loader(source,report):
+    """Only original modules, only selected retail XAM, no hosted fallback."""
+    path_anchor="  std::string path(raw_name);\n  const bool retail_hud="
+    resolve_anchor="    if (rex::kernel::ModuleFromName(library.name) || IsKernelModule(library.name)) {"
+    recomp_anchor="  auto recomp = FindRecompiledModule(path);"
+    if any(source.count(a)!=1 for a in (path_anchor,resolve_anchor,recomp_anchor)):
+        raise ValueError("unexpected retail profile registry anchors")
+    if "metro_profile_name" in source:raise ValueError("already patched profile loader")
+    names=[]
+    identify=[]
+    path_checks=[]
+    for name,m in report["modules"].items():
+        leaf=name+".xex";flash="flash:\\"+leaf
+        aliases=[leaf,flash,"\\Device\\Flash\\"+leaf,"\\SystemRoot\\"+leaf]
+        tests=" || ".join("rex::string::utf8_equal_case(raw_name,"+cpp_string(a)+")" for a in aliases)
+        names.append(f"    if ({tests}) return {cpp_string(leaf)};")
+        path_checks.append(f"    if (rex::string::utf8_equal_case(path,{cpp_string(flash)})) return {cpp_string(leaf)};")
+        identity=f"xex->GetBaseAddress()==0x{m['base']:08X}u && xex->GetImageSize()=={m['size']}u && module.user.entry_point==0x{m['entry']:08X}u"
+        cases="\n".join(f"            case 0x{b['ordinal']:04X}u: return import.value_address==0x{b['slot']:08X}u && import.thunk_address==0x{b['thunk']:08X}u && target==0x{b['target']:08X}u;" for b in m["xam_bindings"])
+        identify.append(f'''        if (metro_profile_name=={cpp_string(leaf)}) {{
+          if (!({identity}) || library.imports.size()!={len(m['xam_bindings'])}u) return false;
+          switch (import.ordinal) {{
+{cases}
+            default: return false;
+          }}
+        }}''')
+    # Normalize aliases to the immutable flash tree before the registry's
+    # loading marker. The same requested file cannot acquire separate refs
+    # simply by spelling its guest path differently.
+    body='''  std::string path(raw_name);
+  const std::string_view metro_profile_name=[&]()->std::string_view {
+    if (!StateOf(runtime_).retail_xam_hmodule) return {};
+'''+ "\n".join(names)+'''
+    return {};
+  }();
+  if (!metro_profile_name.empty()) {
+    path="flash:\\\\"+std::string(metro_profile_name);
+    if (auto existing=GetModule(path,true)) {
+      AcquireReference(*table_.Get<ModuleObject>(*existing));
+      return *existing;
+    }
+    // Refuse raw XEX attach if the native DLL is absent. This also keeps
+    // existing dashboard builds without the opt-in module set safe.
+    if (!FindRecompiledModule(path))
+      return Err<X_HANDLE>(StatusError(X_STATUS_DLL_NOT_FOUND));
+  }
+  const bool retail_hud='''
+    source=source.replace(path_anchor,body,1)
+    # Existing HUD branch is followed by a basename redirect. Do not let that
+    # branch replace our previously normalized profile path.
+    anchor="  } else if (name == raw_name) {"
+    if source.count(anchor)!=1:raise ValueError("unexpected retail basename redirect")
+    source=source.replace(anchor,"  } else if (metro_profile_name.empty() && name == raw_name) {",1)
+    # Match path + actual loaded original metadata. Validate all imports
+    # before mutating any slot or acquiring the retail dependency reference.
+    resolve='''    const std::string_view metro_profile_name=[&]()->std::string_view {
+      if (!StateOf(runtime_).retail_xam_hmodule) return {};
+'''+ "\n".join(path_checks)+'''
+      return {};
+    }();
+    if (!metro_profile_name.empty() && library.name=="xam") {
+      const auto handle=runtime_.FindGuestModule("xam.xex");
+      auto dep=table_.Get<ModuleObject>(handle);
+      if (!dep || dep->hmodule_ptr!=StateOf(runtime_).retail_xam_hmodule || !dep->GetXEX())
+        return X_STATUS_DLL_NOT_FOUND;
+      if (library.imports.empty()) return X_STATUS_DRIVER_ORDINAL_NOT_FOUND;
+      std::size_t verified=0;
+      for (const auto& import:library.imports) {
+        const auto target=dep->GetXEX()->GetExportAddress(static_cast<u16>(import.ordinal));
+        const bool exact=[&]() {
+'''+ "\n".join(identify)+'''
+          return false;
+        }();
+        if (!exact || !runtime_.FindFunction(target)) return X_STATUS_DRIVER_ORDINAL_NOT_FOUND;
+        ++verified;
+      }
+      AcquireReference(*dep);
+      module.user.dependencies.push_back(handle);
+      for (const auto& import:library.imports)
+        PatchImportSlot(import.value_address,import.thunk_address);
+      REXSYS_INFO("METRO_PROFILE module={} retail_xam_bindings={}",metro_profile_name,verified);
+      continue;
+    }
+'''
+    source=source.replace(resolve_anchor,resolve+resolve_anchor,1)
+    checks=[]
+    for name,m in report["modules"].items():
+        checks.append(f'''    if (metro_profile_name=={cpp_string(name+".xex")})
+      return module->GetXEX()->GetBaseAddress()==0x{m['base']:08X}u &&
+             module->GetXEX()->GetImageSize()=={m['size']}u &&
+             module->user.entry_point==0x{m['entry']:08X}u;''')
+    registration='''
+  if (!metro_profile_name.empty()) {
+    const bool exact=recomp && module->GetXEX() && module->user.is_dll_module && [&]() {
+'''+ "\n".join(checks)+'''
+      return false;
+    }();
+    if (!exact) {
+      ReleaseDependencies(*module,call_entry);
+      CloseOwned(table_,created);
+      return Err<X_HANDLE>(StatusError(X_STATUS_DLL_NOT_FOUND));
+    }
+  }
+'''
+    source=source.replace(recomp_anchor,recomp_anchor+registration,1)
+    return source
+
+def integrated_manifest(text,report):
+    parsed=tomllib.loads(text)
+    previous=parsed.get("modules",[])
+    if [m["project_name"] for m in previous]!=["metro_xam","metro_hud","metro_bootanim"]:
+        raise ValueError("expected verified dashboard, XAM, HUD, bootanim manifest")
+    blocks=[]
+    for name in report["modules"]:
+        blocks.append(f'''
+[[modules]]
+project_name = "metro_{name}"
+file_path = "inputs/flash/{name}.xex"
+guest_path = "{name}.xex"
+out_directory_path = "generated_{name}"
+is_dll = true
+''')
+    result=text.rstrip()+"\n"+"".join(blocks)
+    check=tomllib.loads(result)
+    if check["project"]!=parsed["project"] or check["entrypoint"]!=parsed["entrypoint"] or check["modules"][:len(previous)]!=previous:
+        raise ValueError("profile stage changed existing module graph")
+    if len({m["out_directory_path"] for m in check["modules"]})!=len(check["modules"]):
+        raise ValueError("shared native module output directory")
+    return result
+
+def stage_integrated(folder,report):
+    # The normal runtime staging already copies original flash members.
+    # Check the exact bytes and refuse to fetch or write new account data.
+    for name,m in report["modules"].items():
+        raw=folder/"inputs/flash"/(name+".xex")
+        if not raw.is_file() or raw.is_symlink() or sha(raw.read_bytes())!=m["source_sha256"]:
+            raise ValueError("unverified integrated profile module "+name)
+    manifest=folder/"dash_17559_manifest.toml"
+    updated=integrated_manifest(manifest.read_text(),report)
+    manifest.write_text(updated)
+    report["integrated_manifest_staged"]=True
 
 def scaffold(folder,name,m):
     project="metro_"+name
@@ -230,16 +393,19 @@ def mapping_coverage(source,report):
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--folder",type=Path)
+    p.add_argument("--integrated",type=Path)
     p.add_argument("--lzx",type=Path)
     p.add_argument("--sdk",type=Path)
     p.add_argument("--receipt",type=Path,required=True)
     a=p.parse_args()
-    if any(not x.resolve().is_relative_to(ROOT/"build") for x in (a.folder,a.receipt) if x):
+    if any(not x.resolve().is_relative_to(ROOT/"build") for x in (a.folder,a.integrated,a.receipt) if x):
         p.error("generated outputs must remain under build/")
     report=inventory()
     if a.folder:
         if not a.lzx:p.error("--folder requires --lzx")
         stage(a.folder,a.lzx.resolve(),report)
+    if a.integrated:
+        stage_integrated(a.integrated,report)
     if a.sdk:
         if subprocess.check_output(["git","-C",str(a.sdk),"rev-parse","HEAD"],text=True).strip()!=REVISION:
             raise ValueError("unexpected SDK revision")

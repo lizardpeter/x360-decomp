@@ -217,14 +217,18 @@ def main():
     bindings=original_inventory(sdk)
     file=a.sdk/"src/codegen/phase_register.cpp"
     hud=hud_inventory()
-    file.write_text(patched(file.read_text(),bindings,hud))
+    # Profile UI support is compiled into the runtime but cannot load a raw
+    # XEX. It becomes active only for explicitly registered native modules.
+    from stage_metro_profile_modules import inventory as profile_inventory,patch_codegen,patch_profile_loader
+    profile=profile_inventory()
+    file.write_text(patch_codegen(patched(file.read_text(),bindings,hud),profile,integrated=True))
     loader=a.sdk/"src/kernel/module_registry.cpp"
-    loader.write_text(patch_hud_loader(loader.read_text(),hud))
+    loader.write_text(patch_profile_loader(patch_hud_loader(loader.read_text(),hud),profile))
     subprocess.run(["git","-C",str(a.sdk),"diff","--check"],check=True)
     a.receipt.parent.mkdir(parents=True,exist_ok=True)
     a.receipt.write_text(json.dumps({"functions":521,"variables":1,
          "sdk_kinds":dict(collections.Counter(x["sdk_kind"] for x in bindings)),
-         "bindings":bindings,"hud_bindings":hud},indent=2)+"\n")
+         "bindings":bindings,"hud_bindings":hud,"profile_modules":profile["modules"]},indent=2)+"\n")
     print("Original XAM routing: 521 callable imports and one data import; no hosted XAM substitution")
 
 if __name__=="__main__":main()

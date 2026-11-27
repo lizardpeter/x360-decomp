@@ -2,7 +2,11 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from stage_metro_profile_modules import inventory,patch_codegen,mapping_coverage,validate_metadata,metadata
+from stage_metro_profile_modules import inventory,patch_codegen,mapping_coverage,validate_metadata,metadata,patch_profile_loader,integrated_manifest
+from patch_metro_retail_routing import patched,original_inventory,hud_inventory
+from stage_metro_xam_aot import manifest
+from stage_metro_intro import append_module
+import tomllib
 from patch_metro_retail_routing import OLD
 
 class ProfileModules(unittest.TestCase):
@@ -36,3 +40,43 @@ class ProfileModules(unittest.TestCase):
     def test_tampered_module_metadata_rejected(self):
         m=metadata("signin");m["image_bytes"]+=4096
         with self.assertRaises(ValueError):validate_metadata("signin",m)
+
+    def test_profile_codegen_distinguishes_overlays(self):
+        r=inventory()
+        code=patch_codegen(patched(OLD,original_inventory(),hud_inventory()),r,integrated=True)
+        for m in r["modules"].values():
+            identity=(f"binary.GetBaseAddress()==0x{m['base']:08X}u && "
+                      f"binary.GetImageSize()=={m['size']}u && "
+                      f"binary.GetEntryPoint()==0x{m['entry']:08X}u")
+            self.assertEqual(code.count(identity),2)
+        self.assertIn("else if (metro_retail_function_import)",code)
+        self.assertEqual(code.count("return ordinal=="),710)
+        with self.assertRaises(ValueError):patch_codegen(code,r,integrated=True)
+
+    def test_integrated_manifest_retains_baseline(self):
+        before=append_module(manifest())
+        original=tomllib.loads(before)
+        after=tomllib.loads(integrated_manifest(before,inventory()))
+        self.assertEqual(after["project"],original["project"])
+        self.assertEqual(after["entrypoint"],original["entrypoint"])
+        self.assertEqual(after["modules"][:3],original["modules"])
+        self.assertEqual(len(after["modules"]),8)
+        for m in after["modules"][3:]:
+            self.assertTrue(m["file_path"].startswith("inputs/flash/"))
+            self.assertTrue(m["is_dll"])
+        with self.assertRaises(ValueError):integrated_manifest(manifest(),inventory())
+
+    def test_profile_loader_fails_closed(self):
+        from patch_metro_retail_routing import patch_hud_loader
+        original=("\n    if (rex::kernel::ModuleFromName(library.name) || IsKernelModule(library.name)) {\n"
+                  "  std::string path(raw_name);\n  if (name == raw_name) {\n"
+                  "  auto recomp = FindRecompiledModule(path);\n")
+        baseline=patch_hud_loader(original,hud_inventory())
+        code=patch_profile_loader(baseline,inventory())
+        self.assertIn("if (!FindRecompiledModule(path))",code)
+        self.assertIn("metro_profile_name.empty() && name == raw_name",code)
+        self.assertIn("!runtime_.FindFunction(target)",code)
+        self.assertIn("ReleaseDependencies(*module,call_entry)",code)
+        self.assertIn("module->user.is_dll_module",code)
+        self.assertEqual(code.count("return import.value_address=="),710)
+        with self.assertRaises(ValueError):patch_profile_loader(code,inventory())

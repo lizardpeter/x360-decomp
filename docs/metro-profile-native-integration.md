@@ -45,3 +45,15 @@ Before adding these modules to the working dashboard's live loader:
 The public font verification provider is separate from account handling. It
 supplies only the genuine PIRS RSA public verification key requested by the
 original signed-font reader. The guest's signature result is not modified.
+
+## Opt-in integrated native build
+
+The Linux dashboard workflow now exposes a `profile_modules` manual-run input.
+The default build retains the established dashboard/bootanim baseline. The
+opt-in path uses the same native dashboard host with five additional generated
+DLLs, original flash resources, exact base/size/entry codegen checks, and
+retail XAM dependency binding. It requires every original XAM target and
+all five entrypoint/import thunk tables to be present before native linking.
+The runtime refuses a profile UI load if its native shared library is not
+registered, rather than attaching an uncompiled XEX. Alias paths normalize to
+the read-only flash tree. No actual sign-in is asserted until a live test.
