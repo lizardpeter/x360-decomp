@@ -199,3 +199,35 @@ REX_TEST_CASE("metro_io_runtime: unsupported storage stream never reports a fabr
           rex::kernel::X_STATUS_INVALID_PARAMETER);
   });
 }
+
+REX_TEST_CASE("metro_io_runtime: isolated writable cache via physical path and game alias",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) {
+    std::filesystem::create_directories(root/"cache-provider");
+    std::ofstream(root/"immutable.bin",std::ios::binary) << "firmware";
+  });
+  namespace fs=rex::filesystem;
+  auto& mounts=fixture.GetRuntime().GetFileSystem();
+  REQUIRE(mounts.Mount({"\\Device\\MetroHddCache",fs::ProviderType::kHostDirectory,
+                        fixture.GetRoot()/"cache-provider",fs::MountFlags::kWritable,{}}));
+  REQUIRE(mounts.Link("\\Device\\Harddisk0\\Partition1\\Cache","\\Device\\MetroHddCache"));
+  REQUIRE(mounts.Stat("\\Device\\Harddisk0\\Partition1\\Cache"));
+  REQUIRE(mounts.Stat("game:\\Cache"));
+  fixture.RunOnGuestThread([](Caller& c) {
+    const u32 h=c.Alloc(4), iosb=c.Alloc(8), data=c.Alloc(4);
+    c.Store32(data,0x11223344);
+    REQUIRE(c.Kernel("NtCreateFile",
+        {h,kReadWriteAccess,c.AllocAttributes("\\Device\\Harddisk0\\Partition1\\Cache\\entry.bin"),
+         iosb,0,0,3,3,0x20})==0);
+    REQUIRE(c.Kernel("NtWriteFile",{c.Load32(h),0,0,0,iosb,data,4,0})==0);
+    REQUIRE(c.Kernel("NtClose",{c.Load32(h)})==0);
+    REQUIRE(c.Kernel("NtCreateFile",
+        {h,0x80100000,c.AllocAttributes("game:\\Cache\\entry.bin"),iosb,0,0,3,1,0x20})==0);
+    REQUIRE(c.Kernel("NtReadFile",{c.Load32(h),0,0,0,iosb,data,4,0})==0);
+    CHECK(c.Load32(data)==0x11223344);
+    REQUIRE(c.Kernel("NtClose",{c.Load32(h)})==0);
+  });
+  CHECK(std::filesystem::file_size(fixture.GetRoot()/"cache-provider"/"entry.bin")==4);
+  CHECK_FALSE(std::filesystem::exists(fixture.GetRoot()/"Cache"/"entry.bin"));
+  CHECK(std::filesystem::file_size(fixture.GetRoot()/"immutable.bin")==8);
+}
