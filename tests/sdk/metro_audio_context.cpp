@@ -226,3 +226,45 @@ REX_TEST_CASE("metro_audio_context: read real mapped processor buffer pairs",
   memory->SystemHeapFree(a);
   memory->SystemHeapFree(engine);
 }
+
+REX_TEST_CASE("metro_audio_context: invalid client and frame spans are rejected without altering live slots",
+              "[kernel][metro_audio_context]") {
+  rex::test::KernelFixture fixture;
+  auto& runtime=fixture.GetRuntime();
+  rex::kernel::APU apu(runtime,&fixture.GetAudio());
+  auto index=apu.RegisterClient(0,0);
+  REQUIRE(index);
+  CHECK(apu.IsClientActive(*index));
+  CHECK_FALSE(apu.IsClientActive(rex::kernel::APU::kMaxClients));
+  CHECK_FALSE(apu.SubmitFrame(*index,0));
+  CHECK_FALSE(apu.SubmitFrame(*index,0xfffffffcu));
+  CHECK_FALSE(apu.SubmitFrame(rex::kernel::APU::kMaxClients,0));
+  CHECK_FALSE(apu.UnregisterClient(rex::kernel::APU::kMaxClients));
+  CHECK(apu.IsClientActive(*index));
+  CHECK(fixture.GetAudio().GetStats().open_streams==1);
+  auto frame=AllocateFrame(runtime);
+  REQUIRE(frame);
+  std::memset(StateOf(runtime).GetAddressSpace()->TranslateVirtual<rex::u8*>(frame),0,kFrameBytes);
+  CHECK(apu.SubmitFrame(*index,frame));
+  CHECK(apu.UnregisterClient(*index));
+  CHECK_FALSE(apu.IsClientActive(*index));
+  CHECK_FALSE(apu.UnregisterClient(*index));
+  CHECK_FALSE(apu.SubmitFrame(*index,frame));
+  CHECK(fixture.GetAudio().GetStats().open_streams==0);
+  StateOf(runtime).GetAddressSpace()->SystemHeapFree(frame);
+}
+
+REX_TEST_CASE("metro_audio_context: invalid guest render handles return errors not host asserts",
+              "[kernel][metro_audio_context]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto output=c.Alloc(4);
+    c.Store32(output,0x11223344);
+    for (auto handle:{0u,1u,0x41550008u,0xffffffffu}) {
+      CHECK(c.Kernel("XAudioGetVoiceCategoryVolumeChangeMask",{handle,output})!=0);
+      CHECK(c.Load32(output)==0x11223344u);
+      CHECK(c.Kernel("XAudioSubmitRenderDriverFrame",{handle,0})!=0);
+      CHECK(c.Kernel("XAudioUnregisterRenderDriverClient",{handle})!=0);
+    }
+  });
+}

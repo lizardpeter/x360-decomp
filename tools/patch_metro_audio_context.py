@@ -253,6 +253,119 @@ void APU::UnregisterClient(u32 index) {""")
   u32 callback = callback_ptr[0];""")
 
     files[p]=s
+
+    # Keep bad guest handles and spans out of the native backend. Never
+    # turn an invalid guest request into a valid driver or successful submit.
+    p="src/kernel/apu.h";s=files[p]
+    s=replace(s,"  void UnregisterClient(u32 index);",
+        "  bool UnregisterClient(u32 index);\n  bool IsClientActive(u32 index);")
+    s=replace(s,"  void SubmitFrame(u32 index, u32 samples_ptr);",
+        "  bool SubmitFrame(u32 index, u32 samples_ptr);")
+    files[p]=s
+    p="src/kernel/apu.cpp";s=files[p]
+    s=replace(s,"#include <cstddef>","#include <cstddef>\n#include <cstring>")
+    s=replace(s,"void APU::UnregisterClient(u32 index) {",
+        """bool APU::IsClientActive(u32 index) {
+  std::lock_guard lock(mutex_);
+  return index<kMaxClients && clients_[index].in_use && !clients_[index].retiring;
+}
+
+bool APU::UnregisterClient(u32 index) {""")
+    s=replace(s,"void APU::SubmitFrame(u32 index, u32 samples_ptr) {",
+        "bool APU::SubmitFrame(u32 index, u32 samples_ptr) {")
+    old="""  if (index >= kMaxClients || !clients_[index].in_use) {
+    return;
+  }"""
+    if s.count(old)!=2:raise ValueError("audio live slot guards")
+    s=s.replace(old,old.replace("return;","return false;"))
+    s=replace(s,"""    client={};
+  }
+}
+
+bool APU::SubmitFrame""","""    client={};
+  }
+  return true;
+}
+
+bool APU::SubmitFrame""")
+    s=replace(s,"""  const auto* samples =
+      StateOf(runtime_).GetAddressSpace()->TranslateVirtual<const be_f32*>(samples_ptr);
+  std::array<f32, rex::apu::kAudioFrameSamples> frame;
+  for (size_t i = 0; i < frame.size(); ++i) {
+    frame[i] = samples[i];
+  }
+  if (auto submitted = audio_->Submit(clients_[index].stream, frame);
+      !submitted && !clients_[index].refused_logged) {
+    clients_[index].refused_logged = true;
+    REXAPU_WARN("the audio system refused a frame for client {}, {}", index,
+                submitted.error().message);
+  }""","""  constexpr size_t frame_bytes=rex::apu::kAudioFrameSamples*sizeof(be_f32);
+  if (!samples_ptr || u64(samples_ptr)+frame_bytes>0x100000000ull)
+    return false;
+  auto bytes=runtime_.GetGuestMemory().GetReadOnlySpan(samples_ptr,frame_bytes);
+  if (!bytes)return false;
+  std::array<f32, rex::apu::kAudioFrameSamples> frame;
+  for (size_t i=0;i<frame.size();++i) {
+    be_f32 sample;
+    std::memcpy(&sample,bytes->data()+i*sizeof(sample),sizeof(sample));
+    frame[i]=sample;
+  }
+  auto submitted=audio_->Submit(clients_[index].stream,frame);
+  if (!submitted && !clients_[index].refused_logged) {
+    clients_[index].refused_logged=true;
+    REXAPU_WARN("the audio system refused a frame for client {}, {}",index,
+                submitted.error().message);
+  }
+  return bool(submitted);""")
+    files[p]=s
+    p="src/kernel/xboxkrnl/xboxkrnl_audio.cpp";s=files[p]
+    s=replace(s,"constexpr u32 kSurroundChannels = 6;",
+        """constexpr u32 kSurroundChannels = 6;
+constexpr bool IsRenderHandle(u32 handle) {
+  return (handle&0xffff0000u)==0x41550000u &&
+         (handle&0xffffu)<kernel::APU::kMaxClients;
+}""")
+    s=replace(s,"""  REX_ASSERT((driver_ptr.GetGuestAddress() & 0xFFFF0000) == 0x41550000);
+
+  rex::kernel::KernelThread::SleepFor(std::chrono::microseconds(1));
+
+  *out_ptr = 0;""","""  const u32 handle=driver_ptr.GetGuestAddress();
+  auto* apu=kernel::GetCurrentState().GetAPU();
+  if (!IsRenderHandle(handle) || !apu || !apu->IsClientActive(handle&0xffffu)) {
+    REXKRNL_DEBUG("METRO_AUDIO rejected volume-mask handle={:08X}",handle);
+    return X_E_INVALIDARG;
+  }
+  auto& memory=kernel::GetCurrent().GetGuestMemory();
+  const u32 output=out_ptr.GetGuestAddress();
+  if (!output || !memory.GetWritableSpan(output,4))return X_E_INVALIDARG;
+  rex::kernel::KernelThread::SleepFor(std::chrono::microseconds(1));
+  *out_ptr=0;""")
+    s=replace(s,"""  REX_ASSERT((driver_ptr.GetGuestAddress() & 0xFFFF0000) == 0x41550000);
+
+  kernel::APU* apu = kernel::GetCurrentState().GetAPU();
+  if (!apu) {
+    return X_ERROR_SUCCESS;
+  }
+  apu->UnregisterClient(driver_ptr.GetGuestAddress() & 0x0000FFFF);
+  return X_ERROR_SUCCESS;""","""  const u32 handle=driver_ptr.GetGuestAddress();
+  auto* apu=kernel::GetCurrentState().GetAPU();
+  if (!IsRenderHandle(handle) || !apu || !apu->UnregisterClient(handle&0xffffu))
+    return X_E_INVALIDARG;
+  return X_ERROR_SUCCESS;""")
+    s=replace(s,"""  REX_ASSERT((driver_ptr.GetGuestAddress() & 0xFFFF0000) == 0x41550000);
+
+  if (kernel::GetCurrentState().audio_submit_logs < 10)""","""  const u32 handle=driver_ptr.GetGuestAddress();
+  if (!IsRenderHandle(handle))return X_E_INVALIDARG;
+  if (kernel::GetCurrentState().audio_submit_logs < 10)""")
+    s=replace(s,"""  if (!apu) {
+    return X_ERROR_SUCCESS;
+  }
+  apu->SubmitFrame(driver_ptr.GetGuestAddress() & 0x0000FFFF, samples_ptr.GetGuestAddress());
+
+  return X_ERROR_SUCCESS;""","""  if (!apu || !apu->SubmitFrame(handle&0xffffu,samples_ptr.GetGuestAddress()))
+    return X_E_INVALIDARG;
+  return X_ERROR_SUCCESS;""")
+    files[p]=s
     p="tests/unit/kernel/apu_test.cpp";s=(sdk/p).read_text()
     if "metro_audio_context" in s:raise ValueError("test already staged")
     files[p]=s+"\n"+tests.read_text()
