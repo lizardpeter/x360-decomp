@@ -368,3 +368,23 @@ REX_TEST_CASE("metro_startup_status: unload disarms guest object callbacks after
   CHECK(metro_deletes.load()==0);
   CHECK(metro_frees.load()==0);
 }
+
+
+REX_TEST_CASE("metro_startup_status: absent extended key provider fails closed without output writes",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 output=c.Alloc(64),length=c.Alloc(4);
+    c.Store32(length,40);
+    for (u32 i=0;i<64;i+=4)c.Store32(output+i,0x5A5A1000u+i);
+    for (const u32 id:{0u,0x100u,0xffffffffu}) {
+      const u32 status=c.Kernel("XeKeysExGetKey",{id,output,length,0});
+      CHECK(status==X_STATUS_NOT_SUPPORTED);
+      CHECK((status&0x80000000u)!=0);
+      CHECK(c.Load32(length)==40);
+      for (u32 i=0;i<64;i+=4)CHECK(c.Load32(output+i)==0x5A5A1000u+i);
+    }
+    CHECK(c.Kernel("XeKeysExGetKey",{0x100,0,0,0})==X_STATUS_NOT_SUPPORTED);
+  });
+}

@@ -8,7 +8,7 @@ from pathlib import Path
 from analyze_decoded import imports,pe_info,ordinal_exports
 from decode_image import decode
 from metro_import_contracts import DIGESTS,branch,hx,library,sdk_catalog,context,variable_reference,registers
-from metro_xam_fault_evidence import bounded_entry,operand
+from metro_xam_fault_evidence import bounded_entry,operand,conditional_details
 from metro_profile_evidence import linear_export_extent
 from metro_stfs_abi_evidence import flow,render
 from metro_live_slot_and_input_evidence import executable
@@ -122,6 +122,70 @@ def deferred_trace_plan(rows):
             add(pc+4,"deferred_branch_"+hx(pc),"fallthrough")
             add(int(r["target"],16),"deferred_branch_"+hx(pc),"target")
     return plan
+
+# Run 46037966784 reached this exact original call and did not return.
+STALL_OWNER=0x816BDE90
+STALL_CHILDREN={0x816BDEE8:0x816BCCA8,0x816BDEF4:0x816BD270,0x816BDEFC:0x816E0250}
+KEY_OWNER=0x81899538
+KEY_CALL=0x8189956C
+
+def stalled_initializer_evidence(image,base,pe,funcs,thunks):
+    def word(pc):return struct.unpack_from(">I",image,pc-base)[0]
+    if branch(0x816966A4,word(0x816966A4))!=(STALL_OWNER,True):
+        raise ValueError("observed stalled initializer edge changed")
+    for site,target in STALL_CHILDREN.items():
+        if branch(site,word(site))!=(target,True):
+            raise ValueError("original stalled initializer child changed")
+    b=branch(KEY_CALL,word(KEY_CALL))
+    if not b or not b[1] or thunks.get(b[0],{}).get("name")!="XeKeysExGetKey":
+        raise ValueError("observed extended key import changed")
+    compare=operand(KEY_CALL+4,word(KEY_CALL+4))
+    detail=conditional_details(KEY_CALL+8,word(KEY_CALL+8))
+    if (compare.get("kind")!="compare_immediate" or compare.get("register")!=3 or
+        compare.get("unsigned") or compare.get("value")!=0 or ((word(KEY_CALL+4)>>23)&7)!=0 or
+        detail["cr_test"]!={"field":0,"bit":"lt","sense":"set"} or
+        detail["linked"] or detail["target"]!="81899610"):
+        raise ValueError("original extended key signed failure edge changed")
+    # First-level callees are enough to identify the next stalled subcall.
+    # Keep exact-entry extents and independently bounded wrappers distinct.
+    selected={STALL_OWNER,*STALL_CHILDREN.values(),KEY_OWNER,0x81899BB8}
+    sizes={}
+    for a in sorted(selected):
+        if a in funcs:sizes[a]=funcs[a]
+        elif extent:=linear_export_extent(image,base,pe,a):sizes[a]=extent[0]
+        else:raise ValueError("missing original stalled initializer extent "+hx(a))
+    # Include one level of exact PDATA children, but never instrument an
+    # unbounded target or guess an indirect call destination.
+    for a in sorted(selected):
+        for pc in range(a,a+sizes[a],4):
+            b=branch(pc,word(pc))
+            if b and b[1] and b[0] in funcs and b[0] not in thunks and funcs[b[0]]<=2048:
+                sizes.setdefault(b[0],funcs[b[0]])
+    if len(sizes)>96:raise ValueError("unexpected stalled initializer graph size")
+    plan={};bodies={}
+    for a,n in sorted(sizes.items()):
+        if n>8192:raise ValueError("unexpected stalled initializer extent")
+        body=bounded_entry(image,base,pe,a,thunks,n)
+        bodies[hx(a)]=body
+        rows=body["operands"]
+        for pc,entry in deferred_trace_plan(rows).items():
+            plan.setdefault(pc,entry)
+        plan[hx(a)]={"name":"deferred_subsystem_"+hx(a),"phase":"entry"}
+        for row in rows:
+            pc=int(row["pc"],16)
+            if row["kind"]=="return":
+                plan[hx(pc)]={"name":"deferred_subsystem_"+hx(a),"phase":"exit"}
+            elif row["kind"]=="indirect_branch" and row.get("linked"):
+                plan[hx(pc)]={"name":"deferred_indirect_"+hx(pc),"phase":"call"}
+                if pc+4<a+n:plan.setdefault(hx(pc+4),{"name":"deferred_indirect_"+hx(pc),"phase":"continuation"})
+    # Explicitly classify the original failure and success edge, not a
+    # fabricated service outcome. This is control-flow observation only.
+    plan["81899610"]={"name":"deferred_key_service","phase":"failure_path"}
+    plan["81899578"]={"name":"deferred_key_service","phase":"nonnegative_path"}
+    print("DEFERRED_STALL_OWNER",hx(STALL_OWNER),"functions",len(bodies),"probes",len(plan))
+    return {"owner":hx(STALL_OWNER),"caller":"816966A4","children":{hx(k):hx(v) for k,v in STALL_CHILDREN.items()},
+            "extended_key_gate":{"call":hx(KEY_CALL),"negative":"81899610","nonnegative":"81899578"},
+            "bodies":bodies,"trace_points":plan}
 
 def scan(label,raw,image,meta,catalog,stubs):
     base=meta["image_base"];pe=pe_info(image,base);thunks={}
@@ -301,7 +365,7 @@ def scan(label,raw,image,meta,catalog,stubs):
     trace={}
     def mark(a,name,phase):
         if executable(pe,base,a):trace.setdefault(hx(a),{"name":name,"phase":phase})
-    hardware_gate={}
+    hardware_gate={};stalled_initializer={}
     if label=="xam":
         def check(pc,**want):
             actual=operand(pc,struct.unpack_from(">I",image,pc-base)[0])
@@ -375,13 +439,15 @@ def scan(label,raw,image,meta,catalog,stubs):
         # hardware gate or registrar. Preserve earlier named gate markers.
         for pc,entry in deferred_trace_plan(bodies[hx(0x81696558)]["operands"]).items():
             trace.setdefault(pc,entry)
+        stalled_initializer=stalled_initializer_evidence(image,base,pe,funcs,thunks)
+        for pc,entry in stalled_initializer["trace_points"].items():trace.setdefault(pc,entry)
         # Verify the last observed import, and record a return only if the
         # original call actually returns. No key bytes or output are logged.
         site=0x8189956C
         b=branch(site,struct.unpack_from(">I",image,site-base)[0])
         if b and b[1] and thunks.get(b[0],{}).get("name")=="XeKeysExGetKey":
-            mark(site,"deferred_key_service","call")
-            mark(site+4,"deferred_key_service","return")
+            trace[hx(site)]={"name":"deferred_key_service","phase":"call"}
+            trace[hx(site+4)]={"name":"deferred_key_service","phase":"return"}
         # The sole original direct caller of the init wrapper is the UI
         # subsystem initializer. Probe every direct call/return in that
         # bounded original body to locate the first failing stage.
@@ -416,7 +482,7 @@ def scan(label,raw,image,meta,catalog,stubs):
       "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"computed_callback_refs":nonadjacent_refs,"startup_work_items":startup_arguments,"callback_candidates":[hx(a) for a in sorted(extra)],
       "reverse_graph":ancestors(roots,inbound,max_depth=3,max_nodes=1000),
       "forward_graph":{"nodes":{hx(a):n for a,n in chosen.items()},"truncated":truncated},
-      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate}
+      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate,"stalled_initializer":stalled_initializer}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)

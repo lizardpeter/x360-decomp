@@ -51,3 +51,9 @@ class DeferredStartup(unittest.TestCase):
         self.assertNotIn("negative",code)
         code,_=insert("  // METRO_GUEST_PC 8184B8F8\n","xam",{"8184B8F8":{"name":"device_process_type","phase":"compare","result_kind":"r3_process_type"}})
         self.assertIn('ctx.r3.u32==2?"system"',code)
+
+    def test_guest_trace_includes_thread_and_caller_identity_only(self):
+        code,_=insert("  // METRO_GUEST_PC 816BDE90\n","xam",{"816BDE90":{"name":"deferred_subsystem_816BDE90","phase":"entry"}})
+        self.assertIn("pcr=%08X lr=%08X",code)
+        self.assertIn("ctx.r13.u32,static_cast<unsigned>(ctx.lr)",code)
+        self.assertNotIn("ctx.r4.u32",code)

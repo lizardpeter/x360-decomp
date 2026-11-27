@@ -51,7 +51,7 @@ def insert(source,module,plan):
           p+'  static std::atomic<unsigned> metro_guide_count{0};\n',
           p+'  auto count=metro_guide_count.fetch_add(1,std::memory_order_relaxed)+1;\n',
           p+'  if (count<=8 || (count&(count-1))==0)\n',
-          p+f'    std::fprintf(stderr,"METRO_GUIDE_TRACE module={module} pc={pc} name={name} phase={phase} count=%u result=%s\\n",count,{result});\n',
+          p+f'    std::fprintf(stderr,"METRO_GUIDE_TRACE module={module} pc={pc} name={name} phase={phase} count=%u result=%s pcr=%08X lr=%08X\\n",count,{result},ctx.r13.u32,static_cast<unsigned>(ctx.lr));\n',
           p+'}\n'])
     return (STAMP+"\n#include <atomic>\n#include <cstdio>\n#include <cstdlib>\n"+"".join(out),hits) if hits else (source,hits)
 

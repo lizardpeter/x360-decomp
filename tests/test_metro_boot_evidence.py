@@ -90,3 +90,11 @@ class BootEvidence(unittest.TestCase):
         self.assertEqual(result["deferred_startup_sequence"][1]["result"],"negative")
         self.assertFalse(result["menu_visually_verified"])
 if __name__=="__main__":unittest.main()
+
+class GuideThreadEvidence(unittest.TestCase):
+    def test_optional_thread_and_lr_are_preserved(self):
+        result=summarize([
+            "METRO_GUIDE_TRACE module=xam pc=816BDE90 name=deferred_subsystem_816BDE90 phase=entry count=1 result=observed pcr=30043000 lr=816966A8",
+            "METRO_GUIDE_TRACE module=xam pc=81899570 name=deferred_key_service phase=return count=1 result=negative pcr=30043000 lr=81899570"],{"xam":[]})
+        self.assertEqual([r["pcr"] for r in result["deferred_startup_sequence"]],["30043000","30043000"])
+        self.assertEqual(result["deferred_startup_sequence"][0]["lr"],"816966A8")

@@ -46,11 +46,13 @@ def summarize(lines, inventories):
     guide_counts=collections.Counter();graphics_counts=collections.Counter();skin_counts=collections.Counter()
     startup_sequence=[]
     for line in lines:
-        if m:=re.search(r"METRO_GUIDE_TRACE module=(\w+) pc=([0-9A-Fa-f]+) name=(\w+) phase=(\w+) count=(\d+) result=(\w+)",line):
+        if m:=re.search(r"METRO_GUIDE_TRACE module=(\w+) pc=([0-9A-Fa-f]+) name=(\w+) phase=(\w+) count=(\d+) result=(\w+)(?: pcr=([0-9A-Fa-f]{8}) lr=([0-9A-Fa-f]{8}))?",line):
             key=":".join((m[1],m[2].upper(),m[3],m[4],m[6]))
             guide_counts[key]=max(guide_counts[key],int(m[5]))
-            if m[3].startswith(("deferred_","guide_boot_","hw_gate")) and len(startup_sequence)<512:
-                startup_sequence.append({"pc":m[2].upper(),"name":m[3],"phase":m[4],"result":m[6]})
+            if m[3].startswith(("deferred_","guide_boot_","hw_gate")) and len(startup_sequence)<4096:
+                record={"pc":m[2].upper(),"name":m[3],"phase":m[4],"result":m[6]}
+                if m[7]:record.update(pcr=m[7].upper(),lr=m[8].upper())
+                startup_sequence.append(record)
         if m:=re.search(r"METRO_GFX_NOTIFY (dispatch|returned) event=(\d+)",line):graphics_counts[m[1]+":"+m[2]]+=1
         if "METRO_GFX_NOTIFY registration callback=" in line:graphics_counts["registration"]+=1
         if "METRO_HUD_SKIN resource-only image mapped" in line:skin_counts["mapped"]+=1

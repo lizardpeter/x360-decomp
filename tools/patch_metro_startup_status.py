@@ -8,6 +8,18 @@ from patch_rexglue_imports import REVISION
 OLD="REX_EXPORT_STUB(__imp__EtxProducerRegister);"
 NEW="REX_EXPORT_STUB_RETURN(__imp__EtxProducerRegister, rex::kernel::X_STATUS_NOT_SUPPORTED);"
 
+def patch_extended_key_status(source):
+    # Original XAM at 81899570 tests the signed result of XeKeysExGetKey,
+    # then tests an output length. The SDK void stub preserves the input
+    # identifier (0x100 in the live trace) and leaves the output untouched.
+    # There is no extended key provider in this offline native host.
+    # Report that absence; never supply key material or a success result.
+    old="REX_EXPORT_STUB(__imp__XeKeysExGetKey);"
+    new="REX_EXPORT_STUB_RETURN(__imp__XeKeysExGetKey, rex::kernel::X_STATUS_NOT_SUPPORTED);"
+    if source.count(old)!=1 or new in source:
+        raise ValueError("unexpected extended key status export")
+    return source.replace(old,new,1)
+
 def patch_status(source):
     if source.count(OLD)!=1 or NEW in source:
         raise ValueError("unexpected producer registration stub")
@@ -352,6 +364,8 @@ def main():
         anchor=f"REX_EXPORT_STUB(__imp__{symbol});"
         if original.count(anchor)!=1:raise ValueError(f"unexpected {symbol} stub")
         replacements[path]=original.replace(anchor,f"REX_EXPORT_STUB_RETURN(__imp__{symbol}, 0);")
+    crypt=source.parent/"xboxkrnl_crypt.cpp"
+    replacements[crypt]=patch_extended_key_status(crypt.read_text())
     hal=source.parent/"xboxkrnl_hal.cpp"
     hid=source.parent/"xboxkrnl_hid.cpp"
     replacements[source],replacements[hal],replacements[hid]=patch_native_hardware(
