@@ -56,10 +56,10 @@ jobs:
       - name: Build isolated profile codegen SDK
         working-directory: build/sdk-source
         run: |
-          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 '-DCMAKE_CONFIGURATION_TYPES=Debug' -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
-          cmake --build out/build/linux-amd64 --config Debug --target install --parallel 4
-          test -x out/linux-amd64/Debug/rexglued
-          echo "CODEGEN=$(realpath out/linux-amd64/Debug/rexglued)" >> "$GITHUB_ENV"
+          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 '-DCMAKE_CONFIGURATION_TYPES=Debug;Release' -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --build out/build/linux-amd64 --target install --parallel 4
+          test -x out/install/linux-amd64/bin/rexglue
+          echo "CODEGEN=$(realpath out/install/linux-amd64/bin/rexglue)" >> "$GITHUB_ENV"
           echo "SDK=$(realpath out/install/linux-amd64)" >> "$GITHUB_ENV"
       - name: Generate, compile and register all five isolated native modules
         run: |
