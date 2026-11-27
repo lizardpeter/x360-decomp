@@ -48,15 +48,15 @@ std::string value_string(const PropertyValue& value,std::string_view name){
 void audit_node(const Element& node,std::string_view resource,std::string_view member,
                 std::string_view parent){
     auto prefix=[&](std::string_view kind){
-        std::cout<<kind<<'\\t'<<std::quoted(std::string(resource))<<'\\t'
-                 <<std::quoted(std::string(member))<<'\\t'<<node.index<<'\\t';
+        std::cout<<kind<<'\t'<<std::quoted(std::string(resource))<<'\t'
+                 <<std::quoted(std::string(member))<<'\t'<<node.index<<'\t';
     };
-    prefix("node");std::cout<<parent<<'\\t'<<std::quoted(node.class_name)<<"\\n";
+    prefix("node");std::cout<<parent<<'\t'<<std::quoted(node.class_name)<<"\n";
     if(node.properties)for(auto& p:*node.properties)if(layout_property(p.name))
         for(std::size_t i=0;i<p.values.size();++i){
             prefix("property");
-            std::cout<<std::quoted(p.owner)<<'\\t'<<std::quoted(p.name)<<'\\t'
-                     <<i<<'\\t'<<std::quoted(value_string(p.values[i],p.name))<<"\\n";
+            std::cout<<std::quoted(p.owner)<<'\t'<<std::quoted(p.name)<<'\t'
+                     <<i<<'\t'<<std::quoted(value_string(p.values[i],p.name))<<"\n";
         }
     for(auto& timeline:node.timelines)for(std::size_t i=0;i<timeline.channels.size();++i){
         auto& channel=timeline.channels[i];
@@ -66,9 +66,9 @@ void audit_node(const Element& node,std::string_view resource,std::string_view m
         for(auto& frame:timeline.frames){
             if(i>=frame.values.size())throw FormatError("missing timeline value");
             prefix("keyframe");
-            std::cout<<timeline.target_node<<'\\t'<<std::quoted(path)<<'\\t'
-                     <<frame.metadata.frame<<'\\t'<<unsigned(frame.metadata.flags)<<'\\t'
-                     <<std::quoted(value_string(frame.values[i],channel.path.back()))<<"\\n";
+            std::cout<<timeline.target_node<<'\t'<<std::quoted(path)<<'\t'
+                     <<frame.metadata.frame<<'\t'<<unsigned(frame.metadata.flags)<<'\t'
+                     <<std::quoted(value_string(frame.values[i],channel.path.back()))<<"\n";
         }
     }
     for(auto& child:node.children)audit_node(child,resource,member,std::to_string(node.index));
