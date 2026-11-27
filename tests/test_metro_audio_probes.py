@@ -13,6 +13,9 @@ class TestAudioProbes(unittest.TestCase):
         self.assertIn('metro_original_audio_probe("faulting_header_read",0x819A4158u',result)
         self.assertIn(" original_load();",result)
         self.assertIn("GetActiveCPU",HEADER)
+        # PPCContext::ctr is a Register union, not an integer-convertible type.
+        self.assertIn("ctx.ctr.u32",HEADER)
+        self.assertNotIn("static_cast<unsigned>(ctx.ctr)",HEADER)
         self.assertIn("global_object=unmapped",HEADER)
         self.assertNotIn("mem->Store",HEADER)
         self.assertNotIn("TranslateVirtual",HEADER)

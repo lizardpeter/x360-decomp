@@ -107,7 +107,7 @@ void metro_original_audio_probe(const char* label,unsigned pc,const PPCContext& 
     if (kind==4) {
         auto vtable=mem->Load<rex::be_u32>(ctx.r3.u32);
         if(vtable)word("voice_get_buffer_target",address(*vtable,72));
-        std::fprintf(stderr," ctr=%08X",static_cast<unsigned>(ctx.ctr));
+        std::fprintf(stderr," ctr=%08X",ctx.ctr.u32);
     }
     if (kind==3) {
         byte("route5",address(ctx.r4.u32,5));
