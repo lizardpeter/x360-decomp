@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 from patch_rexglue_imports import REVISION
 from patch_metro_device_control import NEW as ATA_BRANCH, OLD as UNKNOWN_BRANCH
+from patch_metro_public_verification import corrected as patch_public_verification, native_test as public_verification_test
 
 def replace(source, old, new):
     if source.count(old)!=1 or new in source:
@@ -664,13 +665,15 @@ def main():
     hid=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_hid.cpp"
     file=a.sdk/"src/kernel/object/file_object.cpp"
     test=a.sdk/"tests/unit/kernel/files_test.cpp"
-    tests=a.tests.read_text()
+    tests=a.tests.read_text()+"\n"+public_verification_test()
     if "metro_io_runtime" in test.read_text():raise ValueError("test already installed")
     info=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_io_info.cpp"
     filesystem=a.sdk/"src/filesystem/file_system.cpp"
     filesystem_test=a.sdk/"tests/unit/filesystem/file_system_test.cpp"
     file_header=a.sdk/"include/rex/kernel/object/file_object.h"
-    outputs={file_header:patch_directory_header(file_header.read_text()),
+    crypt=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_crypt.cpp"
+    outputs={crypt:patch_public_verification(crypt.read_text()),
+             file_header:patch_directory_header(file_header.read_text()),
              filesystem:patch_filesystem(filesystem.read_text()),
              filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
              io:patch_storage_queries(patch_io(io.read_text())),
