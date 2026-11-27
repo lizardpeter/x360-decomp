@@ -107,7 +107,7 @@ FIXTURES=[
  return sum,n,-5%3,5%-3,2^8,1/0,0/0"""),
 ("comparison", """local a,b,c=nil,false,0
  return a or 12,b and 3,c and 4,not a,not b,not c,"a"<"b","a"<= "a",1=="1" """),
-("binary", """local a="a\\000b";return #a,a.."c",12.5.."x",tonumber("  -0x10 "),tonumber("bad"),type(a)"""),
+("binary", """local a="a\\000b";return #a,a.."c",12.5 .."x",tonumber("  -0x10 "),tonumber("bad"),type(a)"""),
 ("unpack", """local t={4,8,15,16};return unpack(t,2,4)"""),
 ("setlist-many", "local t={"+",".join(map(str,range(1,151)))+"};return #t,t[1],t[50],t[51],t[150]"),
 ("setlist-open", """local function f() return 8,9,10 end
