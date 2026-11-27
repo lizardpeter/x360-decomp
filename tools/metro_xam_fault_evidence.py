@@ -410,17 +410,19 @@ def global_object_report(image,base,pe,thunks):
     # constructor, and stores the returned pointer. Traverse bounded callees
     # of both to expose the real upstream kernel contracts and failure paths.
     roots=[0x816E6C78,0x8169BFA0,0x816A14B8]
+    # Original heap initialization precedes the failing allocation during XAM attach.
+    heap_roots=[0x816E6618,0x816E6518,0x816E62F0,0x816E5D58,0x8171F630,0x8172FC98,0x8172FC50,0x8172DE40]
     for pc,target in ((0x816A17CC,roots[0]),(0x816A17D8,roots[1]),(0x816A17F8,roots[2])):
         if branch(pc,read_word(image,base,pc))!=(target,True):
             raise ValueError("global constructor call changed")
-    queue=[(a,0) for a in roots]
+    queue=[(a,0) for a in roots+heap_roots]
     visited={}
-    while queue and len(visited)<200:
+    while queue and len(visited)<350:
         a,depth=queue.pop(0)
         if a in visited or not executable(pe,base,a):continue
-        detail=bounded_entry(image,base,pe,a,thunks,4096 if depth==0 else 512)
+        detail=bounded_entry(image,base,pe,a,thunks,8192 if depth==0 else 1024)
         visited[a]={"depth":depth,**detail}
-        if depth>=3:continue
+        if depth>=4:continue
         for row in detail["operands"]:
             if row.get("kind")=="branch" and "import" not in row:
                 dest=int(row["target"],16)
