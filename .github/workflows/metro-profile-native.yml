@@ -57,8 +57,9 @@ jobs:
         working-directory: build/sdk-source
         run: |
           cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 '-DCMAKE_CONFIGURATION_TYPES=Debug' -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
-          cmake --build out/build/linux-amd64 --target install --parallel 4
-          test -x out/install/linux-amd64/bin/rexglue
+          cmake --build out/build/linux-amd64 --config Debug --target install --parallel 4
+          test -x out/linux-amd64/Debug/rexglued
+          echo "CODEGEN=$(realpath out/linux-amd64/Debug/rexglued)" >> "$GITHUB_ENV"
           echo "SDK=$(realpath out/install/linux-amd64)" >> "$GITHUB_ENV"
       - name: Generate, compile and register all five isolated native modules
         run: |
@@ -68,7 +69,7 @@ jobs:
             folder="$GITHUB_WORKSPACE/build/profile-native/$name"
             receipt="$GITHUB_WORKSPACE/build/receipts/$name"
             mkdir -p "$receipt"
-            if (cd "$folder" && "$SDK/bin/rexglue" --log-file "$folder/codegen-detail.log" codegen "metro_${name}_manifest.toml") > "$folder/codegen.log" 2>&1; then
+            if (cd "$folder" && "$CODEGEN" --log-file "$folder/codegen-detail.log" codegen "metro_${name}_manifest.toml") > "$folder/codegen.log" 2>&1; then
               status=0
             else
               status=$?
