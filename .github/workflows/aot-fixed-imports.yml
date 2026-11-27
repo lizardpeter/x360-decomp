@@ -13,6 +13,14 @@ on:
       - 'tools/patch_metro_import_slots.py'
       - 'tools/patch_metro_device_control.py'
       - 'tools/patch_metro_retail_routing.py'
+      - 'tools/patch_metro_boot_contracts.py'
+      - 'tools/verify_metro_entries.py'
+      - 'tools/metro_kernel_variables.py'
+      - 'tests/test_metro_boot_contracts.py'
+      - 'tests/test_metro_entries.py'
+      - 'tests/test_metro_kernel_variables.py'
+      - 'tools/analyze_metro_boot.py'
+      - 'tests/test_metro_boot_evidence.py'
       - 'tests/test_metro_retail_routing.py'
       - 'tests/test_metro_device_control.py'
       - 'tools/native/metro_aot_boot.hpp'
@@ -44,6 +52,10 @@ jobs:
           python -m unittest discover -s tests -p test_metro_sdk_patches.py
           python -m unittest discover -s tests -p test_metro_device_control.py
           python -m unittest discover -s tests -p test_metro_retail_routing.py
+          python -m unittest discover -s tests -p test_metro_boot_contracts.py
+          python -m unittest discover -s tests -p test_metro_entries.py
+          python -m unittest discover -s tests -p test_metro_kernel_variables.py
+          python -m unittest discover -s tests -p test_metro_boot_evidence.py
           python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
           python tools/stage_metro_xam_aot.py stage build/fixed-imports
@@ -66,6 +78,20 @@ jobs:
           python tools/patch_metro_import_slots.py build/sdk-source
           python tools/patch_metro_device_control.py build/sdk-source
           python tools/patch_metro_retail_routing.py build/sdk-source --receipt build/receipts/retail-routing.json
+          python tools/patch_metro_boot_contracts.py build/sdk-source
+      - uses: actions/checkout@v4
+        with:
+          repository: fabegalo/x360-native
+          ref: 7361a8a164c9d2af4a5c3107868b0a6712fd25a4
+          path: build/metro-reference
+          persist-credentials: false
+          sparse-checkout: |
+            titles/dash_17559/analysis
+      - name: Verify original pointer entries and exact XAM export targets
+        run: |
+          source=build/sdk-source/thirdparty/libmspack/libmspack/mspack
+          cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+          python tools/verify_metro_entries.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.so --reference build/metro-reference/titles/dash_17559/analysis/dash_17559_pointer_targets.toml --receipt build/receipts/metro-entry-hints.json
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
@@ -91,7 +117,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/linux-amd64
-          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py') }}
+          key: rexglue-linux-amd64-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/patch_metro_boot_contracts.py') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
@@ -153,12 +179,13 @@ jobs:
           grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+$' "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
           grep -E '^METRO_BINDING ' "$folder/preflight.log" > build/receipts/metro-binding-values.txt || true
           grep -E '^METRO_RETAIL_' "$folder/preflight.log" > build/receipts/metro-retail-routing.txt || true
+          grep -E '^METRO_KERNEL_VAR' "$folder/preflight.log" > build/receipts/metro-kernel-variables.txt || true
           cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt
           if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
       - name: Attempt original graphical boot and capture actual presented title frame
@@ -176,6 +203,7 @@ jobs:
             cp "$log" build/receipts/metro-boot.log
             python tools/symbolize_metro_crash.py "$log" "$folder/native" "$SDK" > build/receipts/metro-symbolized.txt
             cat build/receipts/metro-symbolized.txt
+            python tools/analyze_metro_boot.py "$log" --output build/receipts/metro-boot-analysis.json
           fi
           exit "$status"
       - name: Upload actual frame candidates (not menu verification)
@@ -185,6 +213,7 @@ jobs:
           name: metro-native-frame-candidate
           path: |
             build/fixed-imports/dash_17559/native/metro-capture/candidate-*.png
+            build/fixed-imports/dash_17559/native/metro-capture/input-*.png
             build/fixed-imports/dash_17559/native/metro-capture/receipt.txt
           if-no-files-found: ignore
       - name: Upload metadata only
