@@ -1,11 +1,53 @@
-name: Rebuild SDK with repeated-import correction
+name: Rebuild SDK with verified Metro XAM bindings
 on:
   workflow_dispatch:
   push:
     paths:
       - 'tools/patch_rexglue_imports.py'
       - 'tools/verify_repeated_imports.py'
+      - 'tools/stage_metro_xam_aot.py'
+      - 'tests/test_metro_xam_aot.py'
+      - 'tools/stage_metro_preflight.py'
+      - 'tools/filter_zero_aot_mappings.py'
+      - 'tools/patch_rexglue_function_tables.py'
+      - 'tools/patch_metro_import_slots.py'
+      - 'tools/patch_metro_device_control.py'
+      - 'tools/patch_metro_retail_routing.py'
+      - 'tools/patch_metro_boot_contracts.py'
+      - 'tools/patch_metro_io_runtime.py'
+      - 'tools/patch_metro_xex_views.py'
+      - 'tools/patch_metro_input_runtime.py'
+      - 'tools/patch_metro_module_identity.py'
+      - 'tests/sdk/metro_input_bridge.cpp'
+      - 'tests/sdk/metro_xex_isolation.cpp'
+      - 'tests/test_metro_io_runtime.py'
+      - 'tests/sdk/metro_io_runtime.cpp'
+      - 'tools/verify_metro_entries.py'
+      - 'tools/metro_kernel_variables.py'
+      - 'tests/test_metro_boot_contracts.py'
+      - 'tests/test_metro_entries.py'
+      - 'tests/test_metro_kernel_variables.py'
+      - 'tools/analyze_metro_boot.py'
+      - 'tests/test_metro_boot_evidence.py'
+      - 'tests/test_metro_retail_routing.py'
+      - 'tests/test_metro_device_control.py'
+      - 'tools/native/metro_aot_boot.hpp'
+      - 'tools/capture_metro_boot.sh'
+      - 'tools/symbolize_metro_crash.py'
+      - 'tools/patch_metro_guest_pc.py'
+      - 'tools/patch_metro_startup_status.py'
+      - 'tests/sdk/metro_startup_status.cpp'
+      - 'tools/patch_metro_console_config.py'
+      - 'tests/sdk/metro_xconfig.cpp'
+      - 'tests/test_metro_fault_localization.py'
+      - 'tools/stage_dashboard_runtime.py'
+      - 'tools/native/metro_aot_preflight.cpp'
+      - 'tests/test_metro_preflight.py'
+      - 'tests/test_metro_sdk_patches.py'
       - '.github/workflows/aot-fixed-imports.yml'
+concurrency:
+  group: metro-native-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -19,12 +61,23 @@ jobs:
       - name: Verify original input and patch tests
         run: |
           python -m unittest discover -s tests -p test_rexglue_import_patch.py
-          python tools/fetch_originals.py --only dash --only dash_basic
+          python -m unittest discover -s tests -p test_metro_xam_aot.py
+          python -m unittest discover -s tests -p test_metro_preflight.py
+          python -m unittest discover -s tests -p test_metro_sdk_patches.py
+          python -m unittest discover -s tests -p test_metro_device_control.py
+          python -m unittest discover -s tests -p test_metro_retail_routing.py
+          python -m unittest discover -s tests -p test_metro_boot_contracts.py
+          python -m unittest discover -s tests -p test_metro_io_runtime.py
+          python -m unittest discover -s tests -p test_metro_entries.py
+          python -m unittest discover -s tests -p test_metro_kernel_variables.py
+          python -m unittest discover -s tests -p test_metro_boot_evidence.py
+          python -m unittest discover -s tests -p test_metro_fault_localization.py
+          python tools/fetch_originals.py --only dash --only dash_basic --only pirs --only shared_resources
           python tools/verify_repeated_imports.py
-          python tools/stage_aot_host.py --module dash_17559 --output build/fixed-imports
-          python tools/verify_aot_hints.py --output build/fixed-imports/dash_17559/verified-entries.toml
-          echo 'includes = ["verified-entries.toml"]' >> build/fixed-imports/dash_17559/dash_17559_manifest.toml
+          python tools/stage_metro_xam_aot.py stage build/fixed-imports
+          python tools/stage_metro_preflight.py build/fixed-imports/dash_17559
           mkdir -p build/receipts
+          python tools/stage_dashboard_runtime.py --output build/fixed-imports/dash_17559/inputs --receipt build/receipts/runtime-inputs.json --flash-tree
       - uses: actions/checkout@v4
         with:
           repository: rexglue/rexglue-sdk
@@ -34,18 +87,78 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Correct import record walker
-        run: python tools/patch_rexglue_imports.py build/sdk-source
+        run: |
+          python tools/patch_rexglue_imports.py build/sdk-source
+          python tools/stage_metro_xam_aot.py patch build/sdk-source
+          python tools/patch_rexglue_function_tables.py build/sdk-source
+          python tools/patch_metro_import_slots.py build/sdk-source
+          python tools/patch_metro_device_control.py build/sdk-source
+          python tools/patch_metro_retail_routing.py build/sdk-source --receipt build/receipts/retail-routing.json
+          python tools/patch_metro_boot_contracts.py build/sdk-source
+          python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
+          python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
+          python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp
+          python tools/patch_metro_module_identity.py build/sdk-source
+          python tools/patch_metro_guest_pc.py build/sdk-source
+          python tools/patch_metro_console_config.py build/sdk-source --tests tests/sdk/metro_xconfig.cpp
+          python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
+      - uses: actions/checkout@v4
+        with:
+          repository: fabegalo/x360-native
+          ref: 7361a8a164c9d2af4a5c3107868b0a6712fd25a4
+          path: build/metro-reference
+          persist-credentials: false
+          sparse-checkout: |
+            titles/dash_17559/analysis
+      - name: Verify original pointer entries and exact XAM export targets
+        run: |
+          source=build/sdk-source/thirdparty/libmspack/libmspack/mspack
+          cc -shared -fPIC -O2 -I"$source" tools/lzx_adapter.c "$source/lzxd.c" -o build/lzx_adapter.so
+          python tools/verify_metro_entries.py build/fixed-imports/dash_17559 --lzx build/lzx_adapter.so --reference build/metro-reference/titles/dash_17559/analysis/dash_17559_pointer_targets.toml --receipt build/receipts/metro-entry-hints.json
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
         with:
           platform: linux-amd64
+      - name: Prepare persistent compiler cache
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+          echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/compiler-cache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+      - name: Restore compiler cache across SDK and title builds
+        uses: actions/cache/restore@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+          restore-keys: |
+            metro-clang20-ccache-
+      - name: Configure compiler cache limit
+        run: ccache --max-size=3G
+      - name: Restore exact patched SDK installation
+        id: sdk_cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/sdk-source/out/install/linux-amd64
+          key: rexglue-linux-amd64-debug-release-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/patch_metro_boot_contracts.py', 'tools/patch_metro_io_runtime.py', 'tests/sdk/metro_io_runtime.cpp', 'tools/patch_metro_xex_views.py', 'tests/sdk/metro_xex_isolation.cpp', 'tools/patch_metro_input_runtime.py', 'tests/sdk/metro_input_bridge.cpp', 'tools/patch_metro_module_identity.py', 'tools/patch_metro_guest_pc.py', 'tools/patch_metro_console_config.py', 'tests/sdk/metro_xconfig.cpp', 'tools/patch_metro_startup_status.py', 'tests/sdk/metro_startup_status.cpp') }}
       - name: Build corrected SDK
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
         run: |
-          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=OFF -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --preset linux-amd64 -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 '-DCMAKE_CONFIGURATION_TYPES=Debug;Release' -DREXGLUE_BUILD_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
           cmake --build out/build/linux-amd64 --target install --parallel 4
-          echo "SDK=$(realpath out/install/linux-amd64)" >> "$GITHUB_ENV"
-      - name: Strict dashboard generation
+      - name: Select verified patched SDK installation
+        run: |
+          test -x build/sdk-source/out/install/linux-amd64/bin/rexglue
+          echo "SDK=$(realpath build/sdk-source/out/install/linux-amd64)" >> "$GITHUB_ENV"
+      - name: Cache successful SDK build before guest tests
+        if: steps.sdk_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/sdk-source/out/install/linux-amd64
+          key: ${{ steps.sdk_cache.outputs.cache-primary-key }}
+        continue-on-error: true
+      - name: Strict dashboard and XAM generation
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           cd "$folder"
@@ -56,10 +169,17 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           python tools/aot_diagnostics.py "$folder/codegen-detail.log" --output build/receipts/dashboard-diagnostics.json
           python tools/aot_receipt.py "$folder/generated" --status "$status" --output build/receipts/dashboard-generated.json
-      - name: Compile and link dashboard host
+          python tools/aot_receipt.py "$folder/generated_xam" --status "$status" --output build/receipts/xam-generated.json
+      - name: Filter invalid zero-address mappings and refresh generated receipts
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
-          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -g0' -DCMAKE_PREFIX_PATH="$SDK"
+          python tools/filter_zero_aot_mappings.py "$folder" --receipt build/receipts/zero-address-mappings.json
+          python tools/aot_receipt.py "$folder/generated" --status 0 --output build/receipts/dashboard-generated.json
+          python tools/aot_receipt.py "$folder/generated_xam" --status 0 --output build/receipts/xam-generated.json
+      - name: Compile and link dashboard host and XAM module
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gline-tables-only' -DCMAKE_PREFIX_PATH="$SDK"
           set +e
           cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
           status=$?
@@ -69,10 +189,67 @@ jobs:
           test -x "$folder/native/dash_17559"
           file "$folder/native/dash_17559"
           sha256sum "$folder/native/dash_17559" > build/receipts/dashboard-executable.sha256
+          find "$folder/native" -type f -name "libdash_17559_xam.so" -print -quit | grep -q .
+      - name: Verify native dashboard and XAM mapping without guest execution
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          cd "$folder/native"
+          set +e
+          timeout --kill-after=10s 90s ./dash_17559 --title.game_root="$folder/inputs" --title.entry=dash.xex > "$folder/preflight.log" 2>&1
+          status=$?
+          set -e
+          cd "$GITHUB_WORKSPACE"
+          grep -E '^METRO_PREFLIGHT (pass|fail) [a-z_]+$' "$folder/preflight.log" > build/receipts/metro-preflight.txt || true
+          grep -E '^METRO_BINDING ' "$folder/preflight.log" > build/receipts/metro-binding-values.txt || true
+          grep -E '^METRO_RETAIL_' "$folder/preflight.log" > build/receipts/metro-retail-routing.txt || true
+          grep -E '^METRO_KERNEL_VAR' "$folder/preflight.log" > build/receipts/metro-kernel-variables.txt || true
+          cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt
+          if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
+          printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
+          python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
+          test "$status" -eq 0
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity clean_unload; do
+            grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
+          done
+      - name: Attempt original graphical boot and capture actual presented title frame
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
+          folder="$PWD/build/fixed-imports/dash_17559"
+          set +e
+          timeout --kill-after=15s 120s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_metro_boot.sh "$folder/native" "$folder/inputs"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > build/receipts/metro-boot-exit-code.txt
+          log="$folder/native/metro-capture/boot.log"
+          if [ -f "$log" ]; then
+            cp "$log" build/receipts/metro-boot.log
+            python tools/symbolize_metro_crash.py "$log" "$folder/native" "$SDK" > build/receipts/metro-symbolized.txt
+            cat build/receipts/metro-symbolized.txt
+            python tools/analyze_metro_boot.py "$log" --output build/receipts/metro-boot-analysis.json
+          fi
+          exit "$status"
+      - name: Upload actual frame candidates (not menu verification)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: metro-native-frame-candidate
+          path: |
+            build/fixed-imports/dash_17559/native/metro-capture/candidate-*.png
+            build/fixed-imports/dash_17559/native/metro-capture/input-*.png
+            build/fixed-imports/dash_17559/native/metro-capture/receipt.txt
+          if-no-files-found: ignore
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: corrected-sdk-dashboard-receipt
+          name: verified-metro-xam-receipt
           path: build/receipts/
           if-no-files-found: ignore
+      - name: Save reusable compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+        continue-on-error: true

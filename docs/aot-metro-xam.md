@@ -1,0 +1,46 @@
+# Metro dashboard/XAM AOT integration trial
+
+Run [45642721888](https://github.com/lizardpeter/x360-decomp/actions/runs/45642721888) passed strict dashboard generation after the XEX repeated-record correction. Native link diagnostics identify five unresolved addresses. All five are original XAM thunks and every ordinal has an address in the independently extracted XAM export inventory:
+
+| Ordinal (hex) | Dashboard thunk | Retail XAM address |
+|---|---|---|
+| 0546 | 9293C8BC | 8168EB50 |
+| 0547 | 9293C89C | 8168EB88 |
+| 0548 | 9293C8AC | 8168EBC0 |
+| 0549 | 9293C88C | 8168EBF8 |
+| 054B | 9293CE6C | 816DEF20 |
+
+The pinned SDK's XAM catalog omits these ordinals. Its register phase treats unknown ordinals of known kernel libraries as ordinary unresolved imports, so no module forwarding bodies are generated. The SDK already supports multi-binary code generation, generated module-import forwarding bodies, and an explicit fatal error when an export cannot be resolved.
+
+The new trial stages the hash-verified dashboard and XAM together, preserves the existing verified entry hints, and narrowly classifies only the five known (image base, library, ordinal, thunk) tuples as module imports. All other unknown ordinals retain the original diagnostic behavior. It does not introduce no-op exports, patch original binaries, bypass verification, or run guest code. CI checks strict code generation, native dashboard linking and production of the separate XAM library; it retains only metadata.
+
+**Pending:** SDK runtime treats XAM as a built-in kernel library and does not automatically load original XAM for dashboard dependencies. A successful link alone will not establish boot. Runtime composition must explicitly load/register the correct original module before resolving these imports; guest entry ordering and the interaction between hosted XAM services and native XAM must be verified separately. Do not run this trial as if it were an interactive dashboard. The independently authored runtime remains the long-term faithful replacement boundary.
+
+
+## Verified XAM data import
+
+The dashboard also imports XAM ordinal 0x03DB, g_XuiAutomation, as a variable (not a callable thunk). The original import inventory places its value slot at 0x92000550; the original XAM export inventory places the symbol at 0x81A87F20. The latter is checked against the hash-verified XAM image and must fall inside a writable, non-executable loaded data section. The loader patch writes this original guest address only for the exact dashboard base, library, ordinal, slot, and SDK export name. This makes the dashboard's variable import refer to the actual mapped retail XAM data, rather than the SDK's unresolved-variable marker. The other missing variable imports are not fabricated.
+
+## Live import relocation and diagnostics
+
+The native mapping gate now checks the exact loaded XEX import metadata, the mapped XAM export, and the actual big-endian guest value. It reports all five code slots with their expected/observed values. A still-unresolved original descriptor may be relocated only after both images and both registered function addresses have been verified. A data import is verified as non-executable writable XAM data. Read-only import pages are temporarily made writable only for the relocation and are restored immediately. Unknown values and missing records remain fatal; no guest call is substituted. The graphical boot uses the same verification and requires the data binding as well.
+
+## Original XAM execution, run 45924776629
+
+All six live relocations and the clean unload passed. In the graphical run the actual original XAM entry executed on the guest main thread, created system threads, and reached NtDeviceIoControlFile(0x4D028), where the pinned SDK asserted and aborted. The dashboard entry did not run and no frame was captured. This control code is conventionally IOCTL_IDE_PASS_THROUGH (see https://github.com/netonjm/Amiga360/blob/master/src/osdep/undocumented.h). The hosted file provider does not expose raw ATA hardware; the new narrowly scoped branch returns a genuine unsupported-operation error rather than aborting the host or fabricating hardware data. Guest recovery from that error is not verified. Other unknown controls still fail explicitly. The next run retains complete boot logs and symbolized module-relative crash offsets, without claiming menu readiness.
+
+The first patched SDK rebuild (45934904063) failed at compile time due to a redundant closing brace in the generated IDE-control branch. The replacement now preserves the original dispatch's brace structure; its regression test checks balanced enclosing control flow. Subsequent workflows reuse compiler cache across pinned SDK patches and title builds, while exact install-cache keys still include the SDK patch contents. Symbolization searches both the native title tree and the selected SDK install. No new boot behavior has been measured yet.
+
+## Separate retail-routing experiment
+
+The original dashboard import inventory contains 522 unique XAM ordinal/slot/thunk tuples. Joining them to the original XAM export table and section map yields 521 executable targets and one writable data target. Until now only five callable imports were explicitly routed to original XAM; the SDK's catalogued imports still resolved to hosted XAM functions. This could split state between two implementations of XAM, especially for XUI, input, profiles and notifications. The separate branch metro-xam-retail-routing deliberately tests the entire original import set through the SDK module-forwarding mechanism. Every generated routing case is restricted to the exact dashboard image base, library, ordinal and thunk. The existing five-import branch is left intact as an independently runnable baseline.
+
+The preflight now requires all 521 callable thunks and targets to exist in the registered native function table, verifies actual loaded import metadata and relocations, and checks the original data export separately. A missing native leaf entry or other discrepancy remains a failure and is enumerated in the receipt. The SDK catalog is used for type cross-checking, not to override retail targets. No original executable data is modified on disk, no security check is disabled, and no hosted XAM fallback is allowed for this branch's known dashboard imports. Kernel services remain the SDK's hosted implementation. This is an unverified composition experiment, not proof of successful XAM startup.
+
+## Verified boot contracts, pointer entries and input probe
+
+The reference project x360-native v1.34.6 (BSD-3-Clause, 7361a8a164c9d2af4a5c3107868b0a6712fd25a4) documents a successful original Metro menu experiment using the identical dashboard source SHA-256, but an older SDK and a hosted XAM composition. Its documented blockers independently identify the repeated-library pairing defect, pointer-only entry points, the SystemRoot mount, the 4 KiB XEX page-table flag and matching Lua CRT setjmp/longjmp functions. This branch applies those contracts to the current pinned SDK while retaining the full original-XAM routing experiment. No reference binary, original asset, source implementation or generated translation is committed. The external pointer inventory is read only and candidates must pass independent original-image checks; rejected candidates are reported. The older reference's experimental zeroed 0x8E030000 region is intentionally NOT implemented because its original content is unknown. Likewise the missing XboxKrnlBaseVersion is not invented. References: https://github.com/fabegalo/x360-native/blob/v1.34.6/docs/dashboard.md (sections 0.8–0.12), https://github.com/fabegalo/x360-native/blob/v1.34.6/titles/dash_17559/analysis/dash_17559_pointer_targets.toml.
+
+The loader pairs the 623+421 repeated XAM records before resolving slots, verifies unique original addresses and ordinal/kind pairs before relocation, and does not emit an executable symbol for a zero thunk. The original flash resources also mount at \\SystemRoot; the guest creates media:. The two missing kernel event variables have initially-unsignaled dispatcher headers and lazy waitable host object resolution. Live checks cover all 36 kernel data import slots, including the explicitly unresolved base-version variable. The page-table bit change is restricted to committed readable dashboard pages. The existing SDK already has DPC delivery and camera-disconnected state; no replacement is added for those functions.
+
+The boot log records bounded stub call-site/register observations and joins the return address to original PDATA functions. The input probe uses the SDK keyboard pad binding and X11 key events only after four genuine frame candidates, with idle/post-input screenshots, frame counters and pad transitions. A frame or pad change is not proof of menu navigation; visual verification flags remain false. This branch still requires strict generation, native compilation, live preflight, original XAM attach and real dashboard input validation. None is asserted from the source changes.

@@ -1,0 +1,5 @@
+# Hosted controller device statistics contract
+
+The original 17559 XAM wrapper at 816F18C0 calls XInputdGetDeviceStats at 816F1908. In boot run 45942627248 the old void stub received context 10000001, query 1, and two guest output addresses. The positive opaque context survives in r3 and is consumed as a status by the retail caller. The hosted provider does not expose the retail statistics layout or physical statistics. The replacement uses the same title-local context resolver as capabilities and state, returns DEVICE_NOT_CONNECTED for an invalid context, or NOT_SUPPORTED for a bound context, and never touches unverified output structures. It is not a full hardware-statistics implementation.
+
+The original storage-worker fix is retained on the parent branch. This isolated branch allows the storage-only build to test the crash independently; it also avoids making an unsupported query falsely return a successful result. Guest-thread tests cover disconnected input and unchanged output sentinels. Connected statistics and actual dashboard behavior still require live validation.

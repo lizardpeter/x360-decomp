@@ -1,0 +1,79 @@
+name: Metro hosted kernel I/O regression
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/patch_metro_io_runtime.py'
+      - 'tests/sdk/metro_io_runtime.cpp'
+      - 'tools/patch_metro_xex_views.py'
+      - 'tools/patch_metro_input_runtime.py'
+      - 'tests/sdk/metro_input_bridge.cpp'
+      - 'tools/patch_metro_startup_status.py'
+      - 'tests/sdk/metro_startup_status.cpp'
+      - 'tools/patch_metro_console_config.py'
+      - 'tests/sdk/metro_xconfig.cpp'
+      - 'tests/sdk/metro_xex_isolation.cpp'
+      - '.github/workflows/metro-sdk-io-tests.yml'
+permissions:
+  contents: read
+jobs:
+  real-sdk-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: rexglue/rexglue-sdk
+          ref: a3e1d82678ca20d68d4837a8e9ee4652ff073745
+          path: build/sdk-source
+          submodules: recursive
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ./build/sdk-source/.github/actions/setup-toolchain
+        with:
+          platform: linux-amd64
+      - name: Patch original hosted I/O and add real guest-thread cases
+        run: |
+          python -m unittest discover -s tests -p test_metro_io_runtime.py
+          python tools/patch_metro_device_control.py build/sdk-source
+          python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
+          python tools/patch_rexglue_function_tables.py build/sdk-source
+          python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
+          python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp
+          python tools/patch_metro_console_config.py build/sdk-source --tests tests/sdk/metro_xconfig.cpp
+          python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+          restore-keys: metro-clang20-ccache-
+      - name: Build pinned SDK test runner
+        working-directory: build/sdk-source
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache
+          export CCACHE_DIR="$GITHUB_WORKSPACE/build/compiler-cache"
+          export CCACHE_BASEDIR="$GITHUB_WORKSPACE"
+          export CCACHE_COMPILERCHECK=content
+          ccache --max-size=3G
+          cmake --preset linux-amd64 -DCMAKE_CONFIGURATION_TYPES=Debug -DCMAKE_C_COMPILER=clang-20 -DCMAKE_CXX_COMPILER=clang++-20 -DREXGLUE_BUILD_TESTS=ON -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DREXGLUE_GCC_INSTALL_DIR="$REXGLUE_GCC_INSTALL_DIR"
+          cmake --build out/build/linux-amd64 --config Debug --target unit_tests --parallel 4
+      - name: Execute actual guest-thread tests
+        working-directory: build/sdk-source
+        run: |
+          set -euo pipefail
+          runner="$(realpath out/linux-amd64/Debug/unit_tests)"
+          test -x "$runner"
+          cd "$(dirname "$runner")"
+          "$runner" '[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status]' --reporter compact
+      - name: Retain reusable compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/compiler-cache
+          key: metro-clang20-ccache-${{ github.run_id }}
+        continue-on-error: true

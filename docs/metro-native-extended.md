@@ -1,0 +1,9 @@
+# Extended Metro startup runtime
+
+The real native dashboard remains the sole UI implementation. These changes are on top of the integrated storage, cache, configuration and input branch; the earlier integrated build remains independently runnable.
+
+Original 17559 analysis run 45945221201 verifies the eight-byte text keystroke layout (virtual key at +0, Unicode at +2, flags at +4, guest user at +6, HID usage at +7) and the original wrapper's direct Win32 ERROR_EMPTY (4306) handling at 816F1EDC. The kernel adapter uses the native input system's keyboard queue, maps the assigned guest port to a host slot, validates the guest output before consuming a queued event, and preserves output on empty/failure. Tests cover two pads, unsupported indices, an actual host keyboard event, and invalid buffer rejection without consuming an event. Only standard port indices and the SDK any-user convention are supported; other undocumented device selector modes are not inferred.
+
+Original ETX registration is called at 41 direct sites across XAM and the dashboard. Several original callers explicitly use a signed status gate, e.g. 8169950C/81699510 and 816A4FCC/816A4FD0. A positive input pointer is not a successful registration. Until the actual provider descriptor and registry ABI are reconstructed, ETX registration returns NOT_SUPPORTED and does not write invented registration objects. There is no telemetry delivery or security emulation claim. XeKeysGetStatus, XexShimLock, and other unknown contracts remain unresolved.
+
+Capture now separates host input observations from guest-consumed input in the JSON evidence. Navigation requires a right press and release and a left press and release in actual successful retail input reads, plus live graphics frame progress. Captures still require visual inspection before any menu/navigation success claim.

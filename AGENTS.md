@@ -18,3 +18,7 @@ Target: the Xbox 360 OS (Xenon PowerPC, big endian); Metro V2 17559 is the first
 Generated files are produced by tools, never manually promoted. Address format: uppercase hexadecimal without 0x, at least eight digits; always qualify by build/module. Function status: located → named → typed → decompiled → compiles → matches → integrated. Imports are not reconstructed functions. A differential match requires reproducible comparison with original code and explicit test evidence. Enhanced changes require a patches.tsv entry and must not modify faithful behavior.
 
 Keep copyrighted input binaries, firmware, fonts, keys, and large original archives out of Git history. R2 contains the source packages; all local input bytes are verified against target.toml. Never fetch or execute unrelated payloads from transfer artifacts. External projects remain separately attributed; do not copy their generated code or claim their tests as ours. Missing original functionality must fail explicitly, not return invented success.
+
+## Development workflow
+
+All new work goes directly to `main`. Do not create development branches, and do not distribute startup fixes across separate branches. Keep commits focused and retain original-behavior evidence, but prioritize integrated native dashboard boot and real navigation on `main`. Existing historical branches and CI runs are reference evidence only. Never claim dashboard success until authentic guest-presented frames and guest-consumed navigation are verified.
