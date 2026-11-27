@@ -311,6 +311,11 @@ inline std::atomic<bool> intro_entered{false},intro_returned{false};
 // 0 not requested, 1 dispatched, 2 original control returned, 3 failed,
 // 4 original animation returned before control could be claimed.
 inline std::atomic<unsigned> intro_control_state{0};
+inline std::unique_ptr<rex::platform::Event> intro_control_completion;
+inline void finish_intro_control(unsigned state) {
+    intro_control_state.store(state,std::memory_order_release);
+    if (intro_control_completion) intro_control_completion->Set();
+}
 
 // Argument 0 arms flag B. Original 9800EA10 then checks its own
 // phase and animation conditions before setting flag A and exiting.
@@ -319,8 +324,7 @@ inline void intro_control(PPCContext& ctx,rex::u8* base) {
     auto* thread=rex::kernel::KernelThread::GetCallingThread();
     if (!thread || !entry.intro_control || ctx.r3.u32!=0) {
         std::cout<<"METRO_INTRO fail control_binding"<<std::endl;
-        intro_control_state.store(3,std::memory_order_release);
-        intro_control_state.notify_all();
+        finish_intro_control(3);
         if (thread)thread->Exit(1);
         return;
     }
@@ -330,15 +334,13 @@ inline void intro_control(PPCContext& ctx,rex::u8* base) {
     const auto after=mem.Load<rex::u8>(metro_intro::kControlFlagB);
     if (!before || !after || *after!=1) {
         std::cout<<"METRO_INTRO fail original_control_flag"<<std::endl;
-        intro_control_state.store(3,std::memory_order_release);
-        intro_control_state.notify_all();
+        finish_intro_control(3);
         thread->Exit(1);
         return;
     }
     std::cout<<"METRO_INTRO pass control_return argument=0 flag_b="
              <<unsigned(*after)<<std::endl;
-    intro_control_state.store(2,std::memory_order_release);
-    intro_control_state.notify_all();
+    finish_intro_control(2);
     ctx.r3.u64=0;
 }
 
@@ -364,9 +366,13 @@ inline void startup(PPCContext& ctx, rex::u8* base) {
         unsigned idle=0;
         intro_control_state.compare_exchange_strong(idle,4,std::memory_order_acq_rel);
         unsigned state=intro_control_state.load(std::memory_order_acquire);
-        while (state==1) {
-            intro_control_state.wait(state,std::memory_order_acquire);
+        if (state==1) {
+            // Use the kernel's interruptible object wait: closing the window
+            // can stop this guest thread even if the control task is cancelled.
+            const auto wait=thread->GetRuntime().GetThreadRegistry().GetObjectWaiter().WaitHostObject(
+                intro_control_completion.get(),std::chrono::milliseconds::max());
             state=intro_control_state.load(std::memory_order_acquire);
+            if (wait!=rex::platform::WaitResult::kSuccess || state!=2) state=3;
         }
         if (result!=0 || state==3) {
             std::cout<<"METRO_INTRO fail original_completion"<<std::endl;
@@ -415,6 +421,11 @@ protected:
         intro_entered=false;intro_returned=false;intro_control_state=0;
         const char* option=std::getenv("X360_METRO_INTRO");
         const bool with_intro=option && std::string_view(option)=="1";
+        intro_control_completion.reset();
+        if (with_intro) {
+            intro_control_completion=rex::platform::Event::CreateManualResetEvent(false);
+            if (!intro_control_completion) return fail("intro_completion_event");
+        }
         auto& paths = title.GetTitlePaths();
         if (paths.game_root.Get().empty() || paths.entry.Get() != "dash.xex" ||
             paths.game_writable.Get()) return fail("input_settings");
@@ -513,8 +524,7 @@ protected:
                         std::cout<<"METRO_INTRO original_initial_update_event signaled"<<std::endl;
                         auto control=runtime.GetThreadRegistry().CreateTaskThread(metro_intro::kControl,0);
                         if (!control) {
-                            intro_control_state.store(3,std::memory_order_release);
-                            intro_control_state.notify_all();
+                            finish_intro_control(3);
                             std::cout<<"METRO_INTRO fail control_thread_launch"<<std::endl;
                             rex::app::RequestShutdown(1);
                         } else rex::kernel::CloseOwned(runtime.GetObjectTable(),*control);
