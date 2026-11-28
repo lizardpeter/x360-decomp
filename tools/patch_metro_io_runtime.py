@@ -1127,6 +1127,46 @@ def patch_offline_endpoint_sources(root,outputs):
             source=replace(source,old,new)
         outputs[path]=source
 
+RTL_APPEND_STUB = "REX_EXPORT_STUB(__imp__RtlAppendStringToString);"
+RTL_APPEND_EXPORT = "REX_EXPORT(__imp__RtlAppendStringToString, rex::kernel::xboxkrnl::RtlAppendStringToString_entry)"
+RTL_APPEND_IMPL = r"""// Counted byte strings: do not use strlen and do not reserve a byte for a
+// terminator. The original caller owns the buffer and length metadata.
+u32 RtlAppendStringToString_entry(u32 destination, u32 source) {
+  if (!destination || !source) return X_STATUS_INVALID_PARAMETER;
+  auto& memory=kernel::GetCurrent().GetGuestMemory();
+  auto dst=memory.Load<X_ANSI_STRING>(destination);
+  auto src=memory.Load<X_ANSI_STRING>(source);
+  if (!dst || !src || !memory.GetWritableSpan(destination,sizeof(X_ANSI_STRING)))
+    return X_STATUS_ACCESS_VIOLATION;
+  const u32 used=dst->length, capacity=dst->maximum_length, count=src->length;
+  if (used>capacity || count>static_cast<u32>(src->maximum_length))
+    return X_STATUS_INVALID_PARAMETER;
+  if (count>capacity-used) return X_STATUS_BUFFER_TOO_SMALL;
+  if (!count) return X_STATUS_SUCCESS;
+  const u32 dst_base=dst->pointer, src_base=src->pointer;
+  if (!dst_base || !src_base || u64{dst_base}+used+count>0x100000000ull)
+    return X_STATUS_ACCESS_VIOLATION;
+  const u32 target=dst_base+used;
+  // A malformed destination must not overwrite its own descriptor.
+  if (u64{target}<u64{destination}+sizeof(X_ANSI_STRING) &&
+      u64{destination}<u64{target}+count) return X_STATUS_INVALID_PARAMETER;
+  const auto input=memory.GetReadOnlySpan(src_base,count);
+  const auto output=memory.GetWritableSpan(target,count);
+  if (!input || !output) return X_STATUS_ACCESS_VIOLATION;
+  std::memmove(output->data(),input->data(),count);
+  dst->length=static_cast<u16>(used+count);
+  if (!memory.Store(destination,*dst)) return X_STATUS_ACCESS_VIOLATION;
+  return X_STATUS_SUCCESS;
+}
+
+"""
+
+def patch_rtl_append(source):
+    source=replace(source,"#include <rex/kernel/title_runtime.h>",
+        "#include <rex/kernel/title_runtime.h>\n#include <rex/kernel/guest_memory.h>\n#include <cstring>")
+    source=replace(source,"void RtlCopyString_entry(",RTL_APPEND_IMPL+"void RtlCopyString_entry(")
+    return replace(source,RTL_APPEND_STUB,RTL_APPEND_EXPORT)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -1149,8 +1189,10 @@ def main():
     file_header=a.sdk/"include/rex/kernel/object/file_object.h"
     crypt=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_crypt.cpp"
     kernel_cmake=a.sdk/"src/kernel/CMakeLists.txt"
+    rtl=a.sdk/"src/kernel/xboxkrnl/xboxkrnl_rtl.cpp"
     outputs={crypt:patch_system_entropy(corrected_signature_verifier(patch_public_verification(crypt.read_text()))),
              kernel_cmake:patch_entropy_linkage(kernel_cmake.read_text()),
+             rtl:patch_rtl_append(rtl.read_text()),
              file_header:patch_directory_header(file_header.read_text()),
              filesystem:patch_filesystem(filesystem.read_text()),
              filesystem_header:patch_filesystem_header(filesystem_header.read_text()),

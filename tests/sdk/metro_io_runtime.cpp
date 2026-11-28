@@ -516,3 +516,55 @@ REX_TEST_CASE("metro_io_runtime: offline device endpoint opens without authentic
     CHECK(c.Kernel("NtClose",{handle})==0);
   });
 }
+
+
+REX_TEST_CASE("metro_io_runtime: original counted ANSI path append preserves all bytes and capacity",
+              "[kernel][rtl][metro_io_runtime]") {
+  KernelFixture fixture;
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 dst=c.Alloc(8),src=c.Alloc(8),buffer=c.Alloc(24),input=c.Alloc(8);
+    auto desc=[&](u32 address,u32 length,u32 capacity,u32 pointer) {
+      c.Store32(address,(length<<16)|capacity);c.Store32(address+4,pointer);
+    };
+    auto append=[&] {return c.Kernel("RtlAppendStringToString",{dst,src});};
+    c.Store32(buffer,0x41424344);
+    c.Store32(buffer+4,0xDEADBEEF);
+    c.Store32(buffer+8,0xCAFEF00D);
+    c.Store32(input,0x45004647); // embedded NUL is part of a counted string.
+    desc(dst,4,8,buffer);desc(src,4,4,input);
+    REQUIRE(append()==X_STATUS_SUCCESS);
+    CHECK(c.Load32(dst)==0x00080008);
+    CHECK(c.Load32(dst+4)==buffer);
+    CHECK(c.Load32(buffer)==0x41424344);
+    CHECK(c.Load32(buffer+4)==0x45004647);
+    CHECK(c.Load32(buffer+8)==0xCAFEF00D);
+    // Exact fit is valid; another byte must not truncate or change anything.
+    desc(src,1,1,input);
+    CHECK(append()==X_STATUS_BUFFER_TOO_SMALL);
+    CHECK(c.Load32(dst)==0x00080008);
+    CHECK(c.Load32(buffer+4)==0x45004647);
+    CHECK(c.Load32(buffer+8)==0xCAFEF00D);
+    // Self-buffer append and overlapping ranges use the actual counted bytes.
+    desc(dst,4,12,buffer);desc(src,4,4,buffer+2);
+    REQUIRE(append()==X_STATUS_SUCCESS);
+    CHECK(c.Load32(buffer+4)==0x43444500);
+    CHECK(c.Load32(buffer+8)==0xCAFEF00D);
+    // Empty source is a no-op, even with no buffer.
+    desc(src,0,0,0);
+    REQUIRE(append()==X_STATUS_SUCCESS);
+    CHECK(c.Load32(dst)==0x0008000C);
+    desc(src,3,2,input);
+    CHECK(append()==X_STATUS_INVALID_PARAMETER);
+    desc(src,2,2,0xFFFFFFFF);
+    CHECK(append()==X_STATUS_ACCESS_VIOLATION);
+    desc(dst,0,4,0xFFFFFFFF);desc(src,2,2,input);
+    CHECK(append()==X_STATUS_ACCESS_VIOLATION);
+    desc(dst,0,8,dst+2);
+    CHECK(append()==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Load32(dst)==0x00000008);
+    CHECK(c.Load32(dst+4)==dst+2);
+    CHECK(c.Kernel("RtlAppendStringToString",{0,src})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Kernel("RtlAppendStringToString",{dst,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+  });
+}

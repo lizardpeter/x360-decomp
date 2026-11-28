@@ -133,6 +133,18 @@ class IoRuntime(unittest.TestCase):
         self.assertIn("offline device cannot read",provider[0][1])
         self.assertIn("offline device cannot write",provider[0][1])
         self.assertNotIn("return Ok()",provider[0][1])
+    def test_rtl_append_is_counted_and_checked(self):
+        source="#include <rex/kernel/title_runtime.h>\nvoid RtlCopyString_entry(\n"+RTL_APPEND_STUB
+        result=patch_rtl_append(source)
+        self.assertIn(RTL_APPEND_EXPORT,result)
+        self.assertNotIn(RTL_APPEND_STUB,result)
+        self.assertIn("count>capacity-used",result)
+        self.assertIn("GetReadOnlySpan(src_base,count)",result)
+        self.assertIn("GetWritableSpan(target,count)",result)
+        self.assertIn("std::memmove",result)
+        self.assertIn("used+count",result)
+        self.assertNotIn("strlen(",RTL_APPEND_IMPL)
+        with self.assertRaises(ValueError):patch_rtl_append(result)
     def test_storage_queries_bound_and_retry(self):
         source="\n".join([ATTR_QUERY_OLD,DIRECTORY_QUERY_OLD,DIRECTORY_COUNT_OLD])
         patched=patch_storage_queries(source)

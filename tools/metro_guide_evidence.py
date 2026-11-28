@@ -425,8 +425,31 @@ def scan(label,raw,image,meta,catalog,stubs):
     trace={}
     def mark(a,name,phase):
         if executable(pe,base,a):trace.setdefault(hx(a),{"name":name,"phase":phase})
-    hardware_gate={};stalled_initializer={}
+    hardware_gate={};stalled_initializer={};offline_device={}
     if label=="xam":
+        # Live run 46082436669: first open succeeds, then the exact
+        # unsupported device operation terminates the guest. Recover the
+        # enclosing original call chain, not a guessed response value.
+        site=0x816E7A38
+        dst=branch(site,struct.unpack_from(">I",image,site-base)[0])
+        if not dst or not dst[1] or thunks.get(dst[0],{}).get("name")!="NtOpenFile":
+            raise ValueError("observed DeviceAuth open site differs")
+        owners=[(a,n) for a,n in funcs.items() if a<=site<a+n]
+        if len(owners)!=1:raise ValueError("ambiguous DeviceAuth owner")
+        entry,extent=owners[0]
+        body=bounded_entry(image,base,pe,entry,thunks,extent)
+        owner_set={entry}
+        # Direct callees contain any intermediate ioctl or bugcheck wrapper.
+        for callee,_,_ in outbound[entry]:
+            if callee in funcs and funcs[callee]<=8192:owner_set.add(callee)
+        caller_set={a for a,_,_ in inbound[entry] if a in funcs and funcs[a]<=8192}
+        offline_device={"observed_run":46082436669,"open_site":hx(site),"ioctl":"00474000",
+                        "observed_input_bytes":0,"observed_output_bytes":4,
+                        "owner":hx(entry),"body":body,
+                        "callee_bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,funcs[a]) for a in sorted(owner_set-{entry})},
+                        "caller_bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,funcs[a]) for a in sorted(caller_set)},
+                        "response_semantics_verified":False}
+        print("OFFLINE_DEVICE owner",hx(entry),"bytes",extent,"direct callers",len(caller_set))
         def check(pc,**want):
             actual=operand(pc,struct.unpack_from(">I",image,pc-base)[0])
             if any(actual.get(k)!=v for k,v in want.items()):
@@ -543,7 +566,7 @@ def scan(label,raw,image,meta,catalog,stubs):
       "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"computed_callback_refs":nonadjacent_refs,"startup_work_items":startup_arguments,"callback_candidates":[hx(a) for a in sorted(extra)],
       "reverse_graph":ancestors(roots,inbound,max_depth=3,max_nodes=1000),
       "forward_graph":{"nodes":{hx(a):n for a,n in chosen.items()},"truncated":truncated},
-      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate,"stalled_initializer":stalled_initializer}
+      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate,"stalled_initializer":stalled_initializer,"offline_device":offline_device}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
