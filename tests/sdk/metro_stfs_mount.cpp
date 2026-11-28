@@ -64,3 +64,51 @@ REX_TEST_CASE_METHOD(Fixture, "Rejected STFS open-file mounts never publish a pr
   CHECK_FALSE(fs.MountStfsFile("\\Device\\RejectedStfs", *write_only.file));
   CHECK(fs.GetMounts().size() == 1);
 }
+
+
+REX_TEST_CASE_METHOD(Fixture, "STFS snapshot rejects incomplete or unsafe directory data before publication",
+                     "[filesystem][metro_stfs_open_file]") {
+  auto bytes=rex::platform::ReadHostFile(rex::test::GetFixtureFolder()/"stfs_con.bin");
+  REQUIRE(bytes);
+  REQUIRE(bytes->size()==65536);
+  auto be32=[&](size_t p) {
+    return (rex::u32((*bytes)[p])<<24)|(rex::u32((*bytes)[p+1])<<16)|
+           (rex::u32((*bytes)[p+2])<<8)|(*bytes)[p+3];
+  };
+  const size_t data_start=(size_t(be32(0x340))+0xfff)&~size_t(0xfff);
+  const unsigned copies=((*bytes)[0x37b]&1)?1:2;
+  const unsigned directory=(*bytes)[0x37e]|(unsigned((*bytes)[0x37f])<<8)|
+                           (unsigned((*bytes)[0x380])<<16);
+  REQUIRE(directory<170);
+  const size_t table=data_start+(directory+copies)*4096;
+  REQUIRE(table+4096<=bytes->size());
+  size_t file_entry=0;
+  for (size_t p=table;p<table+4096 && (*bytes)[p];p+=64) {
+    if (!((*bytes)[p+40]&0x80) &&
+        ((*bytes)[p+52]||(*bytes)[p+53]||(*bytes)[p+54]||(*bytes)[p+55])) {
+      file_entry=p;break;
+    }
+  }
+  REQUIRE(file_entry!=0);
+  MountTemp(kRoot);
+  auto& fs=GetFileSystem();
+  for (unsigned mutation=0;mutation<4;++mutation) {
+    auto broken=*bytes;
+    if (mutation==0) { // unsafe name
+      broken[file_entry]='/';
+    } else if (mutation==1) { // file extent outside the snapshot
+      broken[file_entry+47]=0xfe;broken[file_entry+48]=0xff;broken[file_entry+49]=0x7f;
+    } else if (mutation==2) { // impossible directory extent
+      broken[0x37c]=0xff;broken[0x37d]=0xff;
+    } else { // directory block reused as file data
+      broken[file_entry+47]=static_cast<rex::u8>(directory);
+      broken[file_entry+48]=0;broken[file_entry+49]=0;
+    }
+    const auto name="broken"+std::to_string(mutation)+".bin";
+    REQUIRE(rex::platform::WriteHostFile(GetTemp()/name,broken));
+    auto source=Open("\\Device\\Test\\"+name);
+    CHECK_FALSE(fs.MountStfsFile("\\Device\\RejectedStfs",*source.file));
+    CHECK_FALSE(fs.Stat("\\Device\\RejectedStfs"));
+    CHECK(fs.GetMounts().size()==1);
+  }
+}
