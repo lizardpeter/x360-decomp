@@ -610,3 +610,64 @@ REX_TEST_CASE("metro_io_runtime: utility device allocation matches original call
     (void)c.Kernel("IoDeleteDevice",{next});
   });
 }
+
+REX_TEST_CASE("metro_io_runtime: mount alias queries validate counted destinations",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture;
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 out=c.Alloc(4),attrs=c.AllocAttributes("scratch:");
+    c.Store32(out,0x12345678);
+    CHECK(c.Kernel("NtOpenSymbolicLinkObject",{0xfffffffc,attrs})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("NtOpenSymbolicLinkObject",{out,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Load32(out)==0x12345678);
+    REQUIRE(c.Kernel("NtOpenSymbolicLinkObject",{out,attrs})==0);
+    const u32 handle=c.Load32(out);
+    const u32 desc=c.Alloc(8),buffer=c.Alloc(64);
+    auto query=[&] {return c.Kernel("NtQuerySymbolicLinkObject",{handle,desc});};
+    c.Store32(desc,0x00040040);
+    c.Store32(desc+4,0xfffffffc);
+    CHECK(query()==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Load32(desc)==0x00040040);
+    c.Store32(desc+4,desc);
+    CHECK(query()==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Load32(desc)==0x00040040);
+    CHECK(c.Load32(desc+4)==desc);
+    CHECK(c.Kernel("NtQuerySymbolicLinkObject",{handle,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    c.Store32(desc+4,buffer);
+    c.Store32(buffer+4,0xabcdef01);
+    c.Store32(desc,4); // four-byte capacity, preserve legacy counted truncation.
+    REQUIRE(query()==0);
+    CHECK(c.Load32(desc)==0x00040004);
+    CHECK(c.Load32(buffer)==0x5c446576); // "\\Dev"
+    CHECK(c.Load32(buffer+4)==0xabcdef01);
+    c.Store32(desc,64);
+    REQUIRE(query()==0);
+    CHECK(c.Load32(desc)==0x000f0040); // "\\Device\\Scratch" is 15 bytes.
+    REQUIRE(c.Kernel("NtClose",{handle})==0);
+  });
+}
+
+REX_TEST_CASE("metro_io_runtime: flush validates completion destination before touching the file",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture([](const std::filesystem::path& root) {
+    WriteScratch(root,"flush.bin",16);
+  });
+  MountScratch(fixture);
+  fixture.RunOnGuestThread([](Caller& c) {
+    using namespace rex::kernel;
+    const u32 out=c.Alloc(4),iosb=c.Alloc(8);
+    REQUIRE(c.Kernel("NtCreateFile",{out,kReadWriteAccess,c.AllocAttributes("scratch:\\flush.bin"),
+                                    iosb,0,0,3,1,0x20})==0);
+    const u32 handle=c.Load32(out);
+    CHECK(c.Kernel("NtFlushBuffersFile",{handle,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    c.Store32(iosb,0x12345678);
+    c.Store32(iosb+4,0x87654321);
+    REQUIRE(c.Kernel("NtFlushBuffersFile",{handle,iosb})==0);
+    CHECK(c.Load32(iosb)==0);
+    CHECK(c.Load32(iosb+4)==0);
+    REQUIRE(c.Kernel("NtFlushBuffersFile",{handle,0})==0);
+    REQUIRE(c.Kernel("NtClose",{handle})==0);
+  });
+}

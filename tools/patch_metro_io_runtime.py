@@ -894,12 +894,81 @@ DIRECTORY_HEADER_OLD = r"""  PropagateConst<std::unique_ptr<filesystem::IDirecto
 DIRECTORY_HEADER_NEW = r"""  PropagateConst<std::unique_ptr<filesystem::IDirectory>> find;
   std::optional<filesystem::FileStat> pending_directory_entry;"""
 
+def patch_symbolic_link_and_flush(source):
+    # Preserve the SDK's existing symbolic-link name and short-buffer
+    # semantics; validate all guest pointers before allocation or writes.
+    start=source.index("u32 NtOpenSymbolicLinkObject_entry(")
+    end=source.index("u32 FscGetCacheElementCount_entry(",start)
+    body=source[start:end]
+    body=replace(body,r"""  REX_KERNEL_REQUIRE_NONNULL(object_attrs);
+  REX_ASSERT(handle_out != nullptr);
+
+  auto object_name = kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual<X_ANSI_STRING*>(
+      object_attrs->name_ptr);
+
+  auto target_path = StripDosDevicePrefix(
+      kernel::TranslateAnsiPath(kernel::GetCurrentState().GetAddressSpace(), object_name));""",
+        r"""  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 output=handle_out.GetGuestAddress();
+  const u32 attributes=object_attrs.GetGuestAddress();
+  if (!attributes || !output) return X_STATUS_INVALID_PARAMETER;
+  if (!guest.GetWritableSpan(output,sizeof(be_u32))) return X_STATUS_ACCESS_VIOLATION;
+  const auto attrs=guest.Load<X_OBJECT_ATTRIBUTES>(attributes);
+  if (!attrs) return X_STATUS_ACCESS_VIOLATION;
+  std::string target_path;
+  if (const auto status=CheckedAnsiPath(attrs->name_ptr,target_path);
+      status!=X_STATUS_SUCCESS) return status;""")
+    body=replace(body,"  *handle_out = handle;",
+        """  if (!guest.Store(output,be_u32{handle})) {
+    (void)table.Close(handle);
+    return X_STATUS_ACCESS_VIOLATION;
+  }""")
+    body=replace(body,r"""  auto length = std::min(static_cast<size_t>(target->maximum_length), symlink->target.size());
+  if (length > 0) {
+    auto target_buf =
+        kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual(target->pointer);
+    std::memcpy(target_buf, symlink->target.c_str(), length);
+  }
+  target->length = static_cast<u16>(length);""",
+        r"""  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 address=target.GetGuestAddress();
+  if (!address || !guest.GetWritableSpan(address,sizeof(X_ANSI_STRING)))
+    return X_STATUS_ACCESS_VIOLATION;
+  auto descriptor=guest.Load<X_ANSI_STRING>(address);
+  if (!descriptor) return X_STATUS_ACCESS_VIOLATION;
+  const size_t length=std::min(static_cast<size_t>(static_cast<u16>(descriptor->maximum_length)),
+                               symlink->target.size());
+  if (length) {
+    const u32 buffer=descriptor->pointer;
+    if (!buffer) return X_STATUS_ACCESS_VIOLATION;
+    if (u64{buffer}<u64{address}+sizeof(X_ANSI_STRING) &&
+        u64{address}<u64{buffer}+length) return X_STATUS_INVALID_PARAMETER;
+    auto bytes=guest.GetWritableSpan(buffer,static_cast<u32>(length));
+    if (!bytes) return X_STATUS_ACCESS_VIOLATION;
+    std::memcpy(bytes->data(),symlink->target.data(),length);
+  }
+  descriptor->length=static_cast<u16>(length);
+  if (!guest.Store(address,*descriptor)) return X_STATUS_ACCESS_VIOLATION;""")
+    source=source[:start]+body+source[end:]
+    return replace(source,r"""  X_STATUS result = X_STATUS_INVALID_HANDLE;
+  if (auto file = kernel::GetCurrent().GetObjectTable().Get<FileObject>(file_handle)) {
+    auto flushed = file->file->Flush();""",
+        r"""  auto& guest=kernel::GetCurrent().GetGuestMemory();
+  const u32 output=io_status_block.GetGuestAddress();
+  if (output && !guest.GetWritableSpan(output,sizeof(X_IO_STATUS_BLOCK)))
+    return X_STATUS_ACCESS_VIOLATION;
+  X_STATUS result = X_STATUS_INVALID_HANDLE;
+  if (auto file = kernel::GetCurrent().GetObjectTable().Get<FileObject>(file_handle)) {
+    // Flush shares the same lock as writes, rename and truncate.
+    std::lock_guard lock(file->file_lock);
+    auto flushed = file->file->Flush();""")
+
 def patch_storage_queries(source):
     for old,new in ((ATTR_QUERY_OLD,ATTR_QUERY_NEW),
                     (DIRECTORY_QUERY_OLD,DIRECTORY_QUERY_NEW),
                     (DIRECTORY_COUNT_OLD,DIRECTORY_COUNT_NEW)):
         source=replace(source,old,new)
-    return source
+    return patch_symbolic_link_and_flush(source)
 
 SET_START_OLD = r"""  REX_KERNEL_LOOKUP(file, FileObject, file_handle);
 
