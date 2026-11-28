@@ -1,3 +1,4 @@
+#include <rex/memory/stream.h>
 
 // Both rings execute actual guest PM4 on the SDK worker. No guest firmware.
 REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: reinitialization does not consume prior ring's WPTR",
@@ -154,4 +155,28 @@ REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: malformed indirect stream cannot c
   }
   driver.DetachTitle();
   driver.Shutdown();
+}
+
+
+REX_TEST_CASE("metro_gpu_ring: full linear command span is distinguishable from empty",
+              "[gpu][metro_gpu_ring]") {
+  std::array<rex::u8,8> bytes{0x12,0x34,0x56,0x78,0x9a,0xbc,0xde,0xf0};
+  rex::memory::RingBuffer reader(bytes.data(),bytes.size());
+  CHECK(reader.IsEmpty());
+  reader.SetFullReadRange();
+  CHECK_FALSE(reader.IsEmpty());
+  CHECK(reader.GetReadCount()==8);
+  CHECK(reader.GetWriteCount()==0);
+  CHECK(reader.ReadAndSwap<rex::u32>()==0x12345678u);
+  CHECK(reader.GetReadCount()==4);
+  CHECK(reader.ReadAndSwap<rex::u32>()==0x9abcdef0u);
+  CHECK(reader.IsEmpty());
+  CHECK(reader.GetReadCount()==0);
+  reader.SetFullReadRange();
+  reader.AdvanceRead(8);
+  CHECK(reader.IsEmpty());
+  reader.SetFullReadRange();
+  auto range=reader.BeginRead(8);
+  reader.EndRead(range);
+  CHECK(reader.IsEmpty());
 }

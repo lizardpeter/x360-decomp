@@ -143,6 +143,51 @@ def patch(sdk,tests):
   if (reader->GetReadCount()<2*sizeof(u32))
     REXGPU_FAIL(false,"Truncated PM4 type-1 packet");
   u32 reg_index_1""")
+    # The SDK's circular offsets represent full and empty as the same pair.
+    # Linear PM4 submissions must explicitly mark a full read span, rather
+    # than relying on a forced first read of an apparently empty ring.
+    source=replace(source,"  reader.SetWriteOffset(count * sizeof(u32));\n  do {",
+        "  reader.SetFullReadRange();\n  do {") if source.count("  reader.SetWriteOffset(count * sizeof(u32));\n  do {")==1 else source.replace(
+        "  reader.SetWriteOffset(count * sizeof(u32));\n  do {","  reader.SetFullReadRange();\n  do {")
+    if source.count("  reader.SetFullReadRange();")!=2:
+        raise ValueError("expected two original linear PM4 readers")
+    source=replace(source,"void CommandProcessor::ExecutePacket(u32 ptr, u32 count) {\n  u8* packet_buffer",
+        """void CommandProcessor::ExecutePacket(u32 ptr, u32 count) {
+  if (!count || count>0xFFFFF) return;
+  u8* packet_buffer""")
+    stream=sdk/"include/rex/memory/stream.h"
+    sh=stream.read_text()
+    sh=replace(sh,"  bool IsEmpty() const { return read_offset_ == write_offset_; }",
+        "  bool IsEmpty() const { return !full_read_span_ && read_offset_ == write_offset_; }")
+    sh=replace(sh,"  void SetReadOffset(size_t offset) { read_offset_ = static_cast<RingSizeT>(offset) % capacity_; }",
+        "  void SetReadOffset(size_t offset) { full_read_span_=false; read_offset_ = static_cast<RingSizeT>(offset) % capacity_; }")
+    sh=replace(sh,"  RingSizeT GetReadCount() const {\n    RingSizeT read_offs",
+        "  RingSizeT GetReadCount() const {\n    if (full_read_span_) return capacity_;\n    RingSizeT read_offs")
+    sh=replace(sh,"  void SetWriteOffset(size_t offset) { write_offset_ = static_cast<RingSizeT>(offset) % capacity_; }",
+        """  void SetWriteOffset(size_t offset) { full_read_span_=false; write_offset_ = static_cast<RingSizeT>(offset) % capacity_; }
+
+  // A linear input occupies the entire backing span. The normal circular
+  // offset pair (0,0) would otherwise be indistinguishable from empty.
+  // This is read-only initialization, consumed on the first actual read.
+  void SetFullReadRange() {
+    read_offset_=write_offset_=0;
+    full_read_span_=capacity_!=0;
+  }""")
+    sh=replace(sh,"  RingSizeT GetWriteCount() const {\n    RingSizeT read_offs",
+        "  RingSizeT GetWriteCount() const {\n    if (full_read_span_) return 0;\n    RingSizeT read_offs")
+    sh=replace(sh,"  RingSizeT write_offset_ = 0;\n};\n\n/** Reads a 32 bit value",
+        "  RingSizeT write_offset_ = 0;\n  bool full_read_span_ = false;\n};\n\n/** Reads a 32 bit value")
+    sh=replace(sh,"  REX_ASSERT(capacity_ >= 4);\n  RingSizeT read_offs",
+        "  REX_ASSERT(capacity_ >= 4);\n  full_read_span_=false;\n  RingSizeT read_offs")
+    rb=sdk/"src/base/ring_buffer.cpp"
+    rs=rb.read_text()
+    rs=replace(rs,"void RingBuffer::AdvanceRead(size_t count) {\n  RingSizeT cnt",
+        "void RingBuffer::AdvanceRead(size_t count) {\n  if (count) full_read_span_=false;\n  RingSizeT cnt")
+    rs=replace(rs,"void RingBuffer::EndRead(ReadRange read_range) {\n  if (read_range.second)",
+        "void RingBuffer::EndRead(ReadRange read_range) {\n  if (read_range.first_length || read_range.second_length) full_read_span_=false;\n  if (read_range.second)")
+    rs=replace(rs,"  RingSizeT cnt = static_cast<RingSizeT>(count);\n\n  if (read_offset_ < write_offset_) {",
+        "  full_read_span_=false;\n  RingSizeT cnt = static_cast<RingSizeT>(count);\n\n  if (read_offset_ < write_offset_) {")
+    stream.write_text(sh);rb.write_text(rs)
     h=sdk/"src/gpu/xenos/command_processor.h"
     header=h.read_text()
     header=replace(header,"  void ExecuteIndirectBuffer(u32 ptr, u32 length);",
