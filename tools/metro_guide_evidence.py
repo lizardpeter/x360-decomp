@@ -466,6 +466,14 @@ def scan(label,raw,image,meta,catalog,stubs):
                 "owner":hx(address),"body":bounded_entry(image,base,pe,address,thunks,size),
                 "observed_run":46098090321,"abi_verified":False}
             print("ORIGINAL_CONTRACT",name,hx(address),size)
+        from verify_metro_entries import storage_callback_hint
+        callback,extent=storage_callback_hint(image,base,pe,raw)
+        waitable_storage_calls["content_storage_callback"]={
+            "entry":hx(callback),"linear_extent":extent,
+            "body":bounded_entry(image,base,pe,callback,thunks,extent[0]),
+            "registration_site":"8167EE34",
+            "invocation_abi_verified":False,
+        }
         def check(pc,**want):
             actual=operand(pc,struct.unpack_from(">I",image,pc-base)[0])
             if any(actual.get(k)!=v for k,v in want.items()):

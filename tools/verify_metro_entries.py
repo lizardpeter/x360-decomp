@@ -247,6 +247,25 @@ def resource_integrity_header(modules):
         out.append("};")
     return "\n".join(out)+"\n"
 
+def storage_callback_hint(image,base,pe,raw):
+    """Prove the registered content-storage callback, including its leaf extent."""
+    from metro_profile_evidence import linear_export_extent
+    from analyze_decoded import imports
+    from xex import parse
+    start=0x8167B700
+    if word(image,base,0x8167EE2C)!=0x3D608168 or word(image,base,0x8167EE30)!=0x386BB700:
+        raise ValueError("content storage callback construction changed")
+    site=0x8167EE34
+    if not (word(image,base,site)&1) or branch(site,word(image,base,site))!=0x81A72614:
+        raise ValueError("content storage callback registration changed")
+    if not any(r["library"]=="xboxkrnl.exe" and int(r["ordinal"],16)==0x20E and
+               0x81A72614 in r["thunk_slots"] for r in imports(image,base,parse(raw))):
+        raise ValueError("content storage registration import differs")
+    extent=linear_export_extent(image,base,pe,start,limit=24)
+    if not extent:
+        raise ValueError("content storage callback leaf not independently verified")
+    return start,extent
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("folder",type=Path)
@@ -332,8 +351,9 @@ def main():
         (in_function(graphics_callback,xpe["functions"],starts) or
          not linear_export_extent(xi,xb,xpe,graphics_callback))):
         raise ValueError("original graphics callback is not an independent entry")
+    storage_callback,storage_extent=storage_callback_hint(xi,xb,xpe,xam_raw)
     guide_callbacks=guide_callback_hints(xi,xb,xpe,xam_raw)
-    guide_callbacks=sorted(set(guide_callbacks)|{f"{graphics_callback:08X}"})
+    guide_callbacks=sorted(set(guide_callbacks)|{f"{graphics_callback:08X}",f"{storage_callback:08X}"})
     exports=sorted(set(exports)|set(guide_callbacks)|{f"{callback:08X}"}|
                    {r["address"] for r in custom_callbacks if r["kind"]=="descriptor_entry"})
     hud_raw=parse_pirs(original("pirs"))["$flash_hud.xex"]["payload"]
@@ -354,7 +374,8 @@ def main():
         "dashboard_candidates":len(candidates),"accepted":accepted,"rejected":rejected,
         "new_dashboard_entries":len(additions),"crt_calls":jumps,
         "xam_non_pdata_export_entries":exports,"xam_interior_exports_unresolved":interior,
-        "custom_object_callbacks":custom_callbacks,"guide_callback_entries":guide_callbacks},indent=2)+"\n")
+        "custom_object_callbacks":custom_callbacks,"guide_callback_entries":guide_callbacks,
+        "content_storage_callback":{"address":f"{storage_callback:08X}","extent":storage_extent}},indent=2)+"\n")
     print("Verified entries:",len(additions),"dashboard pointer starts,",len(exports),"XAM export starts;",
           len(rejected),"reference candidates rejected,",len(interior),"interior XAM targets")
 

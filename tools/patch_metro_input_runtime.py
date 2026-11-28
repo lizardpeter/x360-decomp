@@ -41,6 +41,7 @@ u32 XInputdGetLastTextInputTime_entry(u32 port, u32 output) {
 # and the original XamInputSendXenonButtonPress wrapper.
 FIELDS += r"""
   std::atomic<u64> hosted_sysreq_registration{0};
+  std::atomic<u32> hosted_content_storage_callback{0};
   std::array<std::atomic<u64>, rex::hid::IInputSystem::kMaxUsers> hosted_sysreq_samples{};
   std::atomic<u32> hosted_sysreq_delivered{0};
 """
@@ -50,8 +51,22 @@ FIELDS=FIELDS.replace("    hosted_pad_binding_callback.store(0);",
     "    hosted_sysreq_registration.fetch_add(1ull<<32);\n"
     "    hosted_sysreq_registration.fetch_and(0xffffffff00000000ull);\n"
     "    for (auto& sample : hosted_sysreq_samples) sample.store(0);\n"
-    "    hosted_sysreq_delivered.store(0);")
+    "    hosted_sysreq_delivered.store(0);\n"
+    "    hosted_content_storage_callback.store(0);")
 BODY += r"""
+// The original registration caller supplies one mapped code address and
+// ignores r3 on return. Keep the registration title-scoped. No invented
+// notification is queued or invoked by registration.
+void DrvSetContentStorageCallback_entry(u32 callback) {
+  auto& state=kernel::GetCurrentState();
+  if (callback && !state.GetFunctionDispatcher()->GetFunction(callback)) {
+    REXKRNL_WARN("METRO_STORAGE_CALLBACK rejected unmapped callback={:08X}",callback);
+    return;
+  }
+  state.hosted_content_storage_callback.store(callback,std::memory_order_release);
+  REXKRNL_INFO("METRO_STORAGE_CALLBACK registered={}",callback!=0);
+}
+
 void DrvSetSysReqCallback_entry(u32 callback) {
   auto& state=kernel::GetCurrentState();
   if (callback && !state.GetFunctionDispatcher()->GetFunction(callback)) {
@@ -142,7 +157,7 @@ needle="                 context, *user, static_cast<u32>(value.packet_number), 
 BODY=replace(BODY,needle,needle.replace("  return X_STATUS_SUCCESS;",
     "  DispatchHostedGuide(*user,context,static_cast<u32>(value.packet_number),buttons);\n  return X_STATUS_SUCCESS;"))
 
-EXPORTS=("DrvSetSysReqCallback","DrvSetUserBindingCallback","XInputdGetCapabilities","XInputdReadState","XInputdGetDeviceStats","XInputdReadTextKeystroke","XInputdGetLastTextInputTime")
+EXPORTS=("DrvSetContentStorageCallback","DrvSetSysReqCallback","DrvSetUserBindingCallback","XInputdGetCapabilities","XInputdReadState","XInputdGetDeviceStats","XInputdReadTextKeystroke","XInputdGetLastTextInputTime")
 
 HID_CLOCK_OLD="""/**
  * Writes 0 as the time of the last HID input.

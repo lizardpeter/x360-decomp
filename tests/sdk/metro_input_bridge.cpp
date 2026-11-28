@@ -366,3 +366,31 @@ REX_TEST_CASE("metro_input_bridge: Guide edges reach registered system callback 
   });
   g_fake={};
 }
+
+
+// Content storage registration has no synthetic producer. A callback must
+// remain uncalled until a real supported provider can publish its ABI.
+REX_TEST_CASE("metro_input_bridge: storage callback registration belongs to title lifetime",
+              "[kernel][input][metro_input_bridge]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    auto& state=StateOf(c.GetRuntime());
+    static std::atomic<u32> invocations{0};
+    invocations=0;
+    const u32 callback=state.GetFunctionDispatcher()->AllocateThunk(
+      +[](PPCContext&,u8*) { ++invocations; },0);
+    REQUIRE(callback);
+    CHECK(state.hosted_content_storage_callback.load()==0);
+    c.Kernel("DrvSetContentStorageCallback",{callback});
+    CHECK(state.hosted_content_storage_callback.load()==callback);
+    c.Kernel("DrvSetContentStorageCallback",{0xdeadbeec});
+    CHECK(state.hosted_content_storage_callback.load()==callback);
+    CHECK(invocations.load()==0);
+    c.Kernel("DrvSetContentStorageCallback",{0});
+    CHECK(state.hosted_content_storage_callback.load()==0);
+    c.Kernel("DrvSetContentStorageCallback",{callback});
+    state.ResetHostedPadBindings();
+    CHECK(state.hosted_content_storage_callback.load()==0);
+    CHECK(invocations.load()==0);
+  });
+}
