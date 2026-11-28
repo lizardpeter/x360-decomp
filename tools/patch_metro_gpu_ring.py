@@ -80,8 +80,75 @@ def patch(sdk,tests):
   return write_index;""")
     source=replace(source,"  ExecuteIndirectBuffer(GPUToCPU(list_ptr), list_length);\n  return true;",
         "  ExecuteIndirectBuffer(GPUToCPU(list_ptr), list_length);\n  return worker_running_;")
+    # In Release, the old void indirect executor allowed a failed child to
+    # report success to its parent; the primary queue then published WPTR
+    # even when the remainder was never executed. Quarantine the faulted
+    # ring generation until an explicit guest ring reinitialization.
+    source=replace(source,"    RunPendingFns();\n\n    u32 write_ptr_index = write_ptr_index_.load();",
+        """    RunPendingFns();
+
+    if (primary_faulted_) {
+      // Keep the worker alive for shutdown and explicit ring reprogramming,
+      // but do not repeatedly execute a partially consumed command stream.
+      rex::platform::Wait(write_ptr_index_event_.get(), true, std::chrono::milliseconds(5));
+      continue;
+    }
+    u32 write_ptr_index = write_ptr_index_.load();""")
+    source=replace(source,"    if (!worker_running_) break;\n    read_ptr_index_=completed_index;",
+        "    if (!worker_running_) break;\n    if (primary_faulted_) continue;\n    read_ptr_index_=completed_index;")
+    source=replace(source,"    read_ptr_index_=0;\n    write_ptr_index_.store(0);",
+        "    primary_faulted_=false;\n    read_ptr_index_=0;\n    write_ptr_index_.store(0);")
+    source=replace(source,"    primary_buffer_size_=static_cast<u32>(1) << (size_log2+3);",
+        """    if (size_log2>28) {
+      primary_buffer_size_=0;
+      primary_faulted_=true;
+      REXGPU_ERROR("METRO_GPU invalid ring size_log2={}",size_log2);
+      return;
+    }
+    primary_buffer_size_=static_cast<u32>(1) << (size_log2+3);""")
+    source=replace(source,"  u8* primary_buffer =\n      GetPhysicalForWrite(physical_memory_, primary_buffer_ptr_, primary_buffer_size_);",
+        """  if (!primary_buffer_size_ || read_index>=primary_buffer_size_/sizeof(u32) ||
+      write_index>=primary_buffer_size_/sizeof(u32)) {
+    primary_faulted_=true;
+    REXGPU_ERROR("METRO_GPU invalid ring indices read={} write={} bytes={}",
+                 read_index,write_index,primary_buffer_size_);
+    return read_index;
+  }
+  u8* primary_buffer =
+      GetPhysicalForWrite(physical_memory_, primary_buffer_ptr_, primary_buffer_size_);""")
+    source=replace(source,'    REXGPU_ERROR("primary ring buffer is outside physical memory");\n    return write_index;',
+        '    REXGPU_ERROR("primary ring buffer is outside physical memory");\n    primary_faulted_=true;\n    return read_index;')
+    source=replace(source,"reader.GetReadOffset(),reader.GetReadCount(),read_ptr_writeback_ptr_);\n      REX_ASSERT_ALWAYS();\n      break;",
+        "reader.GetReadOffset(),reader.GetReadCount(),read_ptr_writeback_ptr_);\n      primary_faulted_=true;\n      return read_index;")
+    source=replace(source,"void CommandProcessor::ExecuteIndirectBuffer(u32 ptr, u32 count) {",
+        """bool CommandProcessor::ExecuteIndirectBuffer(u32 ptr, u32 count) {
+  if (!count) return true;
+  // The PM4 indirect size field is 20 bits; reject invalid callers before
+  // multiplying the count or creating a zero-capacity RingBuffer.
+  if (count>0xFFFFF) return false;""")
+    source=replace(source,'    REXGPU_ERROR("indirect buffer is outside physical memory");\n    return;',
+        '    REXGPU_ERROR("indirect buffer is outside physical memory");\n    return false;')
+    source=replace(source,'      REXGPU_ERROR("indirect buffer failed to execute a packet");\n      REX_ASSERT_ALWAYS();\n      break;\n    }\n  } while (reader.GetReadCount());\n}',
+        '      REXGPU_ERROR("indirect buffer failed to execute a packet");\n      return false;\n    }\n  } while (reader.GetReadCount());\n  return worker_running_;\n}')
+    source=replace(source,"  u32 list_ptr = CPUToGPU(reader->ReadAndSwap<u32>());\n  u32 list_length = reader->ReadAndSwap<u32>();\n  REX_ASSERT((list_length & ~0xFFFFF) == 0);\n  list_length &= 0xFFFFF;\n  ExecuteIndirectBuffer(GPUToCPU(list_ptr), list_length);\n  return worker_running_;",
+        """  if (count!=2) REXGPU_FAIL(false,"Invalid PM4 indirect packet count {}",count);
+  u32 list_ptr = CPUToGPU(reader->ReadAndSwap<u32>());
+  u32 list_length = reader->ReadAndSwap<u32>();
+  if (list_length & ~0xFFFFF) REXGPU_FAIL(false,"Invalid PM4 indirect length {}",list_length);
+  return ExecuteIndirectBuffer(GPUToCPU(list_ptr),list_length);""")
+    source=replace(source,"bool CommandProcessor::ExecutePacket(memory::RingBuffer* reader) {\n  const u32 packet",
+        "bool CommandProcessor::ExecutePacket(memory::RingBuffer* reader) {\n  if (reader->GetReadCount()<sizeof(u32)) return false;\n  const u32 packet")
+    source=replace(source,"bool CommandProcessor::ExecutePacketType1(memory::RingBuffer* reader, u32 packet) {\n  u32 reg_index_1",
+        """bool CommandProcessor::ExecutePacketType1(memory::RingBuffer* reader, u32 packet) {
+  if (reader->GetReadCount()<2*sizeof(u32))
+    REXGPU_FAIL(false,"Truncated PM4 type-1 packet");
+  u32 reg_index_1""")
     h=sdk/"src/gpu/xenos/command_processor.h"
     header=h.read_text()
+    header=replace(header,"  void ExecuteIndirectBuffer(u32 ptr, u32 length);",
+        "  bool ExecuteIndirectBuffer(u32 ptr, u32 length);")
+    header=replace(header,"  u32 primary_buffer_size_ = 0;",
+        "  u32 primary_buffer_size_ = 0;\n  // Worker-owned: a failed ring cannot publish completion until reprogrammed.\n  bool primary_faulted_ = false;")
     # Match only the public method's stale asynchronous documentation.
     header=replace(header,"read index is 0 once it returns to its loop, and the call does not wait for the worker.",
         "read and write indices are reset before the call returns, and the old writeback is retired.")
