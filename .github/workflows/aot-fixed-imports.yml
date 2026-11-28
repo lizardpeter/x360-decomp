@@ -16,6 +16,7 @@ on:
       - 'tools/stage_metro_profile_modules.py'
       - 'tools/native/metro_profile_mapping.hpp'
       - 'tools/verify_metro_profile_generated.py'
+      - 'tools/verify_metro_profile_storage.py'
       - 'tools/patch_metro_public_verification.py'
       - 'tools/verify_retail_firmware.py'
       - 'tools/patch_rexglue_imports.py'
@@ -307,6 +308,7 @@ jobs:
           folder="$PWD/build/fixed-imports/dash_17559"
           python tools/verify_metro_profile_storage.py --host "$folder/native/dash_17559" --inputs "$folder/inputs" --fixture build/sdk-source/tests/fixtures/filesystem/stfs_con.bin --output build/receipts/metro-synthetic-profile-storage.json
       - name: Attempt original graphical boot and capture actual presented title frame
+        if: always() && steps.preflight.outcome == 'success'
         env:
           X360_METRO_PROFILE_PROBE: ${{ inputs.profile_modules && '1' || '0' }}
         run: |

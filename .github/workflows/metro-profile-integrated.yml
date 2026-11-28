@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'tools/verify_metro_profile_generated.py'
+      - 'tools/verify_metro_profile_storage.py'
       - 'tools/instrument_metro_profile.py'
       - 'tools/instrument_metro_guide.py'
       - 'tools/patch_metro_input_runtime.py'

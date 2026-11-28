@@ -191,8 +191,11 @@ void metro_header_observe(unsigned pc,const char* phase,const PPCContext& ctx,un
     else return;
     const auto tag=metro_header_tag(*mem,address);
     if(!tag.name)return;
-    static std::atomic<unsigned> count{0};
-    if(count.fetch_add(1,std::memory_order_relaxed)>=256)return;
+    // Keep independent budgets per verified public label and probe phase.
+    // Repeated selected Home observations must not starve an inactive label.
+    const unsigned slot=reg==0?0:reg==3?1:reg==4?2:3;
+    static std::atomic<unsigned> counts[4][8]{};
+    if(counts[slot][tag.index].fetch_add(1,std::memory_order_relaxed)>=32)return;
     if(reg==0) {
         std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u stored_length=%u\n",
                      pc,phase,tag.name,tag.units,ctx.r3.u32);

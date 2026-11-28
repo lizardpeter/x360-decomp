@@ -60,6 +60,7 @@ class MetroUIProbes(unittest.TestCase):
         self.assertIn('metro_header_observe(0x921CB758u,"entry",ctx,4u)',out)
         self.assertIn('metro_header_observe(0x921F2800u,"return",ctx,0u)',out)
         self.assertIn('metro_header_observe(0x921E3B48u,"return",ctx,29u)',out)
+        self.assertIn('counts[slot][tag.index]',out)
         self.assertIn("mem.Load<rex::be_u16>",out)
         self.assertNotIn("mem->Store",out)
         self.assertNotIn("METRO_UI pc=",out)

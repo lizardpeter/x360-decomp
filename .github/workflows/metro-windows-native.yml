@@ -10,6 +10,7 @@ on:
     branches: [main]
     paths:
       - 'tools/stage_metro_profile_modules.py'
+      - 'tools/verify_metro_profile_storage.py'
       - 'tools/verify_retail_firmware.py'
       - 'tools/patch_*.py'
       - 'tools/stage_*.py'
