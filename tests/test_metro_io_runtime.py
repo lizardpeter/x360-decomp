@@ -145,6 +145,16 @@ class IoRuntime(unittest.TestCase):
         self.assertIn("used+count",result)
         self.assertNotIn("strlen(",RTL_APPEND_IMPL)
         with self.assertRaises(ValueError):patch_rtl_append(result)
+    def test_symbolic_link_and_flush_checked_independently(self):
+        source="u32 NtFlushBuffersFile_entry(\n  X_STATUS result = X_STATUS_INVALID_HANDLE;\n  if (auto file = kernel::GetCurrent().GetObjectTable().Get<FileObject>(file_handle)) {\n    auto flushed = file->file->Flush();\nu32 NtOpenSymbolicLinkObject_entry(\n  REX_KERNEL_REQUIRE_NONNULL(object_attrs);\n  REX_ASSERT(handle_out != nullptr);\n\n  auto object_name = kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual<X_ANSI_STRING*>(\n      object_attrs->name_ptr);\n\n  auto target_path = StripDosDevicePrefix(\n      kernel::TranslateAnsiPath(kernel::GetCurrentState().GetAddressSpace(), object_name));\n  *handle_out = handle;\nu32 NtQuerySymbolicLinkObject_entry(\n  auto length = std::min(static_cast<size_t>(target->maximum_length), symlink->target.size());\n  if (length > 0) {\n    auto target_buf =\n        kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual(target->pointer);\n    std::memcpy(target_buf, symlink->target.c_str(), length);\n  }\n  target->length = static_cast<u16>(length);\nu32 FscGetCacheElementCount_entry("
+        result=patch_symbolic_link_and_flush(source)
+        self.assertIn("CheckedAnsiPath(attrs->name_ptr,target_path)",result)
+        self.assertIn("table.Close(handle)",result)
+        self.assertIn("GetWritableSpan(buffer,static_cast<u32>(length))",result)
+        self.assertIn("guest.Store(address,*descriptor)",result)
+        self.assertLess(result.index("GetWritableSpan(output,sizeof(X_IO_STATUS_BLOCK))"),result.index("file->file->Flush()"))
+        self.assertIn("std::lock_guard lock(file->file_lock)",result)
+        with self.assertRaises(ValueError):patch_symbolic_link_and_flush(result)
     def test_storage_queries_bound_and_retry(self):
         source="\n".join([ATTR_QUERY_OLD,DIRECTORY_QUERY_OLD,DIRECTORY_COUNT_OLD])
         patched=patch_storage_queries(source)

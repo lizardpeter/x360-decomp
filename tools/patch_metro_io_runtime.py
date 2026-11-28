@@ -968,7 +968,7 @@ def patch_storage_queries(source):
                     (DIRECTORY_QUERY_OLD,DIRECTORY_QUERY_NEW),
                     (DIRECTORY_COUNT_OLD,DIRECTORY_COUNT_NEW)):
         source=replace(source,old,new)
-    return patch_symbolic_link_and_flush(source)
+    return source
 
 SET_START_OLD = r"""  REX_KERNEL_LOOKUP(file, FileObject, file_handle);
 
@@ -1289,7 +1289,7 @@ def main():
              node_file:patch_node_file(node_file.read_text()),
              node_header:patch_node_file_header(node_header.read_text()),
              filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
-             io:patch_utility_device(patch_stfs_contract(patch_storage_queries(patch_io(io.read_text())))),
+             io:patch_utility_device(patch_stfs_contract(patch_symbolic_link_and_flush(patch_storage_queries(patch_io(io.read_text()))))),
              a.sdk/"src/kernel/title_state.h":patch_utility_device_state((a.sdk/"src/kernel/title_state.h").read_text()),
              a.sdk/"src/kernel/title_state.cpp":patch_utility_device_shutdown((a.sdk/"src/kernel/title_state.cpp").read_text()),
              file:patch_directory_object(patch_file(file.read_text())),
