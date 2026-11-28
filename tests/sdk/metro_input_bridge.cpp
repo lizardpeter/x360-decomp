@@ -394,3 +394,52 @@ REX_TEST_CASE("metro_input_bridge: storage callback registration belongs to titl
     CHECK(invocations.load()==0);
   });
 }
+
+REX_TEST_CASE("metro_input_bridge: real controller transitions update HID but not text activity",
+              "[kernel][input][metro_input_bridge]") {
+  using namespace rex::test_input;
+  g_fake={};
+  FakeProvider provider;
+  g_fake[0].devices={MakePad(1,0)};
+  g_fake[0].states[1]=Buttons(0);
+  rex::test::KernelFixture fixture({}, {&provider}, {}, {}, "fake_a");
+  auto& input=fixture.GetInput();
+  input.SetInputCaptured(true);
+  StateOf(fixture.GetRuntime()).hosted_pad_input=&input;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    auto& state=StateOf(c.GetRuntime());
+    const u32 binding=state.GetFunctionDispatcher()->AllocateThunk(
+      +[](PPCContext& ctx,u8* base){base[ctx.r7.u32]=0;ctx.r3.u64=0;},0);
+    REQUIRE(binding);
+    c.Kernel("DrvSetUserBindingCallback",{binding});
+    REQUIRE(c.GetRuntime().AnnounceHostedPads()==1);
+    const u32 data=c.Alloc(16),packet=c.Alloc(4),stamp=c.Alloc(8);
+    auto read=[&] { REQUIRE(c.Kernel("XInputdReadState",{0x10000001,packet,data,0})==0); };
+    auto hid=[&] {
+      REQUIRE(c.Kernel("HidGetLastInputTime",{stamp})==0);
+      return (u64{c.Load32(stamp)}<<32)|c.Load32(stamp+4);
+    };
+    auto text=[&] {
+      REQUIRE(c.Kernel("XInputdGetLastTextInputTime",{0,stamp})==0);
+      return (u64{c.Load32(stamp)}<<32)|c.Load32(stamp+4);
+    };
+    read();
+    const auto baseline=hid(),text_before=text();
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    g_fake[0].states[1]=Buttons(rex::hid::kPadDPadRight);
+    read();
+    const auto pressed=hid();
+    CHECK(pressed>baseline);
+    CHECK(text()==text_before);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    for(unsigned i=0;i<8;++i)read();
+    CHECK(hid()==pressed);
+    g_fake[0].states[1]=Buttons(0);
+    read();
+    CHECK(hid()>pressed);
+    CHECK(text()==text_before);
+    state.ResetHostedPadBindings();
+  });
+  g_fake={};
+}

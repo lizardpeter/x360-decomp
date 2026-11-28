@@ -249,6 +249,75 @@ Result<u64> InputSystem::GetLastTextActivity100ns(u32 user) {
   return result;
 }
 void InputSystem::SetInputCaptured(bool captured) {""")
+    # The original idle clock also needs physical controller activity, not
+    # merely keyboard/mouse window events. Sample only real pad providers.
+    source=replace(source,"  std::atomic<u64> last_text_activity{0};",
+        """  std::atomic<u64> last_text_activity{0};
+  std::array<rex::hid::PadState,detail::kMaxUsers> last_physical_state{};
+
+  static u64 GuestActivityTime() {
+    const u64 ticks=Clock::QueryGuestTickCount(),frequency=Clock::GetGuestTickFrequency();
+    return frequency?ticks/frequency*10000000+ticks%frequency*10000000/frequency:0;
+  }
+  static void PublishActivity(std::atomic<u64>& target,u64 stamp) {
+    u64 previous=target.load(std::memory_order_relaxed);
+    while (previous<stamp &&
+           !target.compare_exchange_weak(previous,stamp,std::memory_order_release,
+                                         std::memory_order_relaxed)) {}
+  }
+  static bool SamePadState(const rex::hid::PadState& a,const rex::hid::PadState& b) {
+    return a.buttons==b.buttons && a.left_trigger==b.left_trigger &&
+        a.right_trigger==b.right_trigger && a.thumb_lx==b.thumb_lx &&
+        a.thumb_ly==b.thumb_ly && a.thumb_rx==b.thumb_rx && a.thumb_ry==b.thumb_ry;
+  }""")
+    source=replace(source,"  rex::hid::PadState merged;\n  bool any = false;",
+        """  rex::hid::PadState merged;
+  rex::hid::PadState physical{};
+  bool has_physical=false;
+  bool any = false;""")
+    source=replace(source,"    active.Observe(user, key, *state);",
+        """    if (key.source!=keyboard_mouse_source && key.source!=idle_source) {
+      if (!has_physical) physical=*state;
+      else detail::MergeInto(physical,*state);
+      has_physical=true;
+    }
+    active.Observe(user, key, *state);""")
+    source=replace(source,"""  if (!any) {
+    return std::unexpected(NotFound("no device answers for the user"));
+  }""",
+        """  // Use the same deadzones and Guide setting as the guest-facing
+  // pad state. Neutral disconnects and analog noise in deadzones do not
+  // count as user activity. Polling an unchanged held state does not
+  // reset the original idle timer.
+  if (has_physical) {
+    if (!owner.GetSettings().guide_button.Get())
+      physical.buttons=static_cast<u16>(physical.buttons&~rex::hid::kPadGuide);
+    detail::ApplyDeadzones(physical,owner.GetSettings().left_stick_deadzone.Get(),
+                          owner.GetSettings().right_stick_deadzone.Get());
+    if (!SamePadState(physical,last_physical_state[user]) && ui_blocks.load()==0)
+      PublishActivity(last_hid_activity,GuestActivityTime());
+    last_physical_state[user]=physical;
+  } else {
+    last_physical_state[user]={};
+  }
+  if (!any) {
+    return std::unexpected(NotFound("no device answers for the user"));
+  }""")
+    source=replace(source,"""    const u64 ticks=Clock::QueryGuestTickCount(),frequency=Clock::GetGuestTickFrequency();
+    if(frequency) {
+      const u64 time=ticks/frequency*10000000 + ticks%frequency*10000000/frequency;
+      state.last_hid_activity.store(time,std::memory_order_release);
+      if(key && settings_.mnk_passthrough.Get())
+        state.last_text_activity.store(time,std::memory_order_release);
+    }""",
+        """    const u64 time=State::GuestActivityTime();
+    State::PublishActivity(state.last_hid_activity,time);
+    if(key && settings_.mnk_passthrough.Get())
+      State::PublishActivity(state.last_text_activity,time);""")
+    source=replace(source,"  state.started = true;",
+        "  state.last_physical_state={};\n  state.started = true;")
+    source=replace(source,"  state.started = false;",
+        "  state.last_physical_state={};\n  state.started = false;")
     return public,private,source
 
 
