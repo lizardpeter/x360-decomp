@@ -135,3 +135,58 @@ REX_TEST_CASE_METHOD(Fixture, "STFS snapshot rejects incomplete or unsafe direct
     CHECK(fs.GetMounts().size()==1);
   }
 }
+
+
+REX_TEST_CASE_METHOD(Fixture,"STFS snapshot preserves original parent slot indices across vacant entries",
+                     "[filesystem][metro_stfs_open_file]") {
+  auto bytes=rex::platform::ReadHostFile(rex::test::GetFixtureFolder()/"stfs_con.bin");
+  REQUIRE(bytes);
+  auto be32=[&](size_t p) {
+    return (rex::u32((*bytes)[p])<<24)|(rex::u32((*bytes)[p+1])<<16)|
+           (rex::u32((*bytes)[p+2])<<8)|(*bytes)[p+3];
+  };
+  const size_t data_start=(size_t(be32(0x340))+0xfff)&~size_t(0xfff);
+  const unsigned copies=((*bytes)[0x37b]&1)?1:2;
+  const unsigned directory=(*bytes)[0x37e]|(unsigned((*bytes)[0x37f])<<8)|
+                           (unsigned((*bytes)[0x380])<<16);
+  REQUIRE(directory<170);
+  const size_t table=data_start+(directory+copies)*4096;
+  REQUIRE(table+4096<=bytes->size());
+  size_t leaf=0,empty=0;
+  for(size_t p=table;p<table+4096;p+=64) {
+    if (!(*bytes)[p]) {empty=p;break;}
+    if (((*bytes)[p+40]&0x3f)==5 &&
+        std::string(reinterpret_cast<const char*>(bytes->data()+p),5)=="a.txt")
+      leaf=p;
+  }
+  REQUIRE(leaf);
+  REQUIRE(empty>leaf);
+  // Move a root file into the first vacant slot. Its data chain, name and
+  // metadata are unchanged. Other parent slot references stay untouched.
+  auto sparse=*bytes;
+  std::copy_n(sparse.data()+leaf,64,sparse.data()+empty);
+  std::fill_n(sparse.data()+leaf,64,0);
+  REQUIRE(rex::platform::WriteHostFile(GetTemp()/"sparse.bin",sparse));
+  MountTemp(kRoot);
+  auto& fs=GetFileSystem();
+  auto source=Open("\\Device\\Test\\sparse.bin");
+  REQUIRE(fs.MountStfsFile("\\Device\\SparseStfs",*source.file));
+  CHECK(ReadText(*Open("\\Device\\SparseStfs\\a.txt").file)=="alpha\n");
+  CHECK(ReadText(*Open("\\Device\\SparseStfs\\folder\\c.txt").file)=="charlie in folder\n");
+  REQUIRE(fs.Unmount("\\Device\\SparseStfs"));
+  // Make an existing child point at the vacant slot: no compacted-node
+  // alias may accidentally accept it as a different parent directory.
+  for(size_t p=table;p<empty;p+=64) {
+    if (sparse[p] && (sparse[p+50]!=0xff || sparse[p+51]!=0xff)) {
+      const auto slot=(leaf-table)/64;
+      sparse[p+50]=static_cast<rex::u8>(slot>>8);
+      sparse[p+51]=static_cast<rex::u8>(slot);
+      REQUIRE(rex::platform::WriteHostFile(GetTemp()/"orphan.bin",sparse));
+      auto orphan=Open("\\Device\\Test\\orphan.bin");
+      CHECK_FALSE(fs.MountStfsFile("\\Device\\SparseStfs",*orphan.file));
+      CHECK_FALSE(fs.Stat("\\Device\\SparseStfs"));
+      return;
+    }
+  }
+  FAIL("fixture must contain a nested file");
+}
