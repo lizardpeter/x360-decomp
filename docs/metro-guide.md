@@ -93,3 +93,7 @@ Evidence run 46100145230 passed. Original XAM 816B7900 calls ObReferenceObjectBy
 
 ### Native waitable-dispatcher validation
 Combined SDK regression 46100248423 passed 2,404 assertions across 73 cases including the actual borrowed dispatcher-address export, embedded/shared custom events and ordinary event lifetime. Windows native mapping at the same revision passed. This verifies the implementation in native unit tests; the new integrated graphical run has not yet completed and the unsupported DeviceAuth request is still a separate observed fatal startup blocker.
+
+### Named-object opens and handle transfer integrity
+
+The pinned named-object open path dereferenced unchecked guest attributes and ignored the requested object type; the duplicate path could allocate an unreachable handle on a null output and close the original handle on an invalid destination. The hosted implementations now validate counted names and output extents, enforce known requested object types, retire newly opened handles on publication failure, and avoid creating a new handle for close-only requests. The null-output policy retains close-source behavior for option 1 and rejects ordinary duplication; it is an explicit hosted contract, not a newly recovered retail ABI. Two native guest-export regressions cover type mismatch, invalid addresses, transferred handle identity, close-source lifetime and guard words. Original graphical XAM startup remains blocked separately.

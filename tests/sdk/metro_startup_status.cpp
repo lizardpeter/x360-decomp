@@ -418,3 +418,62 @@ REX_TEST_CASE("metro_startup_status: waitable object address borrows actual disp
     CHECK(c.Kernel("ObGetWaitableObject",{event})==0);
   });
 }
+
+REX_TEST_CASE("metro_startup_status: named handle opens validate type and guest extent",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 attrs=c.AllocAttributes("\\BaseNamedObjects\\MetroHandle");
+    const u32 h=c.Alloc(4),out=c.Alloc(8),body_ptr=c.Alloc(4);
+    REQUIRE(c.Kernel("NtCreateEvent",{h,attrs,0,0})==0);
+    const u32 handle=c.Load32(h);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{handle,0,body_ptr})==0);
+    const u32 body=c.Load32(body_ptr),type=c.Load32(body-8);
+    REQUIRE(type);
+    c.Store32(out,0x12345678);c.Store32(out+4,0xCAFEBABE);
+    CHECK(c.Kernel("ObOpenObjectByName",{attrs,type,0,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ObOpenObjectByName",{0xfffffffc,type,0,out})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("ObOpenObjectByName",{attrs,type+4,0,out})==X_STATUS_OBJECT_TYPE_MISMATCH);
+    CHECK(c.Load32(out)==0x12345678);
+    REQUIRE(c.Kernel("ObOpenObjectByName",{attrs,type,0,out})==0);
+    const u32 second=c.Load32(out);
+    REQUIRE(second!=handle);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{second,type,body_ptr})==0);
+    CHECK(c.Load32(body_ptr)==body);
+    CHECK(c.Kernel("ObDereferenceObject",{body})==0);
+    CHECK(c.Kernel("NtClose",{second})==0);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+    CHECK(c.Kernel("ObDereferenceObject",{body})==0);
+    CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(body));
+    CHECK(c.Load32(out+4)==0xCAFEBABE);
+  });
+}
+
+REX_TEST_CASE("metro_startup_status: failed duplicate output cannot retire source or leak handle",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 out=c.Alloc(8),h=c.Alloc(4),body_ptr=c.Alloc(4);
+    REQUIRE(c.Kernel("NtCreateEvent",{h,0,0,0})==0);
+    const u32 handle=c.Load32(h);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{handle,0,body_ptr})==0);
+    const u32 body=c.Load32(body_ptr);
+    CHECK(c.Kernel("ObDereferenceObject",{body})==0);
+    CHECK(c.Kernel("NtDuplicateObject",{handle,0xfffffffc,1})==X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.GetRuntime().GetObjectTable().Get(handle));
+    CHECK(c.Kernel("NtDuplicateObject",{handle,0,0})==X_STATUS_INVALID_PARAMETER);
+    CHECK(c.GetRuntime().GetObjectTable().Get(handle));
+    c.Store32(out+4,0xCAFEBABE);
+    REQUIRE(c.Kernel("NtDuplicateObject",{handle,out,1})==0);
+    const u32 duplicate=c.Load32(out);
+    CHECK(duplicate!=handle);
+    CHECK(!c.GetRuntime().GetObjectTable().Get(handle));
+    CHECK(c.GetRuntime().GetObjectTable().Get(duplicate));
+    CHECK(c.Load32(out+4)==0xCAFEBABE);
+    REQUIRE(c.Kernel("NtDuplicateObject",{duplicate,0,1})==0);
+    CHECK(!c.GetRuntime().GetObjectTable().Get(duplicate));
+    CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(body));
+  });
+}

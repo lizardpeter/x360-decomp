@@ -223,9 +223,109 @@ def patch_waitable_object(source):
     return source.replace(entry,WAITABLE_OBJECT_IMPL+entry,1).replace(stub,
         "REX_EXPORT(__imp__ObGetWaitableObject, rex::kernel::xboxkrnl::ObGetWaitableObject_entry)",1)
 
+def patch_named_handles(source):
+    # Validate the complete counted name before opening anything. Preserve
+    # the existing absolute namespace; do not guess root-relative names.
+    old=r"""  REX_KERNEL_REQUIRE_NONNULL(obj_attributes_ptr);
+
+  auto obj_attributes =
+      kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual<X_OBJECT_ATTRIBUTES*>(
+          obj_attributes_ptr.GetGuestAddress());
+  REX_ASSERT(obj_attributes->name_ptr != 0);
+  auto name = kernel::TranslateAnsiStringAddress(kernel::GetCurrentState().GetAddressSpace(),
+                                                 obj_attributes->name_ptr);
+
+  auto opened = kernel::GetCurrent().GetObjectTable().OpenByName(name);
+  if (opened) {
+    *handle_ptr = *opened;
+  }
+
+  return ToXStatus(opened);"""
+    new=r"""  auto& runtime=kernel::GetCurrent();
+  auto& memory=runtime.GetGuestMemory();
+  const u32 output=handle_ptr.GetGuestAddress();
+  if (!output || !memory.GetWritableSpan(output,sizeof(be_u32)))
+    return X_STATUS_ACCESS_VIOLATION;
+  const u32 attributes=obj_attributes_ptr.GetGuestAddress();
+  if (!attributes) return X_STATUS_INVALID_PARAMETER;
+  const auto attrs=memory.Load<X_OBJECT_ATTRIBUTES>(attributes);
+  if (!attrs) return X_STATUS_ACCESS_VIOLATION;
+  if (!attrs->name_ptr) return X_STATUS_OBJECT_NAME_INVALID;
+  const auto name=memory.Load<X_ANSI_STRING>(attrs->name_ptr);
+  if (!name) return X_STATUS_ACCESS_VIOLATION;
+  const u16 length=name->length;
+  if (!length || length>static_cast<u16>(name->maximum_length))
+    return X_STATUS_OBJECT_NAME_INVALID;
+  if (!name->pointer) return X_STATUS_ACCESS_VIOLATION;
+  const auto bytes=memory.GetReadOnlySpan(name->pointer,length);
+  if (!bytes) return X_STATUS_ACCESS_VIOLATION;
+  const std::string object_name(reinterpret_cast<const char*>(bytes->data()),bytes->size());
+  if (object_name.find('\0')!=std::string::npos) return X_STATUS_OBJECT_NAME_INVALID;
+  auto& table=runtime.GetObjectTable();
+  auto opened=table.OpenByName(object_name);
+  if (!opened) return ToXStatus(opened);
+  const u32 type=object_type_ptr.GetGuestAddress();
+  if (type) {
+    auto object=table.Get(*opened);
+    const u32 actual=object?(object.GetKernelObject().guest_object_type
+        ? object.GetKernelObject().guest_object_type
+        : kernel::GetCurrentState().GetObjectTypeAddress(object.GetType())):0;
+    if (!actual || type!=actual) {
+      (void)table.Close(*opened);
+      return X_STATUS_OBJECT_TYPE_MISMATCH;
+    }
+  }
+  if (!memory.Store(output,be_u32{*opened})) {
+    (void)table.Close(*opened);
+    return X_STATUS_ACCESS_VIOLATION;
+  }
+  return X_STATUS_SUCCESS;"""
+    if source.count(old)!=1:raise ValueError("named open contract anchor")
+    source=source.replace(old,new,1)
+    old=r"""  auto& table = kernel::GetCurrent().GetObjectTable();
+  auto duplicated = table.Duplicate(handle);
+
+  if (new_handle_ptr) {
+    *new_handle_ptr = duplicated.value_or(kXInvalidHandleValue);
+  }
+
+  if (options == 1) {
+    if (auto removed = table.Close(handle); !removed) {
+      REXKRNL_WARN("NtDuplicateObject: source handle {:08X} not closed, {}", handle,
+                   removed.error().message);
+    }
+  }
+
+  return ToXStatus(duplicated);"""
+    new=r"""  auto& runtime=kernel::GetCurrent();
+  auto& memory=runtime.GetGuestMemory();
+  const u32 output=new_handle_ptr.GetGuestAddress();
+  if (output && !memory.GetWritableSpan(output,sizeof(be_u32)))
+    return X_STATUS_ACCESS_VIOLATION;
+  auto& table=runtime.GetObjectTable();
+  // No destination means no new handle can be transferred. Preserve
+  // close-source behavior without allocating an unreachable handle.
+  if (!output)
+    return options==1?ToXStatus(table.Close(handle)):X_STATUS_INVALID_PARAMETER;
+  auto duplicated=table.Duplicate(handle);
+  if (!memory.Store(output,be_u32{duplicated.value_or(kXInvalidHandleValue)})) {
+    if (duplicated) (void)table.Close(*duplicated);
+    return X_STATUS_ACCESS_VIOLATION;
+  }
+  // Retain the existing close-source behavior once the output is valid.
+  if (options==1) {
+    if (auto removed=table.Close(handle); !removed)
+      REXKRNL_WARN("NtDuplicateObject: source handle {:08X} not closed, {}",handle,
+                   removed.error().message);
+  }
+  return ToXStatus(duplicated);"""
+    if source.count(old)!=1:raise ValueError("duplicate handle contract anchor")
+    return source.replace(old,new,1)
+
 def patch_object_contracts(source):
     source=patch_guest_objects('src/kernel/xboxkrnl/xboxkrnl_ob.cpp',source)
     source=patch_waitable_object(source)
+    source=patch_named_handles(source)
     anchor="#include <rex/kernel/title_runtime.h>"
     if source.count(anchor)!=1:raise ValueError("object memory header")
     source=source.replace(anchor,anchor+"\n#include <rex/kernel/guest_memory.h>",1)
