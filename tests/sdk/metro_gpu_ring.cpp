@@ -300,3 +300,79 @@ REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: short fixed packet cannot consume 
   driver.DetachTitle();
   driver.Shutdown();
 }
+
+#include "gpu/xenos/shared_memory.h"
+
+namespace {
+class MetroTestSharedMemory final : public rex::gpu::SharedMemory {
+ public:
+  explicit MetroTestSharedMemory(rex::test::FakeTitleContext& title)
+      :SharedMemory(title,title) { InitializeCommon(); }
+  rex::u32 PageBytes() const { return rex::u32{1}<<GetPageSizeLog2(); }
+  std::vector<std::pair<rex::u32,rex::u32>> uploads;
+  bool fail_upload=false;
+ protected:
+  bool UploadRanges(const std::vector<std::pair<rex::u32,rex::u32>>& ranges) override {
+    uploads=ranges;
+    if (fail_upload) return false;
+    for (const auto& [first,count]:ranges)
+      MarkRangeValid(first*PageBytes(),count*PageBytes(),false);
+    return true;
+  }
+};
+}
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: unchanged vertex fetch must revalidate CPU-written pages",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  MetroTestSharedMemory shared(title);
+  const rex::u32 page=shared.PageBytes();
+  const rex::u32 start=63*page+page-8;
+  CHECK_FALSE(shared.IsRangeValid(start,16));
+  REQUIRE(shared.RequestRange(start,16));
+  CHECK(shared.IsRangeValid(start,16));
+  CHECK(shared.IsRangeValid(start,8));
+  CHECK(shared.IsRangeValid(start+8,8));
+  {
+    auto lock=shared.AcquireLock();
+    shared.OnPhysicalWrite({start+8,1},true);
+  }
+  CHECK(shared.IsRangeValid(start,8));
+  CHECK_FALSE(shared.IsRangeValid(start+8,8));
+  CHECK_FALSE(shared.IsRangeValid(start,16));
+  shared.fail_upload=true;
+  CHECK_FALSE(shared.RequestRange(start,16));
+  CHECK_FALSE(shared.IsRangeValid(start,16));
+  shared.fail_upload=false;
+  REQUIRE(shared.RequestRange(start,16));
+  CHECK(shared.IsRangeValid(start,16));
+  shared.RangeWrittenByGPU(start,16);
+  CHECK(shared.IsRangeValid(start,16));
+  shared.InvalidateAllPages();
+  CHECK_FALSE(shared.IsRangeValid(start,16));
+  CHECK(shared.IsRangeValid(0,0));
+  CHECK_FALSE(shared.IsRangeValid(shared.kBufferSize-1,2));
+  CHECK_FALSE(shared.IsRangeValid(0xffffffffu,16));
+}
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: disjoint byte requests merge into unique sorted page uploads",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  MetroTestSharedMemory shared(title);
+  const rex::u32 page=shared.PageBytes();
+  const std::pair<rex::u32,rex::u32> ranges[]={
+    {3*page+8,4},{page+4,4},{page+32,4},{2*page-2,4},
+    {3*page+32,8},{5*page+1,1}};
+  REQUIRE(shared.RequestRanges(ranges,std::size(ranges)));
+  CHECK((shared.uploads==std::vector<std::pair<rex::u32,rex::u32>>{{1,3},{5,1}}));
+  CHECK(shared.IsRangeValid(page,3*page));
+  CHECK_FALSE(shared.IsRangeValid(4*page,1));
+  CHECK(shared.IsRangeValid(5*page,1));
+  shared.uploads.clear();
+  REQUIRE(shared.RequestRanges(ranges,std::size(ranges)));
+  CHECK(shared.uploads.empty());
+  REQUIRE(shared.RequestRange(shared.kBufferSize-1,1));
+  CHECK(shared.IsRangeValid(shared.kBufferSize-1,1));
+}

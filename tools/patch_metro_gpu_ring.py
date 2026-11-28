@@ -420,6 +420,56 @@ auto GeometryAnyCullPlane(unsigned first_plane,unsigned plane_count,
           [&](spv::Id lhs,spv::Id rhs) {
             return builder.createBinOp(spv::OpLogicalOr,type_bool,lhs,rhs);
           });""")
+    # Fetch-register equality is not a residency guarantee: CPU writes
+    # can invalidate shared pages without changing the fetch descriptor.
+    # Consult the authoritative page map under the existing watch lock.
+    shared_h=sdk/"src/gpu/xenos/shared_memory.h"
+    shared=shared_h.read_text()
+    shared=replace(shared,"  bool RequestRange(u32 start, u32 length);",
+        """  bool RequestRange(u32 start, u32 length);
+  // A fetch descriptor may still match while its underlying pages are stale.
+  bool IsRangeValid(u32 start,u32 length) const;""")
+    shared_cpp=sdk/"src/gpu/xenos/shared_memory.cpp"
+    sm=shared_cpp.read_text()
+    sm=replace(sm,"bool SharedMemory::RequestRange(u32 start, u32 length) {",
+        """bool SharedMemory::IsRangeValid(u32 start,u32 length) const {
+  if (!length) return true;
+  if (start>=kBufferSize || length>kBufferSize-start) return false;
+  const u32 first=start>>page_size_log2_;
+  const u32 last=(start+length-1)>>page_size_log2_;
+  auto lock=AcquireLock();
+  if ((last>>6)>=system_page_flags_valid_.size()) return false;
+  for (u32 block=first>>6;block<=last>>6;++block) {
+    u64 mask=UINT64_MAX;
+    if (block==(first>>6)) mask&=UINT64_MAX<<(first&63);
+    if (block==(last>>6)) mask&=UINT64_MAX>>(63-(last&63));
+    if ((system_page_flags_valid_[block]&mask)!=mask) return false;
+  }
+  return true;
+}
+
+bool SharedMemory::RequestRange(u32 start, u32 length) {""")
+    # The upload scan is page-granular. Merge at that granularity, too:
+    # otherwise separate byte intervals in the same page can enqueue the
+    # same page repeatedly, or produce overlapping upload ranges.
+    sm=replace(sm,"    merged_ranges.emplace_back(start, length);",
+        """    const u32 page_mask=(u32{1}<<page_size_log2_)-1;
+    const u32 page_start=start&~page_mask;
+    const u32 page_end=(start+length+page_mask)&~page_mask;
+    merged_ranges.emplace_back(page_start,page_end-page_start);""")
+    v=replace(v,"""      if (vertex_buffers_in_sync_[vfetch_index >> 6] & vfetch_bit) {
+        continue;
+      }
+      xenos::VertexFetch vfetch_constant = regs.GetVertexFetch(vfetch_index);""",
+        """      const xenos::VertexFetch vfetch_constant=regs.GetVertexFetch(vfetch_index);
+      if ((vertex_buffers_in_sync_[vfetch_index >> 6]&vfetch_bit) &&
+          shared_memory_->IsRangeValid(vfetch_constant.address<<2,vfetch_constant.size<<2)) {
+        continue;
+      }
+      // A stale page must be requested even with an unchanged descriptor.
+      vertex_buffers_in_sync_[vfetch_index >> 6]&=~vfetch_bit;""")
+    shared_h.write_text(shared)
+    shared_cpp.write_text(sm)
     pipeline.write_text(ps)
     p.write_text(source);h.write_text(header);t.write_text(test+"\n"+tests.read_text())
     vk.write_text(v)
