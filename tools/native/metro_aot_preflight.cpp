@@ -18,6 +18,8 @@
 #include <cstddef>
 #include <string_view>
 #include <array>
+#include <string>
+#include <rex/filesystem/file_system.h>
 #include <algorithm>
 #include <rex/kernel/guest_memory.h>
 #include "generated/dash_17559_init.h"
@@ -149,6 +151,66 @@ bool verify_header_strings(TitleRuntime& title) {
     };
     const bool passed=run();
     return bool(mem.Free(base)) && passed;
+}
+
+// Inspect only canonical profile packages through the same guest namespace
+// used by the retail dashboard. No account identity or package filename is
+// printed by this code, no guest sign-in API is invoked, and the original
+// STFS mount is read-only. The native parser validates structure, not trust.
+bool verify_local_profile_storage(TitleRuntime& title) {
+    namespace vfs=rex::filesystem;
+    if(!metro_boot::mount_local_profiles(title))return false;
+    auto& fs=title.GetFileSystem();
+    const auto partition=fs.Open("\\Device\\Harddisk0\\Partition1",{});
+    if(!partition)return false;
+    auto content=fs.OpenRelative(*partition->file,"Content",{});
+    if(!content)return false;
+    auto dirs=content->file->List("");
+    if(!dirs)return false;
+    unsigned candidates=0,parsed=0,failed=0;
+    auto valid_id=[](std::string_view s) {
+        if(s.size()!=16 || (s.front()!='E' && s.front()!='e'))return false;
+        return std::all_of(s.begin()+1,s.end(),[](char c) {
+            return (c>='0'&&c<='9')||(c>='A'&&c<='F')||(c>='a'&&c<='f');
+        });
+    };
+    while(auto item=(*dirs)->Next()) {
+        if(!rex::HasFlags(item->attributes,vfs::FileAttributes::kDirectory) ||
+           !valid_id(item->name))continue;
+        if(++candidates>256)return false;
+        const auto relative=item->name+"\\FFFE07D1\\00010000\\"+item->name;
+        auto source=fs.OpenRelative(*content->file,relative,{.access=vfs::Access::kReadData,.require_file=true});
+        if(!source) {++failed;continue;}
+        // Match the stager's basic identity and content constraints. Do
+        // not call this proof of a cryptographic signature or local sign-in.
+        std::array<rex::u8,0x3ad> header{};
+        const auto read=source->file->Read(header,0);
+        auto be32=[&](unsigned at) {
+            return (rex::u32(header[at])<<24)|(rex::u32(header[at+1])<<16)|
+                   (rex::u32(header[at+2])<<8)|rex::u32(header[at+3]);
+        };
+        if(!read || *read!=header.size() || header[0]!='C' || header[1]!='O' ||
+           header[2]!='N' || header[3]!=' ' || be32(0x344)!=0x10000 ||
+           (be32(0x348)!=1 && be32(0x348)!=2) || be32(0x360)!=0xfffe07d1u ||
+           header[0x379]!=0x24 || be32(0x3a9)!=0) {
+            ++failed;continue;
+        }
+        constexpr std::string_view mount="\\Device\\MetroProfileCheck";
+        if(!fs.MountStfsFile(mount,*source->file)) {++failed;continue;}
+        source->file.reset();
+        // Open the actual parsed package directory, then release its handle
+        // before removing the transient mount. No private member names leak.
+        bool root_ok=false;
+        {
+            auto root=fs.List(mount,"");
+            if(root)root_ok=bool((*root)->Next());
+        }
+        if(!fs.Unmount(mount))return false;
+        if(root_ok)++parsed;else ++failed;
+    }
+    std::cout<<"METRO_PROFILE_STORAGE candidates="<<candidates<<" parsed="<<parsed
+             <<" failed="<<failed<<" sign_in_verified=false"<<std::endl;
+    return failed==0 && candidates==parsed;
 }
 
 class MetroPreflight final : public rex::app::App {
@@ -330,6 +392,11 @@ public:
             if (!metro_profile::verify_load_cycles(title_,*xam,*user,kDashEntry,0x913F8D00))
                 return fail("profile_module_mapping");
             std::cout<<"METRO_PREFLIGHT pass profile_module_mapping"<<std::endl;
+        }
+        const char* storage_check=std::getenv("X360_METRO_PROFILE_STORAGE_PREFLIGHT");
+        if(storage_check && std::string_view(storage_check)=="1") {
+            if(!verify_local_profile_storage(title_))return fail("local_profile_storage");
+            std::cout<<"METRO_PREFLIGHT pass local_profile_storage"<<std::endl;
         }
         const char* text_check=std::getenv("X360_METRO_TEXT_PREFLIGHT");
         if(text_check && std::string_view(text_check)=="1") {

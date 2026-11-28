@@ -274,6 +274,8 @@ jobs:
         id: preflight
         env:
           X360_METRO_PROFILE_MODULE_PREFLIGHT: ${{ inputs.profile_modules && '1' || '0' }}
+          X360_METRO_TEXT_PREFLIGHT: '1'
+          X360_METRO_PROFILE_STORAGE_PREFLIGHT: '1'
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           cd "$folder/native"
@@ -292,7 +294,7 @@ jobs:
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity bootanim_native_mapping clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity bootanim_native_mapping original_header_string_contract local_profile_storage clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
           if [ "$X360_METRO_PROFILE_MODULE_PREFLIGHT" = 1 ]; then
@@ -350,9 +352,8 @@ jobs:
             build/fixed-imports/dash_17559/native/metro-capture-quad/candidate-*.png
             build/fixed-imports/dash_17559/native/metro-capture-quad/receipt.txt
           if-no-files-found: ignore
-      - name: Execute original XUI UTF-16 routines independently of graphical boot
+      - name: Retain separate original XUI UTF-16 routine receipt
         if: always() && steps.preflight.outcome == 'success'
-        continue-on-error: true
         env:
           X360_METRO_TEXT_PREFLIGHT: '1'
         run: |

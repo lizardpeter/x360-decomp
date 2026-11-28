@@ -110,3 +110,8 @@ class TestWindowsPackage(unittest.TestCase):
         self.assertIn('pulse_key BackSpace 2000',capture)
         self.assertIn('exit "$((navigation_status || guide_status))"',capture)
         self.assertIn('--app.user_root="$user_root"',capture)
+
+    def test_local_storage_check_does_not_launch_guest(self):
+        self.assertIn('if /i "%~1"=="storage-preflight" goto storagepreflight',LAUNCH)
+        self.assertIn(':storagepreflight\nset X360_METRO_PROFILE_MODULE_PREFLIGHT=\nset X360_METRO_PROFILE_STORAGE_PREFLIGHT=1\ngoto runpreflight',LAUNCH)
+        self.assertIn(':runpreflight\nset X360_METRO_TEXT_PREFLIGHT=1\nset X360_METRO_BOOT=\nset X360_METRO_INTRO=',LAUNCH)

@@ -57,6 +57,8 @@ set "METRO_INPUT_ARGS=--hid.mnk_mode=true --hid.mnk_mouse=false --hid.mnk_passth
 set X360_METRO_GUIDE_UI=
 set X360_METRO_GUIDE_TRACE=
 set X360_METRO_PROFILE_TRACE=
+set X360_METRO_PROFILE_STORAGE_PREFLIGHT=
+set X360_METRO_TEXT_PREFLIGHT=
 rem Keep the original guest mode independent of the desktop window size.
 set "METRO_VIDEO_ARGS=--ui.video_mode_width=1280 --ui.video_mode_height=720"
 rem UI/font atlases can be persistent render targets; never discard their first draw.
@@ -78,6 +80,7 @@ if /i "%~1"=="1080p" (
 if /i "%~1"=="intro" set X360_METRO_INTRO=1
 if /i "%~1"=="guide" goto guide
 if /i "%~1"=="profile-preflight" goto profilepreflight
+if /i "%~1"=="storage-preflight" goto storagepreflight
 if /i "%~1"=="preflight" goto preflight
 goto boot
 :guide
@@ -90,12 +93,17 @@ set "code=%ERRORLEVEL%"
 echo Native host exit code: %code%. See %METRO_LOG%.
 pause
 exit /b %code%
+:storagepreflight
+set X360_METRO_PROFILE_MODULE_PREFLIGHT=
+set X360_METRO_PROFILE_STORAGE_PREFLIGHT=1
+goto runpreflight
 :profilepreflight
 set X360_METRO_PROFILE_MODULE_PREFLIGHT=1
 goto runpreflight
 :preflight
 set X360_METRO_PROFILE_MODULE_PREFLIGHT=
 :runpreflight
+set X360_METRO_TEXT_PREFLIGHT=1
 set X360_METRO_BOOT=
 set X360_METRO_INTRO=
 start "" /wait "%CD%\dash_17559.exe" --title.game_root="%CD%\inputs" --title.entry=dash.xex > local-preflight.log 2>&1
@@ -193,7 +201,10 @@ the normal launch mounts an isolated per-installation Content directory.
 Drag a copy of your original E-prefixed CON profile onto Import Local Profile.cmd
 or run python tools\\stage_metro_profile.py <profile-file> --storage-root
 user\\metro-17559\\profile-storage. The source is never modified. This does
-not authenticate Xbox Live or establish sign-in. Set X360_METRO_LOCAL_PROFILES=0
+not authenticate Xbox Live or establish sign-in. Verify Local Profile Storage.cmd
+tests the imported packages through the native guest VFS and read-only STFS parser
+without starting XAM. No profile names are printed by the check itself; keep the
+log private because underlying filesystem diagnostics may contain paths. Set X360_METRO_LOCAL_PROFILES=0
 to opt out. If your SDK user root is customized, stage to that root instead.
 Keep profile packages and logs private; never upload them to GitHub or CI.
 
@@ -224,6 +235,7 @@ def package(folder,output,commit,sdk_source,profile_modules=False):
         for label,root in (("project",ROOT),("rexglue-sdk",sdk_source)):
             if (root/name).is_file():shutil.copy2(root/name,licenses/f"{label}-{name}")
     launchers={"Prepare Inputs.cmd":PREPARE,"Import Local Profile.cmd":IMPORT_PROFILE,"launch.cmd":LAUNCH,
+                      "Verify Local Profile Storage.cmd":'@echo off\ncall "%~dp0launch.cmd" storage-preflight\n',
                       "Launch Metro.cmd":'@echo off\ncall "%~dp0launch.cmd"\n',
                       "Launch Metro 720p Quad Diagnostic.cmd":'@echo off\ncall "%~dp0launch.cmd" quad\n',
                       "Launch Metro HD.cmd":'@echo off\ncall "%~dp0launch.cmd" hd\n',
