@@ -17,6 +17,9 @@
 #include <cstdlib>
 #include <cstddef>
 #include <string_view>
+#include <array>
+#include <algorithm>
+#include <rex/kernel/guest_memory.h>
 #include "generated/dash_17559_init.h"
 #include "metro_preflight_bindings.hpp"
 #include "metro_resource_proofs.hpp"
@@ -59,6 +62,93 @@ bool verify_resources(TitleRuntime& title, ModuleObject& module, const char* lab
         std::cout<<"METRO_RESOURCE pass "<<label<<" "<<proof.name<<" bytes="<<size<<std::endl;
     }
     return true;
+}
+
+// These are the original wide-string length and copy callees, not hosted
+// substitutes. Both XUI string-copy wrappers call length with r3=source,
+// then call copy with r3=allocated destination, r4=length+1, r5=source.
+// See original cross-module evidence 46068603654. The diagnostic is opt-in
+// and isolated from live startup, guest account data and original resources.
+bool verify_header_strings(TitleRuntime& title) {
+    auto& mem=title.GetGuestMemory();
+    auto allocation=mem.Allocate(65536,4096,rex::kernel::GuestProtect::kReadWrite);
+    if(!allocation)return false;
+    const rex::u32 base=*allocation;
+    auto run=[&]() {
+        constexpr std::array<std::u16string_view,12> inputs{
+            u"",u"v",u"ho",u"hom",u"home",u"social",u"games",u"movies & tv",
+            u"apps",u"settings",u"\u00e9\u3042",u"0123456789abcdef"
+        };
+        struct Pair {const char* module;rex::u32 length,copy;};
+        constexpr Pair pairs[]={{"dash",0x921996F8u,0x92198D90u},
+                                {"xam",0x8172DAF0u,0x8172F2A8u}};
+        unsigned failures=0,total=0;
+        for(const auto& pair:pairs) {
+            auto length=title.FindFunction(pair.length);
+            auto copy=title.FindFunction(pair.copy);
+            if(!length || !copy) {
+                std::cout<<"METRO_HEADER_SELFTEST module="<<pair.module
+                         <<" mapping=missing"<<std::endl;
+                ++failures;continue;
+            }
+            for(unsigned i=0;i<inputs.size();++i) {
+                const auto str=inputs[i];
+                for(unsigned align=0;align<16;align+=2) {
+                    const rex::u32 src=base+512+align,dst=base+4096+(14-align);
+                    auto source=mem.GetWritableSpan(base+480,128);
+                    auto dest=mem.GetWritableSpan(base+4064,128);
+                    if(!source || !dest)return false;
+                    std::fill(source->begin(),source->end(),std::byte{0x5a});
+                    std::fill(dest->begin(),dest->end(),std::byte{0xa5});
+                    for(unsigned j=0;j<str.size();++j)
+                        if(!mem.Store(src+j*2,rex::be_u16{static_cast<rex::u16>(str[j])}))
+                            return false;
+                    if(!mem.Store(src+static_cast<rex::u32>(str.size()*2),rex::be_u16{0}))
+                        return false;
+                    std::array<std::byte,128> before{};
+                    std::copy(source->begin(),source->end(),before.begin());
+                    PPCContext count{};
+                    count.r1.u64=base+0xf000;
+                    count.r3.u64=src;
+                    (*length)(count,title.GetMembase().GetBase());
+                    const bool length_ok=count.r3.u32==str.size();
+                    for(unsigned spare:{0u,3u}) {
+                        std::fill(dest->begin(),dest->end(),std::byte{0xa5});
+                        const auto capacity=static_cast<rex::u32>(str.size()+1+spare);
+                        PPCContext cp{};
+                        cp.r1.u64=base+0xf000;cp.r3.u64=dst;
+                        cp.r4.u64=capacity;cp.r5.u64=src;
+                        (*copy)(cp,title.GetMembase().GetBase());
+                        bool data_ok=true;
+                        for(unsigned j=0;j<=str.size();++j) {
+                            auto actual=mem.Load<rex::be_u16>(dst+j*2);
+                            const auto expected=j==str.size()?0u:static_cast<unsigned>(str[j]);
+                            if(!actual || static_cast<rex::u16>(*actual)!=expected)data_ok=false;
+                        }
+                        const bool unchanged=std::equal(before.begin(),before.end(),source->begin());
+                        const auto first=dst-(base+4064),end=first+capacity*2;
+                        const bool guards=std::all_of(dest->begin(),dest->begin()+first,
+                              [](std::byte x){return x==std::byte{0xa5};}) &&
+                              std::all_of(dest->begin()+end,dest->end(),
+                              [](std::byte x){return x==std::byte{0xa5};});
+                        ++total;
+                        if(!length_ok || !data_ok || !unchanged || !guards) {
+                            ++failures;
+                            std::cout<<"METRO_HEADER_SELFTEST fail module="<<pair.module
+                                     <<" case="<<i<<" units="<<str.size()<<" alignment="<<align
+                                     <<" capacity="<<capacity<<" actual_length="<<count.r3.u32
+                                     <<" copy="<<data_ok<<" source="<<unchanged<<" guards="<<guards
+                                     <<std::endl;
+                        }
+                    }
+                }
+            }
+        }
+        std::cout<<"METRO_HEADER_SELFTEST total="<<total<<" failures="<<failures<<std::endl;
+        return total==384 && failures==0;
+    };
+    const bool passed=run();
+    return bool(mem.Free(base)) && passed;
 }
 
 class MetroPreflight final : public rex::app::App {
@@ -240,6 +330,11 @@ public:
             if (!metro_profile::verify_load_cycles(title_,*xam,*user,kDashEntry,0x913F8D00))
                 return fail("profile_module_mapping");
             std::cout<<"METRO_PREFLIGHT pass profile_module_mapping"<<std::endl;
+        }
+        const char* text_check=std::getenv("X360_METRO_TEXT_PREFLIGHT");
+        if(text_check && std::string_view(text_check)=="1") {
+            if(!verify_header_strings(title_))return fail("original_header_string_contract");
+            std::cout<<"METRO_PREFLIGHT pass original_header_string_contract"<<std::endl;
         }
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");

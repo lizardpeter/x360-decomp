@@ -347,6 +347,20 @@ jobs:
             build/fixed-imports/dash_17559/native/metro-capture-quad/candidate-*.png
             build/fixed-imports/dash_17559/native/metro-capture-quad/receipt.txt
           if-no-files-found: ignore
+      - name: Execute original XUI UTF-16 routines independently of graphical boot
+        if: always() && steps.preflight.outcome == 'success'
+        continue-on-error: true
+        env:
+          X360_METRO_TEXT_PREFLIGHT: '1'
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559"
+          set +e
+          (cd "$folder/native" && timeout --kill-after=5s 90s ./dash_17559 --title.game_root="$folder/inputs" --title.entry=dash.xex) > build/receipts/metro-original-header-string.log 2>&1
+          status=$?
+          set -e
+          printf '%s\n' "$status" > build/receipts/metro-original-header-string-exit-code.txt
+          grep 'METRO_HEADER_SELFTEST' build/receipts/metro-original-header-string.log || true
+          exit "$status"
       - name: Attempt same-runtime original boot animation to Metro transition
         if: always() && steps.preflight.outcome == 'success'
         run: |
