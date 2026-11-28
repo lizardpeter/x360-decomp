@@ -22,6 +22,8 @@ on:
       - 'tools/patch_metro_audio_context.py'
       - 'tools/patch_metro_gpu_ring.py'
       - 'tools/patch_metro_scalar_codegen.py'
+      - 'tools/patch_metro_host_affinity.py'
+      - 'tests/sdk/metro_host_affinity.cpp'
       - 'tests/sdk/metro_scalar_codegen.cpp'
       - 'tools/patch_metro_graphics_notifications.py'
       - 'tests/sdk/metro_graphics_notifications.cpp'
@@ -73,6 +75,7 @@ jobs:
           python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
           python tools/patch_metro_gpu_ring.py build/sdk-source --tests tests/sdk/metro_gpu_ring.cpp
           python tools/patch_metro_scalar_codegen.py build/sdk-source --tests tests/sdk/metro_scalar_codegen.cpp
+          python tools/patch_metro_host_affinity.py build/sdk-source --tests tests/sdk/metro_host_affinity.cpp
           python tools/patch_metro_module_identity.py build/sdk-source
           python tools/patch_metro_import_slots.py build/sdk-source
           python tools/patch_metro_graphics_notifications.py build/sdk-source --tests tests/sdk/metro_graphics_notifications.cpp
@@ -116,7 +119,7 @@ jobs:
           cd "$(dirname "$runner")"
           export METRO_ORIGINAL_FONT_FIXTURES="$GITHUB_WORKSPACE/build/font-native-fixtures"
           export METRO_ORIGINAL_HUD_SKIN_FIXTURES="$GITHUB_WORKSPACE/build/hud-skin-native-fixtures"
-          "$runner" '[metro_stfs_open_file],[metro_graphics_notification],[metro_original_fonts],[metro_profile_mount],[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context],[metro_gpu_ring],[metro_scalar_codegen]' --reporter compact
+          "$runner" '[metro_stfs_open_file],[metro_graphics_notification],[metro_original_fonts],[metro_profile_mount],[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context],[metro_gpu_ring],[metro_scalar_codegen],[metro_host_affinity]' --reporter compact
       - name: Retain reusable compiler cache
         if: always()
         uses: actions/cache/save@v4

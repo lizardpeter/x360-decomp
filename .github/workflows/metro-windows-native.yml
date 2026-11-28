@@ -102,6 +102,7 @@ jobs:
           python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
           python tools/patch_metro_gpu_ring.py build/sdk-source --tests tests/sdk/metro_gpu_ring.cpp
           python tools/patch_metro_scalar_codegen.py build/sdk-source --tests tests/sdk/metro_scalar_codegen.cpp
+          python tools/patch_metro_host_affinity.py build/sdk-source --tests tests/sdk/metro_host_affinity.cpp
           python tools/patch_metro_graphics_notifications.py build/sdk-source --tests tests/sdk/metro_graphics_notifications.cpp
       - uses: actions/checkout@v4
         with:
