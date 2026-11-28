@@ -44,6 +44,8 @@ class TestMetroIntro(unittest.TestCase):
         self.assertEqual(set(hits),set(POINTS))
         self.assertEqual(changed.count("unsigned metro_intro_object=0;"),1)
         self.assertEqual(changed.count("metro_intro_object=ctx.r3.u32;"),1)
+        self.assertEqual(changed.count("metro_intro_timing(metro_intro_object);"),1)
+        self.assertIn("METRO_INTRO_TIMING updates=",changed)
         self.assertNotIn("mem->Store",changed)
         with self.assertRaises(ValueError):insert(body.replace("sub_9800EA10","sub_98000000"))
 

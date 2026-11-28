@@ -28,12 +28,57 @@ TAG="// METRO_INTRO_PHASE_INSERTED"
 HEADER=r"""
 #include <atomic>
 #include <bit>
+#include <chrono>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <limits>
 #include <rex/kernel/title_runtime.h>
 #include <rex/kernel/guest_memory.h>
 namespace {
+// Sample every original update, but emit a bounded cumulative receipt only
+// every 64 calls. Host time is observational; it never drives guest state.
+void metro_intro_timing(unsigned object) {
+    auto* mem=REX_GUEST_MEMORY();
+    if (!mem || !object || object>0xffffffffu-228u) return;
+    const auto bits=mem->Load<rex::be_u32>(object+20);
+    const auto slot=mem->Load<rex::be_u32>(0x9800052Cu);
+    const unsigned clock=slot?static_cast<unsigned>(*slot):0;
+    if (!bits || !clock || clock>0xffffffffu-16u) return;
+    const auto tick=mem->Load<rex::be_u32>(clock+16);
+    if (!tick) return;
+    using Clock=std::chrono::steady_clock;
+    struct Sample {
+        unsigned object=0,updates=0,gaps=0,gaps_over_100ms=0;
+        unsigned previous_tick=0,max_gap_ms=0,positive=0,zero=0,invalid=0;
+        unsigned long long host_gap_us=0,guest_gap_ms=0,max_host_gap_us=0;
+        double accepted_seconds=0;
+        Clock::time_point previous_host{};
+    };
+    static thread_local Sample s;
+    if (s.object!=object) { s=Sample{}; s.object=object; }
+    const auto now=Clock::now();
+    const unsigned current_tick=static_cast<unsigned>(*tick);
+    const float delta=std::bit_cast<float>(static_cast<unsigned>(*bits));
+    if (s.updates) {
+        const unsigned gap=current_tick-s.previous_tick;
+        const auto host_gap=static_cast<unsigned long long>(
+            std::chrono::duration_cast<std::chrono::microseconds>(now-s.previous_host).count());
+        ++s.gaps; s.guest_gap_ms+=gap; s.host_gap_us+=host_gap;
+        if (gap>100) ++s.gaps_over_100ms;
+        if (gap>s.max_gap_ms) s.max_gap_ms=gap;
+        if (host_gap>s.max_host_gap_us) s.max_host_gap_us=host_gap;
+    }
+    s.previous_tick=current_tick;s.previous_host=now;
+    if (!std::isfinite(delta) || delta<0.0f || delta>0.100001f) ++s.invalid;
+    else if (delta==0.0f) ++s.zero;
+    else { ++s.positive; s.accepted_seconds+=delta; }
+    ++s.updates;
+    if (s.updates==1 || s.updates%64==0)
+        std::fprintf(stderr,"METRO_INTRO_TIMING updates=%u gaps=%u gaps_over_100ms=%u max_gap_ms=%u guest_gap_ms=%llu host_gap_us=%llu max_host_gap_us=%llu positive=%u zero=%u invalid=%u accepted_seconds=%.9f\n",
+            s.updates,s.gaps,s.gaps_over_100ms,s.max_gap_ms,s.guest_gap_ms,
+            s.host_gap_us,s.max_host_gap_us,s.positive,s.zero,s.invalid,s.accepted_seconds);
+}
 void metro_intro_phase(unsigned pc,const char* label,unsigned object,unsigned n) {
     auto* mem=REX_GUEST_MEMORY();
     if (!mem || !object || object>0xffffffffu-228u) return;
@@ -85,6 +130,8 @@ def insert(source):
         if pc==0x9800EA30:
             out.append(indent+"metro_intro_object=ctx.r3.u32;\n")
         out.append(indent+'if (std::getenv("X360_METRO_INTRO") || std::getenv("X360_BOOTANIM_CONTROL")) {\n')
+        if pc==0x9800EA30:
+            out.append(indent+'  metro_intro_timing(metro_intro_object);\n')
         out.append(indent+'  static std::atomic<unsigned> samples{0};\n')
         out.append(indent+'  const unsigned n=samples.fetch_add(1,std::memory_order_relaxed)+1;\n')
         out.append(indent+'  if (n<=4 || (n&(n-1))==0)\n')

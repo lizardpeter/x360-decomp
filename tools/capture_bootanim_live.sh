@@ -13,10 +13,13 @@ export SDL_AUDIODRIVER="${X360_BOOTANIM_AUDIO_DRIVER:-dummy}"
 # The original firmware still queries the SDK display mode normally.
 mode_width="${METRO_CAPTURE_WIDTH:-1280}"
 mode_height="${METRO_CAPTURE_HEIGHT:-720}"
-./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex \
+primary_submit="${METRO_BOOTANIM_PRIMARY_SUBMIT:-true}"
+case "$primary_submit" in true|false) ;; *) exit 2 ;; esac
+mkdir -p "$out/user-root"
+./metro_bootanim_live --app.user_root="$out/user-root" --title.game_root="$inputs" --title.entry=bootanim.xex \
   --ui.fullscreen=false --ui.window_width="$mode_width" --ui.window_height="$mode_height" \
   --ui.video_mode_width="$mode_width" --ui.video_mode_height="$mode_height" \
-  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false \
+  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false --gpu.vulkan.submit_on_primary_buffer_end="$primary_submit" \
   --gpu.resolution_scale_x=1 --gpu.resolution_scale_y=1 --gpu.xenos.async_shader_compilation=false \
   > "$out/bootanim-live.log" 2>&1 &
 pid=$!
@@ -56,6 +59,8 @@ printf 'exit_code=%s\ncaptured_frames=%s\ntimed_out=%s\nanimation_visually_verif
 grep -E '^BOOTANIM_LIVE ' "$out/bootanim-live.log" | tee "$out/gates.txt" || true
 placeholder_frames="$(grep -c 'Skipping Vulkan frame presentation due to async placeholder draw' "$out/bootanim-live.log" || true)"
 printf 'requested_guest_mode=%sx%s\nrender_scale=1x1\nasync_shader_compilation=false\nplaceholder_draw_frames=%s\n' "$mode_width" "$mode_height" "$placeholder_frames" >> "$out/receipt.txt"
+printf 'primary_submit=%s\n' "$primary_submit" >> "$out/receipt.txt"
+grep -E '^METRO_INTRO_TIMING ' "$out/bootanim-live.log" > "$out/update-timing.txt" || true
 cat "$out/receipt.txt"
 grep -q '^BOOTANIM_LIVE original_entry ' "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE presented_frames ' "$out/gates.txt"

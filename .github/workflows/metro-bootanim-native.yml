@@ -155,6 +155,12 @@ jobs:
           sudo apt-get install -y xvfb xauth xdotool imagemagick mesa-vulkan-drivers
           folder="$PWD/build/bootanim-native"
           METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480 timeout --kill-after=10s 125s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-capture"
+      - name: Compare original animation with primary-buffer submission batching
+        if: always() && steps.live.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          folder="$PWD/build/bootanim-native"
+          METRO_BOOTANIM_PRIMARY_SUBMIT=false METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480 timeout --kill-after=10s 125s xvfb-run -a -s '-screen 0 1440x900x24' bash tools/capture_bootanim_live.sh "$folder/native" "$folder/inputs" "$PWD/build/bootanim-batched"
       - name: Verify original animation host PCM output on an isolated audio device
         if: always() && steps.live.outcome == 'success'
         run: |
@@ -180,6 +186,11 @@ jobs:
             build/bootanim-capture/frame-*.png
             build/bootanim-capture/receipt.txt
             build/bootanim-capture/gates.txt
+            build/bootanim-capture/update-timing.txt
+            build/bootanim-batched/frame-*.png
+            build/bootanim-batched/receipt.txt
+            build/bootanim-batched/gates.txt
+            build/bootanim-batched/update-timing.txt
           if-no-files-found: ignore
       - name: Retain original execution log
         if: always()
@@ -187,6 +198,14 @@ jobs:
           if [ -f build/bootanim-capture/bootanim-live.log ]; then
             cp build/bootanim-capture/bootanim-live.log build/receipts/
           fi
+          if [ -f build/bootanim-batched/bootanim-live.log ]; then
+            cp build/bootanim-batched/bootanim-live.log build/receipts/bootanim-batched-live.log
+          fi
+          for variant in capture batched; do
+            if [ -f "build/bootanim-$variant/update-timing.txt" ]; then
+              cp "build/bootanim-$variant/update-timing.txt" "build/receipts/bootanim-$variant-update-timing.txt"
+            fi
+          done
       - name: Upload metadata only
         if: always()
         uses: actions/upload-artifact@v4

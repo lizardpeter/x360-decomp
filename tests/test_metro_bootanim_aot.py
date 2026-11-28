@@ -40,4 +40,8 @@ class BootanimAOT(unittest.TestCase):
         self.assertEqual(capture.count('test "$timed_out" = false'),1)
         self.assertIn('--ui.video_mode_width="$mode_width"',capture)
         self.assertIn('--ui.video_mode_height="$mode_height"',capture)
+        self.assertIn('--gpu.vulkan.submit_on_primary_buffer_end="$primary_submit"',capture)
+        self.assertIn('METRO_BOOTANIM_PRIMARY_SUBMIT:-true',capture)
+        self.assertIn('--app.user_root="$out/user-root"',capture)
+        self.assertIn("update-timing.txt",capture)
 if __name__=="__main__":unittest.main()
