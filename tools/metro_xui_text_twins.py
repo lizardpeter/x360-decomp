@@ -101,6 +101,74 @@ def candidates(row,other,by_sig,by_len):
             "addresses":[a for _,a in close[:8]],
             "equal_words":[n for n,_ in close[:8]]}
 
+# Original lower-level font measurement callees observed at exact paired
+# direct-call offsets in run 46068603654. These are paired call targets,
+# not claims that the entire callee bodies are equivalent.
+MEASURE_FOCUS={0x81790D30:0x92225430,0x817937D8:0x92228030,0x81793640:0x92227E98,
+               0x817945A0:0x92228DF8,0x81794880:0x922290D8,
+               0x817A9310:0x921EB708,0x817EBFD0:0x92211650}
+
+def incoming_calls(rows,targets):
+    result={target:[] for target in targets}
+    for owner,row in sorted(rows.items()):
+        for pc,target,linked in row["calls"]:
+            if target in result:result[target].append((owner,pc,linked))
+    return result
+
+def focus_report(modules):
+    from metro_import_contracts import hx
+    from metro_xam_fault_evidence import bounded_entry,operand
+    result={}
+    for label,targets in (("xam",MEASURE_FOCUS.keys()),("dash",MEASURE_FOCUS.values())):
+        m=modules[label];incoming=incoming_calls(m["rows"],targets)
+        report={}
+        for target in targets:
+            if target not in m["rows"]:raise ValueError("missing measured text target "+hx(target))
+            rows=[]
+            for owner,pc,linked in incoming[target]:
+                words=m["rows"][owner]["words"];i=(pc-owner)//4
+                rows.append({"caller":hx(owner),"site":hx(pc),"linked":linked,
+                             "operands":[{"pc":hx(owner+j*4),**operand(owner+j*4,words[j])}
+                                for j in range(max(0,i-12),min(len(words),i+9))]})
+            report[hx(target)]={"body":bounded_entry(m["image"],m["base"],m["pe"],target,{},min(m["funcs"][target],16384)),
+                                "direct_callers":rows}
+        result[label]={"targets":report,"inventory_functions":len(m["rows"]),
+                       "omitted_large_functions":len(m["funcs"])-len(m["rows"])}
+    return result
+
+def verify_new_header_boundaries(modules):
+    from metro_import_contracts import branch,hx
+    from metro_xam_fault_evidence import operand
+    from instrument_metro_ui import HEADER_POINTS
+    # Exact paired wrapper entry and continuation. Validate actual argument
+    # setup and copied pointer field rather than relying on a guessed ABI.
+    checks={"xam":(0x817A9310,0x817A9350,0x817A9378,0x8172F2A8,
+                   0x817BE0D8,0x817BE100,0x817EBFD0,0x817EC090),
+            "dash":(0x921EB708,0x921EB748,0x921EB770,0x92198D90,
+                    0x921E0428,0x921E0450,0x92211650,0x92211710)}
+    result={}
+    for label,(prop,store,copy,copy_target,lookup,lookup_call,lookup_target,pointer_load) in checks.items():
+        m=modules[label];image=m["image"];base=m["base"]
+        def word(pc):return struct.unpack_from(">I",image,pc-base)[0]
+        def op(pc):return operand(pc,word(pc))
+        if prop not in m["rows"] or lookup not in m["rows"]:raise ValueError("missing text wrapper")
+        if branch(copy,word(copy))!=(copy_target,True) or branch(lookup_call,word(lookup_call))!=(lookup_target,True):
+            raise ValueError("changed original text call")
+        o=op(store)
+        if (o.get("kind"),o.get("base"),o.get("offset"),o.get("source"),o.get("width"))!=("memory_store",31,4,3,4):
+            raise ValueError("changed property destination")
+        o=op(pointer_load)
+        if (o.get("kind"),o.get("base"),o.get("offset"),o.get("writes"),o.get("width"))!=("memory_load",11,4,3,4):
+            raise ValueError("changed resource pointer result")
+        module="generated" if label=="dash" else "generated_xam"
+        probes=HEADER_POINTS[module]
+        if any(probes[pc][2]!=reg for pc,reg in ((prop,4),(copy+4,31),(lookup_call+4,3))):
+            raise ValueError("changed header trace plan")
+        result[label]={"property_entry":hx(prop),"property_pointer_store":hx(store),
+                       "property_post_copy":hx(copy+4),"lookup_post_call":hx(lookup_call+4),
+                       "lookup_pointer_load":hx(pointer_load)}
+    return result
+
 def main():
     from prepare_recompilation import ROOT,original,sha,EXPECTED
     from decode_image import decode
@@ -180,6 +248,9 @@ def main():
     report["counts"]={"nodes":len(report["nodes"]),"unique_exact":sum(v["kind"]=="exact_normalized" and len(v["dashboard"])==1 for v in report["nodes"].values()),
                       "ambiguous_exact":sum(v["kind"]=="exact_normalized" and len(v["dashboard"])>1 for v in report["nodes"].values()),
                       "near":sum(v["kind"]=="near_normalized" for v in report["nodes"].values())}
+    report["measurement_focus"]=focus_report(modules)
+    report["header_boundaries"]=verify_new_header_boundaries(modules)
+    print("Verified original header boundaries",report["header_boundaries"])
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")
     print("XUI cross-module",report["counts"],"controls",report["controls"])

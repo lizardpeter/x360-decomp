@@ -124,13 +124,19 @@ HEADER_POINTS={
               0x921F2800:("text_header_length","return",0),
               0x921E3AE0:("text_header_get","return",3),
               0x921E3AF8:("text_header_measure","entry",4),
-              0x921E3B48:("text_header_measure","return",29)},
+              0x921E3B48:("text_header_measure","return",29),
+              0x921EB708:("text_property_input","entry",4),
+              0x921EB774:("text_property_copy","return",31),
+              0x921E0454:("text_resource_lookup","return",3)},
  "generated_xam":{0x817ACA98:("text_header_copy","entry",4),
                   0x817CCA28:("text_header_set","entry",4),
                   0x817CCA88:("text_header_length","return",0),
                   0x817C12C8:("text_header_get","return",3),
                   0x817C12E0:("text_header_measure","entry",4),
-                  0x817C1330:("text_header_measure","return",29)},
+                  0x817C1330:("text_header_measure","return",29),
+                  0x817A9310:("text_property_input","entry",4),
+                  0x817A937C:("text_property_copy","return",31),
+                  0x817BE104:("text_resource_lookup","return",3)},
  "generated_hud":{}
 }
 HEADER_KIND={pc:reg for rows in HEADER_POINTS.values() for pc,(_,_,reg) in rows.items()}
@@ -174,7 +180,8 @@ MetroHeaderTag metro_header_tag(rex::kernel::GuestMemory& mem,unsigned addr) {
     }
     return {nullptr,0};
 }
-void metro_header_observe(unsigned pc,const char* phase,const PPCContext& ctx,unsigned reg) {
+template<unsigned pc>
+void metro_header_observe(const char* phase,const PPCContext& ctx,unsigned reg) {
     auto* mem=REX_GUEST_MEMORY();
     if(!mem)return;
     unsigned address=0;
@@ -188,14 +195,23 @@ void metro_header_observe(unsigned pc,const char* phase,const PPCContext& ctx,un
     } else if(reg==3)address=ctx.r3.u32;
     else if(reg==4)address=ctx.r4.u32;
     else if(reg==29)address=ctx.r29.u32;
-    else return;
+    else if(reg==31) {
+        // Xui property-string wrapper stores the newly allocated text at
+        // object +4 before calling the original bounded UTF-16 copy.
+        const unsigned object=ctx.r31.u32;
+        if(!object || object>0xfffffff8u || (object&3))return;
+        const auto ptr=mem->Load<rex::be_u32>(object+4);
+        if(!ptr)return;
+        address=*ptr;
+    } else return;
     const auto tag=metro_header_tag(*mem,address);
     if(!tag.name)return;
     // Keep independent budgets per verified public label and probe phase.
     // Repeated selected Home observations must not starve an inactive label.
-    const unsigned slot=reg==0?0:reg==3?1:reg==4?2:3;
-    static std::atomic<unsigned> counts[4][8]{};
-    if(counts[slot][tag.index].fetch_add(1,std::memory_order_relaxed)>=32)return;
+    // The template parameter gives each exact instruction site an
+    // independent budget even when multiple functions share a generated TU.
+    static std::atomic<unsigned> counts[8]{};
+    if(counts[tag.index].fetch_add(1,std::memory_order_relaxed)>=32)return;
     if(reg==0) {
         std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u stored_length=%u\n",
                      pc,phase,tag.name,tag.units,ctx.r3.u32);
@@ -344,7 +360,7 @@ def insert(source,points):
             result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_metric_observe(0x{pc:08X}u,ctx,{METRIC_KIND[pc]}u);\n')
             continue
         if pc in HEADER_KIND:
-            result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_header_observe(0x{pc:08X}u,"{phase}",ctx,{HEADER_KIND[pc]}u);\n')
+            result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_header_observe<0x{pc:08X}u>("{phase}",ctx,{HEADER_KIND[pc]}u);\n')
             continue
         result.append(prefix+'if (std::getenv("X360_METRO_BOOT")) {\n')
         result.append(prefix+'  static std::atomic<unsigned> metro_ui_samples{0};\n')
