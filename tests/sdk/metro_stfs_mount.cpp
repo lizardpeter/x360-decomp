@@ -90,9 +90,21 @@ REX_TEST_CASE_METHOD(Fixture, "STFS snapshot rejects incomplete or unsafe direct
     }
   }
   REQUIRE(file_entry!=0);
+  // Find two distinct siblings in the fixture without changing either
+  // entry's block chain, size, or directory flag.
+  size_t first_name=0,second_name=0;
+  for (size_t a=table;a<table+4096 && (*bytes)[a] && !second_name;a+=64) {
+    for (size_t b=a+64;b<table+4096 && (*bytes)[b];b+=64) {
+      if ((*bytes)[a+50]==(*bytes)[b+50] && (*bytes)[a+51]==(*bytes)[b+51]) {
+        first_name=a;second_name=b;break;
+      }
+    }
+  }
+  REQUIRE(first_name!=0);
+  REQUIRE(second_name!=0);
   MountTemp(kRoot);
   auto& fs=GetFileSystem();
-  for (unsigned mutation=0;mutation<4;++mutation) {
+  for (unsigned mutation=0;mutation<6;++mutation) {
     auto broken=*bytes;
     if (mutation==0) { // unsafe name
       broken[file_entry]='/';
@@ -100,9 +112,20 @@ REX_TEST_CASE_METHOD(Fixture, "STFS snapshot rejects incomplete or unsafe direct
       broken[file_entry+47]=0xfe;broken[file_entry+48]=0xff;broken[file_entry+49]=0x7f;
     } else if (mutation==2) { // impossible directory extent
       broken[0x37c]=0xff;broken[0x37d]=0xff;
-    } else { // directory block reused as file data
+    } else if (mutation==3) { // directory block reused as file data
       broken[file_entry+47]=static_cast<rex::u8>(directory);
       broken[file_entry+48]=0;broken[file_entry+49]=0;
+    } else { // exact duplicate or case-only duplicate sibling
+      const unsigned length=broken[first_name+40]&0x3f;
+      REQUIRE(length>0);
+      REQUIRE(length<=40);
+      for (unsigned i=0;i<40;++i) {
+        auto ch=broken[first_name+i];
+        if (mutation==5 && i<length && ch>='a' && ch<='z') ch-=32;
+        else if (mutation==5 && i<length && ch>='A' && ch<='Z') ch+=32;
+        broken[second_name+i]=ch;
+      }
+      broken[second_name+40]=static_cast<rex::u8>((broken[second_name+40]&0xc0)|length);
     }
     const auto name="broken"+std::to_string(mutation)+".bin";
     REQUIRE(rex::platform::WriteHostFile(GetTemp()/name,broken));
