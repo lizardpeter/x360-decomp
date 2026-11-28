@@ -84,6 +84,11 @@ struct Parser {
                 // the token index for 4/5. Preserve the original flag byte;
                 // no interpolation meaning is assigned to these values.
                 case 4:case 5:break;
+                // Retail dashuisk/skin.xur contains flag 0x88 (low six
+                // bits 8). The independent V8 reader consumes no extra
+                // fields for this value. Keep the entire raw byte; the
+                // interpolation semantics are still unknown.
+                case 8:break;
                 case 2:rec.extra={c.byte(),c.byte(),c.byte()};break;
                 case 10:rec.extra={c.packed()};break;
                 case 11:rec.extra={c.byte()};break;

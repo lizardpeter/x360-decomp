@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - tools/native/xui_tree_probe.cpp
+      - src/formats/xui_tree.cpp
       - tools/verify_xui_tree.py
       - .github/workflows/metro-header-layout.yml
 permissions:
@@ -27,7 +28,7 @@ jobs:
       - run: cmake -S . -B build/native -DCMAKE_BUILD_TYPE=Release
       - run: cmake --build build/native --target x360_xui_tree_probe --parallel
       - run: python tools/fetch_originals.py --only dash_basic
-      - run: python tools/verify_xui_tree.py build/native/x360_xui_tree_probe build/xui-reference/XUIHelper.Core/Assets/Extensions/V8 --header-layout build/evidence/metro-authored-header-layout.tsv
+      - run: python tools/verify_xui_tree.py build/native/x360_xui_tree_probe build/xui-reference/XUIHelper.Core/Assets/Extensions/V8 --header-layout build/evidence/metro-authored-header-layout.tsv --strict
       - uses: actions/upload-artifact@v4
         if: always()
         with:

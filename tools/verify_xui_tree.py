@@ -51,9 +51,20 @@ def main():
             if not any(x.startswith("property\t") and ('"PointSize"' in x or '"TextScale"' in x) for x in layout):
                 raise RuntimeError("no authored text geometry recovered")
             print("Header archive parsed:",any(x.startswith('node\t"epix"\t') for x in layout),flush=True)
+            # The localization archive alone does not contain the skin.
+            # Retain a receipt but do not mark the header investigation
+            # complete if its actual visual scene was not decoded.
+            skin=[x for x in layout if '\t"dashuisk"\t"skin.xur"\t' in x]
+            print("Actual dashboard skin layout records:",len(skin),flush=True)
+            twist=[x for x in skin if '"HubScene_Twist"' in x]
+            print("Exact HubScene_Twist matches in dashboard skin:",len(twist),flush=True)
             args.header_layout.parent.mkdir(parents=True,exist_ok=True)
             args.header_layout.write_text("\n".join(layout)+"\n",encoding="utf-8")
             print(f"Authored layout records: {len(layout)}",flush=True)
+            if args.strict and not skin:
+                raise RuntimeError("actual dashuisk/skin.xur was not decoded")
+            if args.strict and not twist:
+                raise RuntimeError("actual HubScene_Twist visual was not found")
         counts=dict(x.split("=") for x in rows[-1].split())
         assert int(counts["total"])==363
         assert int(counts["parsed"])>0
