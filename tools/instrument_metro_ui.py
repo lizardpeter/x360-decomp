@@ -134,11 +134,20 @@ HEADER_POINTS={
  "generated_hud":{}
 }
 HEADER_KIND={pc:reg for rows in HEADER_POINTS.values() for pc,(_,_,reg) in rows.items()}
+# Exact paired measurement epilogues, before stack/register restoration.
+METRIC_POINTS={
+ "generated":{0x92228EBC:("text_metric_integer","return",1),
+              0x92229250:("text_metric_converted","return",2)},
+ "generated_xam":{0x81794664:("text_metric_integer","return",1),
+                  0x817949F8:("text_metric_converted","return",2)},
+ "generated_hud":{}
+}
+METRIC_KIND={pc:kind for rows in METRIC_POINTS.values() for pc,(_,_,kind) in rows.items()}
 HEADER_PROBE=r"""
 #include <rex/kernel/title_runtime.h>
 #include <rex/kernel/guest_memory.h>
 namespace {
-struct MetroHeaderTag {const char* name; unsigned units;};
+struct MetroHeaderTag {const char* name; unsigned units; unsigned index=0;};
 MetroHeaderTag metro_header_tag(rex::kernel::GuestMemory& mem,unsigned addr) {
     // A bounded full-match classifier: arbitrary strings are never printed.
     if(!addr || addr>0xffffffe0u || (addr&1))return {nullptr,0};
@@ -152,9 +161,10 @@ MetroHeaderTag metro_header_tag(rex::kernel::GuestMemory& mem,unsigned addr) {
             constexpr Known known[]={{"home","home"},{"hom","home_short"},{"movies & tv","movies"},
               {"movies & t","movies_short"},{"social","social"},{"games","games"},
               {"apps","apps"},{"settings","settings"}};
-            for(const auto& k:known) {
+            for(unsigned index=0;index<sizeof(known)/sizeof(known[0]);++index) {
+                const auto& k=known[index];
                 unsigned n=0;while(k.value[n]&&k.value[n]==text[n])++n;
-                if(n==i && !k.value[n])return {k.tag,i};
+                if(n==i && !k.value[n])return {k.tag,i,index};
             }
             return {nullptr,0};
         }
@@ -184,14 +194,45 @@ void metro_header_observe(unsigned pc,const char* phase,const PPCContext& ctx,un
     static std::atomic<unsigned> count{0};
     if(count.fetch_add(1,std::memory_order_relaxed)>=256)return;
     if(reg==0) {
-        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u stored_length=%u\\n",
+        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u stored_length=%u\n",
                      pc,phase,tag.name,tag.units,ctx.r3.u32);
     } else if(reg==29) {
-        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u status=%08X\\n",
+        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u status=%08X\n",
                      pc,phase,tag.name,tag.units,ctx.r3.u32);
     } else {
-        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u\\n",
+        std::fprintf(stderr,"METRO_HEADER pc=%08X phase=%s label=%s units=%u\n",
                      pc,phase,tag.name,tag.units);
+    }
+}
+void metro_metric_observe(unsigned pc,const PPCContext& ctx,unsigned kind) {
+    auto* mem=REX_GUEST_MEMORY();
+    if(!mem || (kind!=1 && kind!=2))return;
+    // Verified original callee: r27/r28 holds the text in the two stages.
+    const auto tag=metro_header_tag(*mem,kind==1?ctx.r27.u32:ctx.r28.u32);
+    if(!tag.name)return;
+    static std::atomic<unsigned> counts[2][8]{};
+    if(counts[kind-1][tag.index].fetch_add(1,std::memory_order_relaxed)>=16)return;
+    const unsigned status=ctx.r3.u32;
+    const unsigned rect=ctx.r31.u32;
+    if(status || !rect || rect>0xfffffff0u || (rect&3)) {
+        std::fprintf(stderr,"METRO_HEADER_METRIC pc=%08X kind=%u label=%s units=%u status=%08X rectangle=unavailable\n",
+                     pc,kind,tag.name,tag.units,status);
+        return;
+    }
+    unsigned values[4]{};
+    for(unsigned i=0;i<4;++i) {
+        const auto value=mem->Load<rex::be_u32>(rect+4*i);
+        if(!value)return;
+        values[i]=*value;
+    }
+    // Only the original four rectangle fields for known public tab labels.
+    // No addresses, arbitrary text, font payloads or object data.
+    if(kind==1) {
+        std::fprintf(stderr,"METRO_HEADER_METRIC pc=%08X kind=1 label=%s units=%u requested=%d status=%08X rectangle=%08X,%08X,%08X,%08X\n",
+                     pc,tag.name,tag.units,static_cast<int>(ctx.r28.s32),status,values[0],values[1],values[2],values[3]);
+    } else {
+        std::fprintf(stderr,"METRO_HEADER_METRIC pc=%08X kind=2 label=%s units=%u status=%08X rectangle=%08X,%08X,%08X,%08X\n",
+                     pc,tag.name,tag.units,status,values[0],values[1],values[2],values[3]);
     }
 }
 }
@@ -279,6 +320,9 @@ def probes(module):
     for pc,(name,phase,_) in HEADER_POINTS[module].items():
         if pc in result:raise ValueError("duplicate header point")
         result[pc]=(name,phase)
+    for pc,(name,phase,_) in METRIC_POINTS[module].items():
+        if pc in result:raise ValueError("duplicate metric point")
+        result[pc]=(name,phase)
     return result
 
 def insert(source,points):
@@ -293,6 +337,9 @@ def insert(source,points):
         name,phase=points[pc];hits[pc]+=1
         prefix=m[1]
         args=", ".join(f"static_cast<unsigned>(ctx.r{i}.u32)" for i in range(3,9))
+        if pc in METRIC_KIND:
+            result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_metric_observe(0x{pc:08X}u,ctx,{METRIC_KIND[pc]}u);\n')
+            continue
         if pc in HEADER_KIND:
             result.append(prefix+f'if (std::getenv("X360_METRO_BOOT")) metro_header_observe(0x{pc:08X}u,"{phase}",ctx,{HEADER_KIND[pc]}u);\n')
             continue
@@ -317,7 +364,7 @@ def insert(source,points):
         result.append(prefix+'  }\n'+prefix+'}\n')
     if not hits:return source,hits
     font=FONT_HEADER if set(hits)&(set(FONT_PATH_RETURNS)|FONT_DESCRIPTORS|FONT_PATCH_RETURNS) else ""
-    header=HEADER_PROBE if set(hits)&HEADER_KIND.keys() else ""
+    header=HEADER_PROBE if set(hits)&(HEADER_KIND.keys()|METRIC_KIND.keys()) else ""
     return MARK+"\n#include <atomic>\n#include <cstdio>\n#include <cstdlib>\n"+font+header+"".join(result),hits
 
 def instrument(folder):
