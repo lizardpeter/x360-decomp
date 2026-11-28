@@ -14,7 +14,7 @@ from pathlib import Path
 
 ID=re.compile(r"E[0-9A-F]{15}\Z")
 MIN_HEADER=0x971A
-MAX_BYTES=256*1024*1024
+MAX_BYTES=64*1024*1024  # Match native read-only STFS snapshot capacity.
 def inspect_header(data,size):
     if len(data)<MIN_HEADER or not MIN_HEADER<=size<=MAX_BYTES:
         raise ValueError("profile package size outside supported range")

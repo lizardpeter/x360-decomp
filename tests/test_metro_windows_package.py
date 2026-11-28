@@ -113,5 +113,5 @@ class TestWindowsPackage(unittest.TestCase):
 
     def test_local_storage_check_does_not_launch_guest(self):
         self.assertIn('if /i "%~1"=="storage-preflight" goto storagepreflight',LAUNCH)
-        self.assertIn(':storagepreflight\nset X360_METRO_PROFILE_MODULE_PREFLIGHT=\nset X360_METRO_PROFILE_STORAGE_PREFLIGHT=1\ngoto runpreflight',LAUNCH)
+        self.assertIn(':storagepreflight\nset X360_METRO_PROFILE_MODULE_PREFLIGHT=\nrem Explicit verification requires at least one parsed imported package.\nset X360_METRO_PROFILE_STORAGE_PREFLIGHT=2\ngoto runpreflight',LAUNCH)
         self.assertIn(':runpreflight\nset X360_METRO_TEXT_PREFLIGHT=1\nset X360_METRO_BOOT=\nset X360_METRO_INTRO=',LAUNCH)

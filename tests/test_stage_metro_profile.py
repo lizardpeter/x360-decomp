@@ -6,7 +6,7 @@ from unittest import mock
 import os
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from stage_metro_profile import inspect_header,stage,MIN_HEADER
+from stage_metro_profile import inspect_header,stage,MIN_HEADER,MAX_BYTES
 NAME="E000000000000001"
 def fixture():
     d=bytearray(0xC000)
@@ -33,6 +33,11 @@ class LocalProfile(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);src=root/"E000000000000002";src.write_bytes(fixture())
             with self.assertRaises(ValueError):stage(src,root/"storage")
+    def test_native_snapshot_capacity(self):
+        self.assertEqual(MAX_BYTES,64*1024*1024)
+        inspect_header(fixture(),MAX_BYTES)
+        with self.assertRaises(ValueError):inspect_header(fixture(),MAX_BYTES+1)
+
     def test_reject_links(self):
         with tempfile.TemporaryDirectory() as t:
             root=Path(t);src=root/NAME;src.write_bytes(fixture())

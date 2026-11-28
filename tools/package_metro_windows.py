@@ -95,7 +95,8 @@ pause
 exit /b %code%
 :storagepreflight
 set X360_METRO_PROFILE_MODULE_PREFLIGHT=
-set X360_METRO_PROFILE_STORAGE_PREFLIGHT=1
+rem Explicit verification requires at least one parsed imported package.
+set X360_METRO_PROFILE_STORAGE_PREFLIGHT=2
 goto runpreflight
 :profilepreflight
 set X360_METRO_PROFILE_MODULE_PREFLIGHT=1
@@ -203,7 +204,8 @@ or run python tools\\stage_metro_profile.py <profile-file> --storage-root
 user\\metro-17559\\profile-storage. The source is never modified. This does
 not authenticate Xbox Live or establish sign-in. Verify Local Profile Storage.cmd
 tests the imported packages through the native guest VFS and read-only STFS parser
-without starting XAM. No profile names are printed by the check itself; keep the
+without starting XAM. An empty profile tree returns failure in this explicit check.
+The current native STFS snapshot limit is 64 MiB. No profile names are printed by the check itself; keep the
 log private because underlying filesystem diagnostics may contain paths. Set X360_METRO_LOCAL_PROFILES=0
 to opt out. If your SDK user root is customized, stage to that root instead.
 Keep profile packages and logs private; never upload them to GitHub or CI.

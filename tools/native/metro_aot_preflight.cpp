@@ -157,7 +157,7 @@ bool verify_header_strings(TitleRuntime& title) {
 // used by the retail dashboard. No account identity or package filename is
 // printed by this code, no guest sign-in API is invoked, and the original
 // STFS mount is read-only. The native parser validates structure, not trust.
-bool verify_local_profile_storage(TitleRuntime& title) {
+bool verify_local_profile_storage(TitleRuntime& title, bool require_profile) {
     namespace vfs=rex::filesystem;
     if(!metro_boot::mount_local_profiles(title))return false;
     auto& fs=title.GetFileSystem();
@@ -184,12 +184,22 @@ bool verify_local_profile_storage(TitleRuntime& title) {
         // Match the stager's basic identity and content constraints. Do
         // not call this proof of a cryptographic signature or local sign-in.
         std::array<rex::u8,0x3ad> header{};
+        const auto size=source->file->GetInfo().size;
         const auto read=source->file->Read(header,0);
         auto be32=[&](unsigned at) {
             return (rex::u32(header[at])<<24)|(rex::u32(header[at+1])<<16)|
                    (rex::u32(header[at+2])<<8)|rex::u32(header[at+3]);
         };
-        if(!read || *read!=header.size() || header[0]!='C' || header[1]!='O' ||
+        const auto header_size=be32(0x340);
+        rex::u64 stored_id=0, directory_id=0;
+        for(unsigned i=0;i<8;++i)stored_id=(stored_id<<8)|header[0x371+i];
+        for(char c:item->name) {
+            const unsigned digit=c>='0'&&c<='9'?c-'0':c>='a'&&c<='f'?c-'a'+10:c-'A'+10;
+            directory_id=(directory_id<<4)|digit;
+        }
+        if(size<0x971Au || size>64ull*1024*1024 || header_size<0x971Au ||
+           header_size>size || ((rex::u64(header_size)+0xfffu)&~0xfffull)>size ||
+           (stored_id!=0 && stored_id!=directory_id) || !read || *read!=header.size() || header[0]!='C' || header[1]!='O' ||
            header[2]!='N' || header[3]!=' ' || be32(0x344)!=0x10000 ||
            (be32(0x348)!=1 && be32(0x348)!=2) || be32(0x360)!=0xfffe07d1u ||
            header[0x379]!=0x24 || be32(0x3a9)!=0) {
@@ -210,7 +220,9 @@ bool verify_local_profile_storage(TitleRuntime& title) {
     }
     std::cout<<"METRO_PROFILE_STORAGE candidates="<<candidates<<" parsed="<<parsed
              <<" failed="<<failed<<" sign_in_verified=false"<<std::endl;
-    return failed==0 && candidates==parsed;
+    if(candidates==0)std::cout<<"METRO_PROFILE_STORAGE result=empty storage_route_only=true"<<std::endl;
+    else std::cout<<"METRO_PROFILE_STORAGE result="<<(failed==0 && candidates==parsed?"parsed":"failed")<<std::endl;
+    return failed==0 && candidates==parsed && (!require_profile || parsed!=0);
 }
 
 class MetroPreflight final : public rex::app::App {
@@ -394,8 +406,8 @@ public:
             std::cout<<"METRO_PREFLIGHT pass profile_module_mapping"<<std::endl;
         }
         const char* storage_check=std::getenv("X360_METRO_PROFILE_STORAGE_PREFLIGHT");
-        if(storage_check && std::string_view(storage_check)=="1") {
-            if(!verify_local_profile_storage(title_))return fail("local_profile_storage");
+        if(storage_check && (std::string_view(storage_check)=="1" || std::string_view(storage_check)=="2")) {
+            if(!verify_local_profile_storage(title_,std::string_view(storage_check)=="2"))return fail("local_profile_storage");
             std::cout<<"METRO_PREFLIGHT pass local_profile_storage"<<std::endl;
         }
         const char* text_check=std::getenv("X360_METRO_TEXT_PREFLIGHT");

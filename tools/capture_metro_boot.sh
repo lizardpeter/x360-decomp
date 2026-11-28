@@ -101,6 +101,9 @@ grep -E '^METRO_BOOT (pass|fail|frames|guest_exit)' "$out/boot.log" >> "$out/rec
 cat "$out/receipt.txt"
 if [ "$samples" -eq 0 ]; then
   echo "No live, nonblank title-frame candidate captured." >&2
+  # Preserve fatal startup evidence even if teardown/audio logs bury it.
+  # Only this synthetic CI session is inspected; no imported profile is present.
+  grep -Ei "bugcheck|STOP 0x|DeviceAuth|00474000|NtDeviceIoControlFile|METRO_BOOT (fail|guest_exit)|exception: SIG" "$out/boot.log" | tail -n 80 >&2 || true
   tail -n 100 "$out/boot.log" >&2
   exit 1
 fi
