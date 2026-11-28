@@ -152,7 +152,25 @@ def focus_report(modules):
         m=modules[label];incoming=incoming_calls(m["rows"],targets)
         report={}
         for target in targets:
-            if target not in m["rows"]:raise ValueError("missing measured text target "+hx(target))
+            if target not in m["rows"]:
+                # The paired scalar helper may be a leaf without PDATA.
+                # Verify the two real incoming calls and inspect only a
+                # bounded executable prefix, never assert a guessed extent.
+                from metro_import_contracts import branch
+                owner,sites=({"xam":(0x81790D30,(0x81790D50,0x81790D7C)),
+                              "dash":(0x92225430,(0x92225450,0x9222547C))})[label]
+                if target!={"xam":0x81730DD0,"dash":0x9219A160}[label]:
+                    raise ValueError("missing measured text target "+hx(target))
+                for site in sites:
+                    if branch(site,read_words(m["image"],m["base"],site,4)[0])!=(target,True):
+                        raise ValueError("original scalar helper call differs")
+                body=bounded_entry(m["image"],m["base"],m["pe"],target,{},256)
+                words=read_words(m["image"],m["base"],target,body["bounded_length"])
+                report[hx(target)]={"body":body,"direct_callers":[
+                    {"caller":hx(owner),"site":hx(site),"linked":True} for site in sites],
+                    "caller_scope":"two verified call sites; no full incoming census",
+                    "floating_point":fp_measurement(words,target)}
+                continue
             rows=[]
             for owner,pc,linked in incoming[target]:
                 words=m["rows"][owner]["words"];i=(pc-owner)//4
@@ -174,7 +192,10 @@ def focus_report(modules):
             return [{"offset":int(o["pc"],16)-base,**{k:v for k,v in o.items() if k!="pc"}}
                     for o in ops]
         result["paired_floating_point"][hx(x)]={"dash":hx(d),"xam_ops":len(lhs),
-            "dash_ops":len(rhs),"identical_relative_operands":relative(lhs,x)==relative(rhs,d)}
+            "dash_ops":len(rhs),"identical_relative_operands":(
+                relative(lhs,x)==relative(rhs,d) if
+                result["xam"]["targets"][hx(x)]["body"]["extent_verified"] and
+                result["dash"]["targets"][hx(d)]["body"]["extent_verified"] else None)}
     return result
 
 def verify_new_header_boundaries(modules):
