@@ -6,6 +6,7 @@ on:
       - 'tools/metro_text_draw_evidence.py'
       - 'tools/metro_header_resource_evidence.py'
       - 'tools/metro_xui_text_twins.py'
+      - 'tools/metro_bootanim_evidence.py'
       - 'tools/instrument_metro_ui.py'
       - 'tests/test_metro_xui_text_twins.py'
       - 'tests/test_metro_header_resource_evidence.py'

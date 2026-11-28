@@ -106,7 +106,8 @@ def candidates(row,other,by_sig,by_len):
 # not claims that the entire callee bodies are equivalent.
 MEASURE_FOCUS={0x81790D30:0x92225430,0x817937D8:0x92228030,0x81793640:0x92227E98,
                0x817945A0:0x92228DF8,0x81794880:0x922290D8,
-               0x817A9310:0x921EB708,0x817EBFD0:0x92211650}
+               0x817A9310:0x921EB708,0x817EBFD0:0x92211650,
+               0x81730DD0:0x9219A160}
 
 def incoming_calls(rows,targets):
     result={target:[] for target in targets}
@@ -114,6 +115,34 @@ def incoming_calls(rows,targets):
         for pc,target,linked in row["calls"]:
             if target in result:result[target].append((owner,pc,linked))
     return result
+
+def fp_measurement(words,start):
+    """Expose scalar FP instructions and exact adjacent stack bit transfers."""
+    from metro_bootanim_evidence import phase_fp_instruction
+    from metro_import_contracts import hx
+    from metro_xam_fault_evidence import operand
+    fp=[phase_fp_instruction(word) for word in words]
+    operations=[{"pc":hx(start+i*4),**dec} for i,dec in enumerate(fp) if dec]
+    bridges=[]
+    for i in range(len(words)-1):
+        a,b=fp[i],fp[i+1]
+        if a and a["op"]=="stfd" and a["base"]==1:
+            nxt=operand(start+(i+1)*4,words[i+1])
+            if nxt.get("kind")=="memory_load" and nxt.get("base")==1:
+                width=nxt["width"];offset=nxt["offset"]-a["offset"]
+                if (width,offset) in ((4,0),(4,4),(8,0)):
+                    bridges.append({"kind":"fpr_bits_to_gpr","store":hx(start+i*4),
+                        "load":hx(start+(i+1)*4),"fpr":a["fpr"],"gpr":nxt["writes"],
+                        "stack_offset":a["offset"],"load_byte_offset":offset,"width":width})
+        if b and b["op"]=="lfd" and b["base"]==1:
+            prev=operand(start+i*4,words[i])
+            if (prev.get("kind"),prev.get("base"),prev.get("offset"),prev.get("width"))==(
+                    "memory_store",1,b["offset"],8) and (words[i]>>26)==62:
+                bridges.append({"kind":"gpr_bits_to_fpr","store":hx(start+i*4),
+                    "load":hx(start+(i+1)*4),"gpr":prev["source"],"fpr":b["fpr"],
+                    "stack_offset":b["offset"],"width":8})
+    return {"operations":operations,"counts":dict(collections.Counter(x["op"] for x in operations)),
+            "adjacent_stack_transfers":bridges}
 
 def focus_report(modules):
     from metro_import_contracts import hx
@@ -131,9 +160,21 @@ def focus_report(modules):
                              "operands":[{"pc":hx(owner+j*4),**operand(owner+j*4,words[j])}
                                 for j in range(max(0,i-12),min(len(words),i+9))]})
             report[hx(target)]={"body":bounded_entry(m["image"],m["base"],m["pe"],target,{},min(m["funcs"][target],16384)),
-                                "direct_callers":rows}
+                                "direct_callers":rows,
+                                "floating_point":fp_measurement(m["rows"][target]["words"],target)}
         result[label]={"targets":report,"inventory_functions":len(m["rows"]),
                        "omitted_large_functions":len(m["funcs"])-len(m["rows"])}
+    # Compare the actual original FP operation sequences at corresponding
+    # offsets. Preserve differing operands rather than normalizing them away.
+    result["paired_floating_point"]={}
+    for x,d in MEASURE_FOCUS.items():
+        lhs=result["xam"]["targets"][hx(x)]["floating_point"]["operations"]
+        rhs=result["dash"]["targets"][hx(d)]["floating_point"]["operations"]
+        def relative(ops,base):
+            return [{"offset":int(o["pc"],16)-base,**{k:v for k,v in o.items() if k!="pc"}}
+                    for o in ops]
+        result["paired_floating_point"][hx(x)]={"dash":hx(d),"xam_ops":len(lhs),
+            "dash_ops":len(rhs),"identical_relative_operands":relative(lhs,x)==relative(rhs,d)}
     return result
 
 def verify_new_header_boundaries(modules):

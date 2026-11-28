@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
-from metro_xui_text_twins import normalize,candidates,signature,incoming_calls
+from metro_xui_text_twins import normalize,candidates,signature,incoming_calls,fp_measurement
 
 class TestTextTwins(unittest.TestCase):
     def test_external_branch_relocation(self):
@@ -31,3 +31,11 @@ class TestTextTwins(unittest.TestCase):
               15:{"calls":[(16,20,False)]},20:{"calls":[]}}
         self.assertEqual(incoming_calls(rows,[20,30,40]),
                          {20:[(10,11,True),(15,16,False)],30:[(10,12,False)],40:[]})
+    def test_exact_fp_stack_transfer_and_conversion(self):
+        words=(0xfc00081e,0xd8010050,0x81610054,0x4e800020)
+        report=fp_measurement(words,0x1000)
+        self.assertEqual(report["counts"],{"fctiwz":1,"stfd":1})
+        self.assertEqual(report["adjacent_stack_transfers"],[
+            {"kind":"fpr_bits_to_gpr","store":"00001004","load":"00001008","fpr":0,"gpr":11,
+             "stack_offset":80,"load_byte_offset":4,"width":4}])
+        self.assertEqual(fp_measurement((words[1],words[3],words[2]),0x1000)["adjacent_stack_transfers"],[])
