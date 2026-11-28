@@ -178,8 +178,54 @@ def patch_guest_objects(path, source):
         source=source.replace(old,new,1)
     return source
 
+WAITABLE_OBJECT_IMPL = r"""u32 ObGetWaitableObject_entry(u32 address) {
+  // Retail XAM 816B796C/816B7970 passes an object body obtained from
+  // ObReferenceObjectByHandle. The result is a dispatcher address, not
+  // NTSTATUS, and is kept separately from the referenced object body.
+  // Do not add a reference, create an object, or invent a signaled event.
+  if (!address || (address & 3)) return 0;
+  auto& runtime=kernel::GetCurrent();
+  auto object=runtime.GetObjectTable().GetByAddress(address);
+  if (!object) return 0;
+  const auto& raw=object.GetKernelObject();
+  const u32 target=raw.guest_object_type ? raw.guest_wait_address : address;
+  if (!target || (target & 3)) return 0;
+  const auto header=runtime.GetGuestMemory().Load<X_DISPATCH_HEADER>(target);
+  if (!header) return 0;
+  const auto kind=header->type;
+  if (raw.guest_object_type)
+    return kind==kDispatcherManualResetEvent || kind==kDispatcherAutoResetEvent ? target : 0;
+  switch(object.GetType()) {
+    case ObjectType::kEvent:
+      return kind==kDispatcherManualResetEvent || kind==kDispatcherAutoResetEvent ? target : 0;
+    case ObjectType::kMutant:
+      return kind==kDispatcherMutant ? target : 0;
+    case ObjectType::kSemaphore:
+      return kind==kDispatcherSemaphore ? target : 0;
+    case ObjectType::kTimer:
+      return kind==kDispatcherManualResetTimer || kind==kDispatcherAutoResetTimer ? target : 0;
+    case ObjectType::kThread:
+      return kind==kDispatcherThread ? target : 0;
+    default:
+      // Other object families may have an embedded event, but their
+      // dispatcher offsets are not yet verified in this implementation.
+      return 0;
+  }
+}
+
+"""
+
+def patch_waitable_object(source):
+    entry="u32 ObOpenObjectByPointer_entry(MappedVoid object_ptr, MappedU32 out_handle_ptr) {"
+    stub="REX_EXPORT_STUB(__imp__ObGetWaitableObject);"
+    if source.count(entry)!=1 or source.count(stub)!=1:
+        raise ValueError("waitable-object ABI anchors")
+    return source.replace(entry,WAITABLE_OBJECT_IMPL+entry,1).replace(stub,
+        "REX_EXPORT(__imp__ObGetWaitableObject, rex::kernel::xboxkrnl::ObGetWaitableObject_entry)",1)
+
 def patch_object_contracts(source):
     source=patch_guest_objects('src/kernel/xboxkrnl/xboxkrnl_ob.cpp',source)
+    source=patch_waitable_object(source)
     anchor="#include <rex/kernel/title_runtime.h>"
     if source.count(anchor)!=1:raise ValueError("object memory header")
     source=source.replace(anchor,anchor+"\n#include <rex/kernel/guest_memory.h>",1)

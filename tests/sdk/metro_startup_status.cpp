@@ -234,6 +234,10 @@ REX_TEST_CASE("metro_startup_status: custom waits use embedded and shared event 
     c.Store32(embedded+8,embedded+8); c.Store32(embedded+12,embedded+8);
     REQUIRE(c.Kernel("ObInsertObject",{body,0,0,h})==0);
     const u32 handle=c.Load32(h), zero=c.AllocQuad(0);
+    CHECK(c.Kernel("ObGetWaitableObject",{body})==embedded);
+    CHECK(c.Kernel("ObGetWaitableObject",{0})==0);
+    CHECK(c.Kernel("ObGetWaitableObject",{body+1})==0);
+    CHECK(c.Kernel("ObGetWaitableObject",{0xfffffffc})==0);
     CHECK(c.Kernel("NtWaitForSingleObjectEx",{handle,1,0,zero})==X_STATUS_TIMEOUT);
     c.Kernel("KeSetEvent",{embedded,0,0});
     CHECK(c.Kernel("NtWaitForSingleObjectEx",{handle,1,0,zero})==0);
@@ -252,8 +256,10 @@ REX_TEST_CASE("metro_startup_status: custom waits use embedded and shared event 
     c.Store32(type+20,shared);
     const u32 h2=c.Alloc(4);
     REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
+    CHECK(c.Kernel("ObGetWaitableObject",{c.Load32(out)})==shared);
     REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h})==0);
     REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
+    CHECK(c.Kernel("ObGetWaitableObject",{c.Load32(out)})==shared);
     REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h2})==0);
     CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h),1,0,zero})==0);
     CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h2),1,0,zero})==X_STATUS_TIMEOUT);
@@ -268,6 +274,7 @@ REX_TEST_CASE("metro_startup_status: custom waits use embedded and shared event 
     c.Store32(type+20,12);
     REQUIRE(c.Kernel("ObCreateObject",{type,0,4,out})==0);
     REQUIRE(c.Kernel("ObInsertObject",{c.Load32(out),0,0,h})==0);
+    CHECK(c.Kernel("ObGetWaitableObject",{c.Load32(out)})==0);
     CHECK(c.Kernel("NtWaitForSingleObjectEx",{c.Load32(h),1,0,zero})==X_STATUS_OBJECT_TYPE_MISMATCH);
     CHECK(c.Kernel("NtClose",{c.Load32(h)})==0);
   });
@@ -386,5 +393,28 @@ REX_TEST_CASE("metro_startup_status: absent extended key provider fails closed w
       for (u32 i=0;i<64;i+=4)CHECK(c.Load32(output+i)==0x5A5A1000u+i);
     }
     CHECK(c.Kernel("XeKeysExGetKey",{0x100,0,0,0})==X_STATUS_NOT_SUPPORTED);
+  });
+}
+
+
+REX_TEST_CASE("metro_startup_status: waitable object address borrows actual dispatcher without adding references",
+              "[kernel][metro_startup_status]") {
+  rex::test::KernelFixture fixture;
+  fixture.RunOnGuestThread([](rex::test::Caller& c) {
+    using namespace rex::kernel;
+    const u32 h=c.Alloc(4),out=c.Alloc(4);
+    REQUIRE(c.Kernel("NtCreateEvent",{h,0,0,0})==0);
+    const u32 handle=c.Load32(h);
+    REQUIRE(c.Kernel("ObReferenceObjectByHandle",{handle,0,out})==0);
+    const u32 event=c.Load32(out);
+    REQUIRE(event);
+    CHECK(c.Kernel("ObGetWaitableObject",{event})==event);
+    CHECK(c.Kernel("ObGetWaitableObject",{event})==event);
+    CHECK(c.Kernel("ObGetWaitableObject",{handle})==0);
+    CHECK(c.Kernel("NtClose",{handle})==0);
+    CHECK(c.Kernel("ObGetWaitableObject",{event})==event);
+    CHECK(c.Kernel("ObDereferenceObject",{event})==0);
+    CHECK(!c.GetRuntime().GetObjectTable().GetByAddress(event));
+    CHECK(c.Kernel("ObGetWaitableObject",{event})==0);
   });
 }
