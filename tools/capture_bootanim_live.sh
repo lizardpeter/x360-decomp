@@ -16,6 +16,8 @@ mode_height="${METRO_CAPTURE_HEIGHT:-720}"
 ./metro_bootanim_live --title.game_root="$inputs" --title.entry=bootanim.xex \
   --ui.fullscreen=false --ui.window_width="$mode_width" --ui.window_height="$mode_height" \
   --ui.video_mode_width="$mode_width" --ui.video_mode_height="$mode_height" \
+  --gpu.driver=vulkan --gpu.vulkan.sparse_shared_memory=false \
+  --gpu.resolution_scale_x=1 --gpu.resolution_scale_y=1 --gpu.xenos.async_shader_compilation=false \
   > "$out/bootanim-live.log" 2>&1 &
 pid=$!
 trap 'kill -KILL "$pid" 2>/dev/null || true' EXIT
@@ -52,13 +54,15 @@ set -e
 trap - EXIT
 printf 'exit_code=%s\ncaptured_frames=%s\ntimed_out=%s\nanimation_visually_verified=false\naudio_audibly_verified=false\n' "$status" "$count" "$timed_out" > "$out/receipt.txt"
 grep -E '^BOOTANIM_LIVE ' "$out/bootanim-live.log" | tee "$out/gates.txt" || true
-printf 'requested_guest_mode=%sx%s\n' "$mode_width" "$mode_height" >> "$out/receipt.txt"
+placeholder_frames="$(grep -c 'Skipping Vulkan frame presentation due to async placeholder draw' "$out/bootanim-live.log" || true)"
+printf 'requested_guest_mode=%sx%s\nrender_scale=1x1\nasync_shader_compilation=false\nplaceholder_draw_frames=%s\n' "$mode_width" "$mode_height" "$placeholder_frames" >> "$out/receipt.txt"
 cat "$out/receipt.txt"
 grep -q '^BOOTANIM_LIVE original_entry ' "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE presented_frames ' "$out/gates.txt"
 grep -Fxq 'BOOTANIM_LIVE original_initial_update_event signaled' "$out/gates.txt"
 grep -Eq '^BOOTANIM_LIVE control_return argument=0 flag_a=[01] flag_b=1$' "$out/gates.txt"
 grep -q '^BOOTANIM_LIVE original_return ' "$out/gates.txt"
+test "$placeholder_frames" -eq 0
 test "$count" -gt 0
 test "$timed_out" = false
 test "$status" -eq 0

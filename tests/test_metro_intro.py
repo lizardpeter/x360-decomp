@@ -69,3 +69,6 @@ class TestMetroIntro(unittest.TestCase):
         self.assertIn('test "$placeholder_frames" -eq 0',capture)
         workflow=(root/".github/workflows/aot-fixed-imports.yml").read_text()
         self.assertIn("METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480",workflow)
+        self.assertIn("-DCMAKE_BUILD_TYPE=Release",workflow)
+        self.assertIn("-DREXGLUE_RECOMP_OPTIMIZATION_RELEASE=O1",workflow)
+        self.assertIn("-DREXGLUE_RECOMP_DEBUG_INFO_RELEASE=line-tables-only",workflow)

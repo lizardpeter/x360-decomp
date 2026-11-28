@@ -14,6 +14,7 @@
 #include <rex/kernel/thread_registry.h>
 #include <rex/ppc/image.h>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <iomanip>
@@ -30,7 +31,13 @@ PPCFunc* original_control{};
 constexpr rex::u32 kControl=0x98020EC8u;
 constexpr rex::u32 kControlFlagA=0x98077760u,kControlFlagB=0x98077761u;
 constexpr rex::u32 kInitialUpdateEvent=0x980590BCu;
-std::atomic<unsigned> completed_controls{0};
+// 0 idle, 1 claimed, 2 original control returned, 3 failed, 4 naturally completed.
+std::atomic<unsigned> control_state{0};
+std::unique_ptr<rex::platform::Event> control_completion;
+void finish_control(unsigned state) {
+    control_state.store(state,std::memory_order_release);
+    if(control_completion)control_completion->Set();
+}
 rex::u32 guest_module{};
 std::atomic<bool> original_entered{false},original_returned{false};
 
@@ -52,6 +59,19 @@ void launch_original(PPCContext& ctx,rex::u8* base) {
     original_start(ctx,base);
     original_returned.store(true,std::memory_order_release);
     std::cout<<"BOOTANIM_LIVE original_return r3=0x"<<std::hex<<ctx.r3.u32<<std::dec<<std::endl;
+    unsigned idle=0;
+    control_state.compare_exchange_strong(idle,4,std::memory_order_acq_rel);
+    unsigned state=control_state.load(std::memory_order_acquire);
+    if(state==1) {
+        const auto wait=thread->GetRuntime().GetThreadRegistry().GetObjectWaiter().WaitHostObject(
+            control_completion.get(),std::chrono::milliseconds::max());
+        state=control_state.load(std::memory_order_acquire);
+        if(wait!=rex::platform::WaitResult::kSuccess || state!=2)state=3;
+    }
+    if(ctx.r3.u32!=0 || state==3) {
+        finish_control(3);
+        thread->Exit(1);
+    }
 }
 
 // Run the original second export on a real guest thread. Its two branches
@@ -60,6 +80,7 @@ void run_control(PPCContext& ctx,rex::u8* base) {
     auto* thread=rex::kernel::KernelThread::GetCallingThread();
     if (!thread || !original_control || ctx.r3.u32!=0) {
         std::cout<<"BOOTANIM_LIVE fail control_thread_binding"<<std::endl;
+        finish_control(3);
         if (thread)thread->Exit(1);
         return;
     }
@@ -69,6 +90,7 @@ void run_control(PPCContext& ctx,rex::u8* base) {
     auto b=memory.Load<rex::u8>(kControlFlagB);
     if (!a || !b) {
         std::cout<<"BOOTANIM_LIVE fail control_flags_unmapped"<<std::endl;
+        finish_control(3);
         thread->Exit(1);
     }
     std::cout<<"BOOTANIM_LIVE control_begin argument="<<argument
@@ -78,11 +100,12 @@ void run_control(PPCContext& ctx,rex::u8* base) {
     b=memory.Load<rex::u8>(kControlFlagB);
     if (!a || !b || *b!=1) {
         std::cout<<"BOOTANIM_LIVE fail control_flag_publication"<<std::endl;
+        finish_control(3);
         thread->Exit(1);
     }
     std::cout<<"BOOTANIM_LIVE control_return argument="<<argument
              <<" flag_a="<<unsigned(*a)<<" flag_b="<<unsigned(*b)<<std::endl;
-    completed_controls.fetch_add(1,std::memory_order_release);
+    finish_control(2);
     ctx.r3.u64=0;
 }
 
@@ -101,10 +124,14 @@ protected:
         if (paths.entry.Get()!="bootanim.xex" || paths.game_root.Get().empty() ||
             paths.game_writable.Get()) return fail("input_settings");
         original_start=nullptr;original_control=nullptr;guest_module=0;
-        original_entered=false;original_returned=false;completed_controls=0;
+        original_entered=false;original_returned=false;control_state=0;
+        control_completion.reset();
         const char* control=std::getenv("X360_BOOTANIM_CONTROL");
         diagnostic_control_=control && std::string_view(control)=="graceful_event";
-        controls_issued_=0;
+        if(diagnostic_control_) {
+            control_completion=rex::platform::Event::CreateManualResetEvent(false);
+            if(!control_completion)return fail("control_completion_event");
+        }
         auto& registry=title.GetModuleRegistry();
         const auto exe=registry.GetExecutable();
         if (!exe)return fail("module_handle");
@@ -202,7 +229,7 @@ protected:
             // The isolated path now exercises precisely the same original
             // readiness/phase contract as the integrated path. A frame
             // count is telemetry only; no force-exit control is issued.
-            if (diagnostic_control_ && !controls_issued_ &&
+            if (diagnostic_control_ && control_state.load(std::memory_order_acquire)==0 &&
                 original_entered.load(std::memory_order_acquire) &&
                 !original_returned.load(std::memory_order_acquire)) {
                 auto& runtime=GetTitleRuntime();
@@ -211,16 +238,17 @@ protected:
                 rex::u32 signaled=0;
                 if (ready && ready->manual_reset.load(std::memory_order_acquire))
                     ready->Query(nullptr,&signaled);
-                if (signaled && !original_returned.load(std::memory_order_acquire)) {
+                unsigned idle=0;
+                if (signaled && !original_returned.load(std::memory_order_acquire) &&
+                    control_state.compare_exchange_strong(idle,1,std::memory_order_acq_rel)) {
                     std::cout<<"BOOTANIM_LIVE original_initial_update_event signaled"<<std::endl;
                     auto result=runtime.GetThreadRegistry().CreateTaskThread(kControl,0);
                     if (!result) {
                         std::cout<<"BOOTANIM_LIVE fail control_thread_launch "
                                  <<result.error().GetDescription()<<std::endl;
-                        diagnostic_control_=false;
+                        finish_control(3);
                         rex::app::RequestShutdown(1);
                     } else {
-                        ++controls_issued_;
                         rex::kernel::CloseOwned(runtime.GetObjectTable(),*result);
                     }
                 }
@@ -232,15 +260,16 @@ protected:
             }
         }
     }
-    void OnTitleExit(rex::kernel::TitleExitReason) override {
+    void OnTitleExit(rex::kernel::TitleExitReason reason) override {
         std::cout<<"BOOTANIM_LIVE guest_exit original_returned="
                  <<original_returned.load(std::memory_order_acquire)<<std::endl;
-        rex::app::RequestShutdown(original_returned.load() &&
-            (!diagnostic_control_ || completed_controls.load()==1)?0:1);
+        const unsigned state=control_state.load(std::memory_order_acquire);
+        rex::app::RequestShutdown(reason==rex::kernel::TitleExitReason::kNormalExit &&
+            original_returned.load() && state!=3 &&
+            (!diagnostic_control_ || state==2 || state==4)?0:1);
     }
 private:
     bool diagnostic_control_=false;
-    unsigned controls_issued_=0;
 };
 }
 REX_TITLE_APP(BootanimLive)

@@ -260,8 +260,10 @@ jobs:
       - name: Compile and link dashboard host and XAM module
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
-          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_DEBUG=-O0 -gline-tables-only' -DCMAKE_PREFIX_PATH="$SDK"
+          cmake -S "$folder" -B "$folder/native" -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=clang++-20 -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_FLAGS="--gcc-install-dir=$REXGLUE_GCC_INSTALL_DIR" '-DCMAKE_CXX_FLAGS_RELEASE=-O1 -DNDEBUG -gline-tables-only' -DREXGLUE_RECOMP_OPTIMIZATION_RELEASE=O1 -DREXGLUE_RECOMP_DEBUG_INFO_RELEASE=line-tables-only -DCMAKE_PREFIX_PATH="$SDK"
           set +e
+          # Release SDK matches the Windows runtime; retain generated guest PC line tables.
+          grep -E '^(CMAKE_BUILD_TYPE|REXGLUE_RECOMP_OPTIMIZATION_RELEASE|REXGLUE_RECOMP_DEBUG_INFO_RELEASE):' "$folder/native/CMakeCache.txt" | tee build/receipts/metro-native-build-config.txt
           cmake --build "$folder/native" --parallel 2 > "$folder/build.log" 2>&1
           status=$?
           set -e
