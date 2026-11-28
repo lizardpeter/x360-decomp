@@ -20,6 +20,7 @@ on:
       - 'tests/sdk/metro_graphics_notifications.cpp'
       - 'tests/test_metro_sdk_patches.py'
       - 'tools/native/metro_profile_mapping.hpp'
+      - 'tools/native/metro_aot_preflight.cpp'
       - 'tools/native/metro_aot_boot.hpp'
       - 'tools/instrument_metro_intro.py'
       - 'tools/native/metro_bootanim_mapping.hpp'

@@ -198,6 +198,54 @@ def focus_report(modules):
                 result["dash"]["targets"][hx(d)]["body"]["extent_verified"] else None)}
     return result
 
+def verify_extent_contract(modules):
+    # This is the rounding wrapper's scalar, signed contract, independent
+    # of a font object or XUI initialization. Prove the actual instruction
+    # and constants before interpreting the native fixture's result.
+    from metro_import_contracts import hx,branch
+    from metro_bootanim_evidence import phase_fp_instruction
+    from metro_xam_fault_evidence import executable
+    result={}
+    for label,wrapper,helper in (("xam",0x81790D30,0x81730DD0),
+                                 ("dash",0x92225430,0x9219A160)):
+        m=modules[label];image,base,pe=m["image"],m["base"],m["pe"]
+        def word(pc):return read_words(image,base,pc,4)[0]
+        def fp(pc):return phase_fp_instruction(word(pc))
+        # fsel operands follow the PPC FRC if nonnegative, FRB otherwise.
+        expected={0:{"op":"fctidz","dest":12,"src":1},
+            8:{"op":"fabs","dest":11,"src":1},
+            24:{"op":"fcfid","dest":12,"src":12},
+            28:{"op":"fsub","dest":0,"a":0,"b":11},
+            32:{"op":"fneg","dest":11,"src":11},
+            36:{"op":"fsub","dest":10,"a":12,"b":1},
+            40:{"op":"fadd","dest":13,"a":12,"b":13},
+            44:{"op":"fsel","dest":13,"a":10,"b":13,"c":12},
+            48:{"op":"fsel","dest":0,"a":0,"b":1,"c":13},
+            52:{"op":"fsel","dest":1,"a":11,"b":0,"c":1}}
+        if any(fp(helper+off)!=v for off,v in expected.items()) or word(helper+56)!=0x4e800020:
+            raise ValueError("original scalar helper instruction contract")
+        constants=[]
+        for hi_off,load_off,reg in ((4,16,11),(12,20,10)):
+            w=word(helper+hi_off);load=fp(helper+load_off)
+            if w>>26!=15 or ((w>>16)&31)!=0 or ((w>>21)&31)!=reg or load["op"]!="lfd" or load["base"]!=reg:
+                raise ValueError("scalar constant operands")
+            address=(((w&65535)<<16)+load["offset"])&0xffffffff
+            if not base<=address<=base+len(image)-8 or executable(pe,base,address):
+                raise ValueError("scalar constant outside original data")
+            constants.append((address,struct.unpack_from(">d",image,address-base)[0]))
+        if constants[0][1]!=1.0 or constants[1][1] < 2**52 or constants[1][1]>2**63:
+            raise ValueError("unexpected rounding constants")
+        for off in (32,76):
+            if branch(wrapper+off,word(wrapper+off))!=(helper,True):
+                raise ValueError("scalar wrapper call mismatch")
+        # neg r11,r11; cmpw cr6,r31,r11; bge cr6,second rounding call.
+        if (word(wrapper+52)&0xfffffffe)!=0x7d6b00d0 or word(wrapper+56)!=0x7f1f5800:
+            raise ValueError("original signed extent comparison")
+        result[label]={"wrapper":hx(wrapper),"helper":hx(helper),
+            "helper_linear_bytes":60,"constants":[{"address":hx(a),"value":v} for a,v in constants],
+            "fixture_domain":"finite small f32 offsets; signed extents; max(0, extent+ceil(offset))"}
+    return result
+
 def verify_new_header_boundaries(modules):
     from metro_import_contracts import branch,hx
     from metro_xam_fault_evidence import operand
@@ -312,6 +360,8 @@ def main():
                       "near":sum(v["kind"]=="near_normalized" for v in report["nodes"].values())}
     report["measurement_focus"]=focus_report(modules)
     report["header_boundaries"]=verify_new_header_boundaries(modules)
+    report["extent_contract"]=verify_extent_contract(modules)
+    print("Verified original scalar extent contract",report["extent_contract"])
     print("Verified original header boundaries",report["header_boundaries"])
     a.output.parent.mkdir(parents=True,exist_ok=True)
     a.output.write_text(json.dumps(report,indent=2,sort_keys=True)+"\n")

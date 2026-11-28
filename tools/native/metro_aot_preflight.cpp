@@ -18,6 +18,8 @@
 #include <cstddef>
 #include <string_view>
 #include <array>
+#include <bit>
+#include <cmath>
 #include <string>
 #include <rex/filesystem/file_system.h>
 #include <algorithm>
@@ -148,6 +150,58 @@ bool verify_header_strings(TitleRuntime& title) {
         }
         std::cout<<"METRO_HEADER_SELFTEST total="<<total<<" failures="<<failures<<std::endl;
         return total==384 && failures==0;
+    };
+    const bool passed=run();
+    return bool(mem.Free(base)) && passed;
+}
+
+// Original paired extent wrapper: load a float at object+52, call the
+// original scalar rounding helper, and clamp the signed summed extent at
+// zero. This is an actual generated guest function, not a host replacement.
+bool verify_header_extent(TitleRuntime& title) {
+    auto& mem=title.GetGuestMemory();
+    const auto allocation=mem.Allocate(65536,4096,rex::kernel::GuestProtect::kReadWrite);
+    if(!allocation)return false;
+    const rex::u32 base=*allocation;
+    const auto run=[&]() {
+        struct Pair {const char* module;rex::u32 entry;};
+        constexpr Pair pairs[]={{"dash",0x92225430u},{"xam",0x81790D30u}};
+        const std::array<float,18> inputs{
+            -128.75f,-3.5f,-2.0f,-1.0001f,-1.0f,-0.9999f,-0.01f,-0.0f,
+            0.0f,0.01f,0.9999f,1.0f,1.0001f,2.0f,15.75f,23.9999f,24.0f,127.5f};
+        constexpr std::array<rex::i32,9> extents{-130,-24,-3,-1,0,1,3,24,128};
+        unsigned total=0,failures=0;
+        for(const auto& pair:pairs) {
+            const auto fn=title.FindFunction(pair.entry);
+            if(!fn) {
+                ++failures;
+                std::cout<<"METRO_EXTENT_SELFTEST module="<<pair.module<<" mapping=missing"<<std::endl;
+                continue;
+            }
+            for(const auto value:inputs) for(const auto extent:extents) {
+                auto object=mem.GetWritableSpan(base+512,128);
+                if(!object)return false;
+                std::fill(object->begin(),object->end(),std::byte{0x5a});
+                if(!mem.Store(base+512+52,rex::be_u32{std::bit_cast<rex::u32>(value)}))return false;
+                std::array<std::byte,128> before{};
+                std::copy(object->begin(),object->end(),before.begin());
+                PPCContext ctx{};
+                ctx.r1.u64=base+0xf000;ctx.r3.u64=base+512;
+                ctx.r4.s64=extent;
+                (*fn)(ctx,title.GetMembase().GetBase());
+                const auto expected=std::max<rex::i32>(0,extent+static_cast<rex::i32>(std::ceil(value)));
+                const bool unchanged=std::equal(before.begin(),before.end(),object->begin());
+                ++total;
+                if(ctx.r3.s32!=expected || !unchanged || ctx.r1.u32!=base+0xf000) {
+                    ++failures;
+                    std::cout<<"METRO_EXTENT_SELFTEST fail module="<<pair.module
+                             <<" input="<<value<<" extent="<<extent<<" actual="<<ctx.r3.s32
+                             <<" expected="<<expected<<" unchanged="<<unchanged<<std::endl;
+                }
+            }
+        }
+        std::cout<<"METRO_EXTENT_SELFTEST total="<<total<<" failures="<<failures<<std::endl;
+        return total==324 && !failures;
     };
     const bool passed=run();
     return bool(mem.Free(base)) && passed;
@@ -414,6 +468,8 @@ public:
         if(text_check && std::string_view(text_check)=="1") {
             if(!verify_header_strings(title_))return fail("original_header_string_contract");
             std::cout<<"METRO_PREFLIGHT pass original_header_string_contract"<<std::endl;
+            if(!verify_header_extent(title_))return fail("original_header_extent_contract");
+            std::cout<<"METRO_PREFLIGHT pass original_header_extent_contract"<<std::endl;
         }
         if (title_.IsRunning())
             return fail("unexpected_guest_launch");

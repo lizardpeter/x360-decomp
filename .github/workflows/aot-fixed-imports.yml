@@ -295,13 +295,13 @@ jobs:
           grep -E '^METRO_RETAIL_' "$folder/preflight.log" > build/receipts/metro-retail-routing.txt || true
           grep -E '^METRO_KERNEL_VAR' "$folder/preflight.log" > build/receipts/metro-kernel-variables.txt || true
           grep -E '^METRO_PROFILE_PREFLIGHT ' "$folder/preflight.log" > build/receipts/profile-preflight.txt || true
-          grep -E '^METRO_PROFILE_STORAGE |^METRO_HEADER_SELFTEST ' "$folder/preflight.log" > build/receipts/metro-independent-native-checks.txt || true
+          grep -E '^METRO_PROFILE_STORAGE |^METRO_HEADER_SELFTEST |^METRO_EXTENT_SELFTEST ' "$folder/preflight.log" > build/receipts/metro-independent-native-checks.txt || true
           cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt build/receipts/profile-preflight.txt build/receipts/metro-independent-native-checks.txt
           if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json
           test "$status" -eq 0
-          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity bootanim_native_mapping original_header_string_contract local_profile_storage clean_unload; do
+          for gate in dashboard_load flash_mount dashboard_identity xam_registry xam_load xam_data_mapping all_retail_export_mappings kernel_variables dynamic_xam_identity custom_object_callbacks hud_retail_mapping original_resource_integrity bootanim_native_mapping original_header_string_contract original_header_extent_contract local_profile_storage clean_unload; do
             grep -Fxq "METRO_PREFLIGHT pass $gate" build/receipts/metro-preflight.txt
           done
           if [ "$X360_METRO_PROFILE_MODULE_PREFLIGHT" = 1 ]; then
