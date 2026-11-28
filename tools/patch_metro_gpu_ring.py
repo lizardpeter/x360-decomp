@@ -294,12 +294,13 @@ def patch(sdk,tests):
       const u64 ps = pixel_shader ? pixel_shader->GetUcodeDataHash() : 0;
       const auto cl = regs.Get<xenos::reg::PA_CL_CLIP_CNTL>();
       const auto vertex_kill = vertex_shader->GetWritesPointSizeEdgeFlagKillVertex();
-      const auto key = std::array<u64, 18>{
+      const auto key = std::array<u64, 20>{
         vs, ps, index_count, static_cast<u32>(prim_type), wt, wb, st, sb, wo,
         clip.offset[0], clip.offset[1], clip.extent[0], clip.extent[1],
-        viewport_info.xy_offset[0], viewport_info.xy_extent[0],
+        viewport_info.xy_offset[0], viewport_info.xy_offset[1],
+        viewport_info.xy_extent[0], viewport_info.xy_extent[1],
         regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch, cl.value, vertex_kill};
-      static thread_local std::set<std::array<u64, 18>> seen;
+      static thread_local std::set<std::array<u64, 20>> seen;
       if (seen.size() < 512 && seen.insert(key).second) {
         REXGPU_INFO("METRO_TEXT_CLIP seq={} vs={:016X} ps={:016X} indices={} prim={} window_tl={:08X} window_br={:08X} screen_tl={:08X} screen_br={:08X} window_offset={:08X} x={} y={} w={} h={} viewport_x={} viewport_y={} viewport_w={} viewport_h={} pitch={} clip_control={:08X} user_clip_mask={} cull_only={} clip_disabled={} vertex_kill_or={} shader_point_edge_kill={}",
           seen.size(), vs, ps, index_count, static_cast<u32>(prim_type), wt, wb, st, sb, wo,
@@ -312,6 +313,34 @@ def patch(sdk,tests):
       }
     }
   }""")
+    # Separate ordered per-frame draw evidence from the deduplicated clip
+    # census. Log only the observed text shader pair, never vertex contents.
+    v=replace(v,"  // Barriers submit after all commands that may dispatch or copy, then the render pass resumes.",r"""  if (metro_clip_trace && draw_resolution_scale_x == 1 && draw_resolution_scale_y == 1 &&
+      vertex_shader->GetUcodeDataHash() == 0xD2A767E3841B7716ull &&
+      pixel_shader && pixel_shader->GetUcodeDataHash() == 0x1429DDC4231217E0ull) {
+    static thread_local u64 trace_frame=0;
+    static thread_local u32 trace_draw=0;
+    if (trace_frame != frame_current_) {
+      trace_frame=frame_current_;
+      trace_draw=0;
+    }
+    const u32 ordinal=++trace_draw;
+    // Capture early frames, then periodic frames throughout navigation.
+    // The limit is per frame; no dedup across differing labels or states.
+    if (ordinal <= 64 && (trace_frame <= 120 || trace_frame % 30 == 0)) {
+      draw_state::Scissor clip;
+      draw_state::GetScissor(regs,clip);
+      REXGPU_INFO("METRO_TEXT_DRAW frame={} ordinal={} guest_vertices={} host_vertices={} guest_prim={} index_kind={} x={} y={} w={} h={} viewport_x={} viewport_y={} viewport_w={} viewport_h={}",
+        trace_frame,ordinal,primitive_processing_result.guest_draw_vertex_count,
+        primitive_processing_result.host_draw_vertex_count,static_cast<u32>(prim_type),
+        static_cast<u32>(primitive_processing_result.index_buffer_type),
+        clip.offset[0],clip.offset[1],clip.extent[0],clip.extent[1],
+        viewport_info.xy_offset[0],viewport_info.xy_offset[1],
+        viewport_info.xy_extent[0],viewport_info.xy_extent[1]);
+    }
+  }
+
+  // Barriers submit after all commands that may dispatch or copy, then the render pass resumes.""")
     # Match the original vertex translator's cull-distance interface for
     # every primitive. Reject if ANY plane is negative for ALL vertices.
     helper=sdk/"src/gpu/xenos/geometry_cull.h"
