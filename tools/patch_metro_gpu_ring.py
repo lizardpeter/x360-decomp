@@ -468,6 +468,76 @@ bool SharedMemory::RequestRange(u32 start, u32 length) {""")
       }
       // A stale page must be requested even with an unchanged descriptor.
       vertex_buffers_in_sync_[vfetch_index >> 6]&=~vfetch_bit;""")
+    # Batch the actual vertex residency requests for a single draw. The
+    # shared page tracker merges them before recording any Vulkan copies.
+    v=replace(v,"  const Shader::ConstantRegisterMap& constant_map_vertex = vertex_shader->GetConstantRegisterMap();",
+        """  std::array<std::pair<u32,u32>,kVertexFetchCount> vertex_ranges{};
+  std::array<u64,2> vertex_requested{};
+  size_t vertex_range_count=0;
+  const Shader::ConstantRegisterMap& constant_map_vertex = vertex_shader->GetConstantRegisterMap();""")
+    v=replace(v,"""      u32 vfetch_index = i * 32 + j;
+      u64 vfetch_bit""",
+        """      u32 vfetch_index = i * 32 + j;
+      if (vfetch_index>=kVertexFetchCount) return draw_fail("vertex_fetch_index");
+      u64 vfetch_bit""")
+    v=replace(v,"""      if (!shared_memory_->RequestRange(vfetch_constant.address << 2, vfetch_constant.size << 2)) {
+        REXGPU_FAIL(false,
+                    "Failed to request vertex buffer at 0x{:08X} (size {}) in the shared "
+                    "memory",
+                    vfetch_constant.address << 2, vfetch_constant.size << 2);
+      }
+      vertex_buffers_in_sync_[vfetch_index >> 6] |= vfetch_bit;
+    }
+  }
+
+  u32 memexport_extent_start""",
+        """      vertex_ranges[vertex_range_count++]={vfetch_constant.address<<2,vfetch_constant.size<<2};
+      vertex_requested[vfetch_index>>6]|=vfetch_bit;
+    }
+  }
+  if (vertex_range_count) {
+    if (!shared_memory_->RequestRanges(vertex_ranges.data(),vertex_range_count))
+      return draw_fail("vertex_shared_memory");
+    // Publish residency only after all requested ranges succeed.
+    for (u32 i=0;i<vertex_requested.size();++i)
+      vertex_buffers_in_sync_[i]|=vertex_requested[i];
+  }
+
+  u32 memexport_extent_start""")
+    # Source lookup must succeed before validity publication. Keep write
+    # watching enabled before copying so later CPU writes invalidate it.
+    # Reject a non-progressing partial allocation before marking anything.
+    vulkan_shared=sdk/"src/gpu/xenos/vulkan/shared_memory.cpp"
+    vs=vulkan_shared.read_text()
+    vs=replace(vs,"""      MarkRangeValid(upload_range_start << GetPageSizeLog2(), static_cast<u32>(upload_buffer_size),
+                     false);
+      const u8* upload_source =
+          GetPhysicalForRead(GetMemory(), upload_range_start << GetPageSizeLog2(),
+                             static_cast<u32>(upload_buffer_size));
+      if (!upload_source) {
+        successful = false;
+        break;
+      }
+      std::memcpy(upload_buffer_mapping, upload_source, upload_buffer_size);""",
+        """      const VkDeviceSize page_bytes=VkDeviceSize{1}<<GetPageSizeLog2();
+      const VkDeviceSize remaining=VkDeviceSize{upload_range_length}<<GetPageSizeLog2();
+      if (!upload_buffer_size || upload_buffer_size>remaining ||
+          (upload_buffer_size&(page_bytes-1))) {
+        REXGPU_ERROR("Shared memory: invalid partial upload extent {}",upload_buffer_size);
+        successful=false;
+        break;
+      }
+      const u8* upload_source =
+          GetPhysicalForRead(GetMemory(),upload_range_start<<GetPageSizeLog2(),
+                             static_cast<u32>(upload_buffer_size));
+      if (!upload_source) {
+        successful=false;
+        break;
+      }
+      MarkRangeValid(upload_range_start<<GetPageSizeLog2(),static_cast<u32>(upload_buffer_size),
+                     false);
+      std::memcpy(upload_buffer_mapping,upload_source,upload_buffer_size);""")
+    vulkan_shared.write_text(vs)
     shared_h.write_text(shared)
     shared_cpp.write_text(sm)
     pipeline.write_text(ps)

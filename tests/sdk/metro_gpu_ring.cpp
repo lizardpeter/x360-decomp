@@ -376,3 +376,35 @@ REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: disjoint byte requests merge into 
   REQUIRE(shared.RequestRange(shared.kBufferSize-1,1));
   CHECK(shared.IsRangeValid(shared.kBufferSize-1,1));
 }
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: batched vertex page requests preserve GPU-written neighbors",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  MetroTestSharedMemory shared(title);
+  const rex::u32 page=shared.PageBytes();
+  REQUIRE(shared.RequestRange(10*page,4*page));
+  shared.RangeWrittenByGPU(11*page,page);
+  {
+    auto lock=shared.AcquireLock();
+    shared.OnPhysicalWrite({10*page,1},true);
+    shared.OnPhysicalWrite({12*page+16,4},true);
+  }
+  const std::pair<rex::u32,rex::u32> vertex_ranges[]={
+    {10*page,4*page},{10*page+8,16},{12*page+8,32},{11*page,64}};
+  shared.fail_upload=true;
+  CHECK_FALSE(shared.RequestRanges(vertex_ranges,std::size(vertex_ranges)));
+  CHECK_FALSE(shared.IsRangeValid(10*page,1));
+  CHECK(shared.IsRangeValid(11*page,page));
+  CHECK_FALSE(shared.IsRangeValid(12*page,1));
+  CHECK(shared.IsRangeValid(13*page,page));
+  shared.fail_upload=false;
+  REQUIRE(shared.RequestRanges(vertex_ranges,std::size(vertex_ranges)));
+  CHECK((shared.uploads==std::vector<std::pair<rex::u32,rex::u32>>{{10,1},{12,1}}));
+  CHECK(shared.IsRangeValid(10*page,4*page));
+  // CPU-only validity reset must retain the separately GPU-authored page.
+  shared.SetSystemPageFlagsValidWithGPUDataWritten();
+  CHECK_FALSE(shared.IsRangeValid(10*page,1));
+  CHECK(shared.IsRangeValid(11*page,page));
+  CHECK_FALSE(shared.IsRangeValid(12*page,1));
+}
