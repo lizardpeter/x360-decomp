@@ -289,7 +289,8 @@ jobs:
           grep -E '^METRO_RETAIL_' "$folder/preflight.log" > build/receipts/metro-retail-routing.txt || true
           grep -E '^METRO_KERNEL_VAR' "$folder/preflight.log" > build/receipts/metro-kernel-variables.txt || true
           grep -E '^METRO_PROFILE_PREFLIGHT ' "$folder/preflight.log" > build/receipts/profile-preflight.txt || true
-          cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt build/receipts/profile-preflight.txt
+          grep -E '^METRO_PROFILE_STORAGE |^METRO_HEADER_SELFTEST ' "$folder/preflight.log" > build/receipts/metro-independent-native-checks.txt || true
+          cat build/receipts/metro-preflight.txt build/receipts/metro-retail-routing.txt build/receipts/profile-preflight.txt build/receipts/metro-independent-native-checks.txt
           if [ "$status" -ne 0 ]; then tail -n 80 "$folder/preflight.log"; fi
           printf '%s\n' "$status" > build/receipts/metro-preflight-exit-code.txt
           python tools/aot_diagnostics.py "$folder/preflight.log" --output build/receipts/metro-preflight-diagnostics.json

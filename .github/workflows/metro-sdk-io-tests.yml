@@ -8,6 +8,7 @@ on:
       - 'tools/patch_metro_io_runtime.py'
       - 'tools/patch_metro_stfs_mount.py'
       - 'tests/sdk/metro_stfs_mount.cpp'
+      - 'tests/sdk/metro_stfs_profile_overlay.cpp'
       - 'tools/patch_metro_virtual_memory.py'
       - 'tools/patch_metro_system_attach.py'
       - 'tests/sdk/metro_system_attach.cpp'
@@ -59,6 +60,7 @@ jobs:
           python tools/patch_metro_device_control.py build/sdk-source
           python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
           python tools/patch_metro_stfs_mount.py build/sdk-source --tests tests/sdk/metro_stfs_mount.cpp
+          cat tests/sdk/metro_stfs_profile_overlay.cpp >> build/sdk-source/tests/unit/filesystem/file_system_test.cpp
           python tools/patch_metro_virtual_memory.py build/sdk-source --tests tests/sdk/metro_virtual_memory.cpp
           python tools/patch_rexglue_function_tables.py build/sdk-source
           python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
