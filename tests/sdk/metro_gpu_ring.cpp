@@ -1,3 +1,4 @@
+#include "gpu/xenos/geometry_cull.h"
 #include <rex/memory/stream.h>
 
 // Both rings execute actual guest PM4 on the SDK worker. No guest firmware.
@@ -179,4 +180,37 @@ REX_TEST_CASE("metro_gpu_ring: full linear command span is distinguishable from 
   auto range=reader.BeginRead(8);
   reader.EndRead(range);
   CHECK(reader.IsEmpty());
+}
+
+
+REX_TEST_CASE("metro_gpu_ring: geometry cull input layout matches vertex output",
+              "[gpu][metro_gpu_ring]") {
+  for(unsigned planes=0;planes<=6;++planes)
+    for(bool cull:{false,true})
+      for(bool kill:{false,true}) {
+        const unsigned expected=(cull?planes:0)+(kill?1:0);
+        CHECK(rex::gpu::GeometryInputCullDistanceCount(cull,planes,kill)==expected);
+      }
+}
+REX_TEST_CASE("metro_gpu_ring: cull any wholly negative plane rather than all planes",
+              "[gpu][metro_gpu_ring]") {
+  // Exhaust every negative/nonnegative combination across up to three
+  // planes and four vertices, including the skip for recalculated point UCP.
+  for(unsigned vertices:{1u,3u,4u})
+    for(unsigned planes=1;planes<=3;++planes)
+      for(unsigned first=0;first<planes;++first) {
+        bool correct=true;
+        const unsigned vertex_mask=(1u<<vertices)-1u;
+        for(unsigned mask=0;mask<(1u<<(vertices*planes));++mask) {
+          bool want=false;
+          for(unsigned p=first;p<planes;++p)
+            want|=((mask>>(p*vertices))&vertex_mask)==vertex_mask;
+          bool got=rex::gpu::GeometryAnyCullPlane(first,planes,vertices,
+              [&](unsigned p,unsigned v){return bool(mask&(1u<<(p*vertices+v)));},
+              [](bool a,bool b){return a&&b;},[](bool a,bool b){return a||b;});
+          if(got!=want){correct=false;break;}
+        }
+        INFO("vertices "<<vertices<<" planes "<<planes<<" skip "<<first);
+        CHECK(correct);
+      }
 }

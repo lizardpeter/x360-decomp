@@ -226,22 +226,106 @@ def patch(sdk,tests):
       const auto wo = regs.Get<xenos::reg::PA_SC_WINDOW_OFFSET>().value;
       const auto vs = vertex_shader->GetUcodeDataHash();
       const u64 ps = pixel_shader ? pixel_shader->GetUcodeDataHash() : 0;
-      const auto key = std::array<u64, 16>{
+      const auto cl = regs.Get<xenos::reg::PA_CL_CLIP_CNTL>();
+      const auto vertex_kill = vertex_shader->GetWritesPointSizeEdgeFlagKillVertex();
+      const auto key = std::array<u64, 18>{
         vs, ps, index_count, static_cast<u32>(prim_type), wt, wb, st, sb, wo,
         clip.offset[0], clip.offset[1], clip.extent[0], clip.extent[1],
         viewport_info.xy_offset[0], viewport_info.xy_extent[0],
-        regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch};
-      static thread_local std::set<std::array<u64, 16>> seen;
+        regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch, cl.value, vertex_kill};
+      static thread_local std::set<std::array<u64, 18>> seen;
       if (seen.size() < 512 && seen.insert(key).second) {
-        REXGPU_INFO("METRO_TEXT_CLIP seq={} vs={:016X} ps={:016X} indices={} prim={} window_tl={:08X} window_br={:08X} screen_tl={:08X} screen_br={:08X} window_offset={:08X} x={} y={} w={} h={} viewport_x={} viewport_y={} viewport_w={} viewport_h={} pitch={}",
+        REXGPU_INFO("METRO_TEXT_CLIP seq={} vs={:016X} ps={:016X} indices={} prim={} window_tl={:08X} window_br={:08X} screen_tl={:08X} screen_br={:08X} window_offset={:08X} x={} y={} w={} h={} viewport_x={} viewport_y={} viewport_w={} viewport_h={} pitch={} clip_control={:08X} user_clip_mask={} cull_only={} clip_disabled={} vertex_kill_or={} shader_point_edge_kill={}",
           seen.size(), vs, ps, index_count, static_cast<u32>(prim_type), wt, wb, st, sb, wo,
           clip.offset[0], clip.offset[1], clip.extent[0], clip.extent[1],
           viewport_info.xy_offset[0], viewport_info.xy_offset[1],
           viewport_info.xy_extent[0], viewport_info.xy_extent[1],
-          regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch);
+          regs.Get<xenos::reg::RB_SURFACE_INFO>().surface_pitch,cl.value,
+          static_cast<unsigned>(cl.ucp_ena),static_cast<unsigned>(cl.ucp_cull_only_ena),
+          static_cast<unsigned>(cl.clip_disable),static_cast<unsigned>(cl.vtx_kill_or),vertex_kill);
       }
     }
   }""")
+    # Match the original vertex translator's cull-distance interface for
+    # every primitive. Reject if ANY plane is negative for ALL vertices.
+    helper=sdk/"src/gpu/xenos/geometry_cull.h"
+    if helper.exists():raise ValueError("geometry cull helper already staged")
+    helper.write_text("""#pragma once
+
+namespace rex::gpu {
+constexpr unsigned GeometryInputCullDistanceCount(bool user_cull,
+                                                  unsigned user_count,
+                                                  bool vertex_kill_and) {
+  return (user_cull?user_count:0u)+unsigned(vertex_kill_and);
+}
+
+// Preconditions: first_plane<plane_count and vertex_count>0.
+// Both the SPIR-V builder and the native boolean regression use this fold.
+template<class Sample,class All,class Any>
+auto GeometryAnyCullPlane(unsigned first_plane,unsigned plane_count,
+                          unsigned vertex_count,Sample sample,All all,Any any) {
+  auto reduce_plane=[&](unsigned plane) {
+    auto result=sample(plane,0u);
+    for(unsigned v=1;v<vertex_count;++v)result=all(result,sample(plane,v));
+    return result;
+  };
+  auto result=reduce_plane(first_plane);
+  for(unsigned p=first_plane+1;p<plane_count;++p)result=any(result,reduce_plane(p));
+  return result;
+}
+}
+""")
+    pipeline=sdk/"src/gpu/xenos/vulkan/pipeline_cache.cpp"
+    ps=pipeline.read_text()
+    ps=replace(ps,'#include "gpu/xenos/draw_state.h"',
+        '#include "gpu/xenos/draw_state.h"\n#include "gpu/xenos/geometry_cull.h"')
+    ps=replace(ps,"  u32 cull_distance_count = point_user_cull_distance_count + key.has_vertex_kill_and;",
+        """  const u32 cull_distance_count=GeometryInputCullDistanceCount(
+      key.user_clip_plane_cull,key.user_clip_plane_count,key.has_vertex_kill_and);""")
+    ps=replace(ps,"""    spv::Id cull_condition = spv::NoResult;
+    u32 cull_distance_start = point_recalculate_cull_distances ? point_user_cull_distance_count : 0;
+    if (cull_distance_start < cull_distance_count) {
+      for (u32 i = cull_distance_start; i < cull_distance_count; ++i) {
+        for (u32 j = 0; j < input_primitive_vertex_count; ++j) {
+          id_vector_temp.clear();
+          id_vector_temp.push_back(builder.makeIntConstant(static_cast<i32>(j)));
+          id_vector_temp.push_back(const_member_in_gl_per_vertex_cull_distance);
+          id_vector_temp.push_back(builder.makeIntConstant(static_cast<i32>(i)));
+          spv::Id cull_distance_is_negative = builder.createBinOp(
+              spv::OpFOrdLessThan, type_bool,
+              builder.createLoad(builder.createAccessChain(spv::StorageClassInput, in_gl_per_vertex,
+                                                           id_vector_temp),
+                                 spv::NoPrecision),
+              const_float_0);
+          if (cull_condition != spv::NoResult) {
+            cull_condition = builder.createBinOp(spv::OpLogicalAnd, type_bool, cull_condition,
+                                                 cull_distance_is_negative);
+          } else {
+            cull_condition = cull_distance_is_negative;
+          }
+        }
+      }""","""    u32 cull_distance_start = point_recalculate_cull_distances ? point_user_cull_distance_count : 0;
+    if (cull_distance_start < cull_distance_count) {
+      const spv::Id cull_condition=GeometryAnyCullPlane(
+          cull_distance_start,cull_distance_count,input_primitive_vertex_count,
+          [&](u32 plane,u32 vertex) {
+            id_vector_temp.clear();
+            id_vector_temp.push_back(builder.makeIntConstant(static_cast<i32>(vertex)));
+            id_vector_temp.push_back(const_member_in_gl_per_vertex_cull_distance);
+            id_vector_temp.push_back(builder.makeIntConstant(static_cast<i32>(plane)));
+            return builder.createBinOp(
+                spv::OpFOrdLessThan,type_bool,
+                builder.createLoad(builder.createAccessChain(spv::StorageClassInput,in_gl_per_vertex,
+                                                             id_vector_temp),spv::NoPrecision),
+                const_float_0);
+          },
+          [&](spv::Id lhs,spv::Id rhs) {
+            return builder.createBinOp(spv::OpLogicalAnd,type_bool,lhs,rhs);
+          },
+          [&](spv::Id lhs,spv::Id rhs) {
+            return builder.createBinOp(spv::OpLogicalOr,type_bool,lhs,rhs);
+          });""")
+    pipeline.write_text(ps)
     p.write_text(source);h.write_text(header);t.write_text(test+"\n"+tests.read_text())
     vk.write_text(v)
 def main():
