@@ -84,7 +84,7 @@ class MetroUIProbes(unittest.TestCase):
         self.assertNotIn('METRO_UI pc=',out)
     def test_property_and_resource_boundary_uses_checked_pointer(self):
         points=probes("generated")
-        source="// METRO_GUEST_PC 921EB708\\nentry();\\n// METRO_GUEST_PC 921EB774\\nreturn_copy();\\n// METRO_GUEST_PC 921E0454\\nreturn_resource();\\n"
+        source="// METRO_GUEST_PC 921EB708\nentry();\n// METRO_GUEST_PC 921EB774\nreturn_copy();\n// METRO_GUEST_PC 921E0454\nreturn_resource();\n"
         out,hits=insert(source,points)
         self.assertEqual(sum(hits.values()),3)
         self.assertIn('metro_header_observe<0x921EB708u>("entry",ctx,4u)',out)
