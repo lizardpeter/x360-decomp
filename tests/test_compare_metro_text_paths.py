@@ -12,11 +12,12 @@ class TextPathsTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name)
 
-    def write(self,variant,pixels,extra="",frames=None):
+    def write(self,variant,pixels,extra="",frames=None,profile_probe="0",guide_ui="0"):
         path=self.root/variant;path.mkdir()
         receipt=[f"variant={variant}",f"quad_conversion={'true' if variant=='quad' else 'false'}",
                  "guest_mode=1280x720","render_scale=1x1","async_shader_compilation=false",
-                 "placeholder_draw_frames=0","METRO_BOOT pass dashboard_entry",extra]
+                 "placeholder_draw_frames=0",f"profile_probe={profile_probe}",f"guide_ui={guide_ui}",
+                 "METRO_BOOT pass dashboard_entry",extra]
         for i,data in enumerate(pixels):
             name=f"candidate-{i+1:02}.png";(path/name).write_bytes(data)
             frame=frames[i] if frames else i+1
@@ -47,6 +48,18 @@ class TextPathsTests(unittest.TestCase):
     def test_splash_or_frozen_guest_not_settled(self):
         a=self.write("baseline",[b"splash",b"splash"])
         b=self.write("quad",[b"home",b"home"],frames=[2,2])
+        self.assertEqual(compare(a,b,self.decode)["status"],"unavailable")
+
+    def test_startup_mismatch_is_not_a_renderer_comparison(self):
+        a=self.write("baseline",[b"home",b"home"],profile_probe="1",guide_ui="1")
+        b=self.write("quad",[b"home",b"home"])
+        result=compare(a,b,self.decode)
+        self.assertEqual(result["status"],"unavailable")
+        self.assertEqual(result["reason"],"different startup settings")
+
+    def test_backward_frame_counter_not_settled(self):
+        a=self.write("baseline",[b"home",b"home"],frames=[2,1])
+        b=self.write("quad",[b"home",b"home"])
         self.assertEqual(compare(a,b,self.decode)["status"],"unavailable")
 
     def test_changed_sample_or_ambiguous_settings(self):

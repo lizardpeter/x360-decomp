@@ -349,6 +349,8 @@ jobs:
           exit "$status"
       - name: Compare original 720p glyph rendering using native triangle-list conversion
         if: always() && steps.preflight.outcome == 'success'
+        env:
+          X360_METRO_PROFILE_PROBE: ${{ inputs.profile_modules && '1' || '0' }}
         run: |
           folder="$PWD/build/fixed-imports/dash_17559"
           set +e

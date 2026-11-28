@@ -32,6 +32,12 @@ def inspect(directory,variant,decoder=decode):
     for k,v in expected.items():
         values=[line.split("=",1)[1] for line in lines if line.startswith(k+"=")]
         if values!=[v]:return {"status":"unavailable","reason":"invalid "+k}
+    startup={}
+    for k in ("profile_probe","guide_ui"):
+        values=[line.split("=",1)[1] for line in lines if line.startswith(k+"=")]
+        if len(values)!=1 or values[0] not in ("0","1"):
+            return {"status":"unavailable","reason":"invalid "+k}
+        startup[k]=values[0]
     if "METRO_BOOT pass dashboard_entry" not in lines:
         return {"status":"unavailable","reason":"no dashboard entry"}
     samples={}; hashes={}
@@ -49,7 +55,7 @@ def inspect(directory,variant,decoder=decode):
     if set(samples)!=set(hashes):
         return {"status":"unavailable","reason":"unpaired sample/hash"}
     observed=[]
-    for name,frame in sorted(samples.items(),key=lambda item:item[1]):
+    for name,frame in samples.items():
         path=directory/name
         if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest()!=hashes[name]:
             return {"status":"unavailable","reason":"missing or changed sample"}
@@ -68,13 +74,16 @@ def inspect(directory,variant,decoder=decode):
                        item["guest_frame"]<=stable[-1]["guest_frame"]):stable=[]
         stable.append(item)
     return {"status":"settled" if len(stable)>=2 else "unavailable",
-            "observed":observed,"stable":stable}
+            "observed":observed,"stable":stable,"startup":startup}
 
 def compare(baseline,quad,decoder=decode):
     left=inspect(baseline,"baseline",decoder); right=inspect(quad,"quad",decoder)
     report={"scope":"two settled Home capture paths only","baseline":left,"quad":right,
             "status":"unavailable","visually_verified":False,"repair_verified":False}
     if left["status"]==right["status"]=="settled":
+        if left["startup"]!=right["startup"]:
+            report["reason"]="different startup settings"
+            return report
         same=left["stable"][-1]["rgb_sha256"]==right["stable"][-1]["rgb_sha256"]
         report["status"]="identical_settled_pixels" if same else "different_settled_pixels"
         report["both_suspected_missing_terminal_glyph"]=all(

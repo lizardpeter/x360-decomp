@@ -60,7 +60,7 @@ samples=0
 last_frame=0
 last_sample=0
 : > "$out/receipt.txt"
-printf 'menu_visually_verified=false\nvariant=%s\nquad_conversion=%s\nsynthetic_empty_profile_root=true\n' "$variant" "$quad" >> "$out/receipt.txt"
+printf 'menu_visually_verified=false\nvariant=%s\nquad_conversion=%s\nsynthetic_empty_profile_root=true\nprofile_probe=%s\nguide_ui=%s\n' "$variant" "$quad" "${X360_METRO_PROFILE_PROBE:-0}" "${X360_METRO_GUIDE_UI:-0}" >> "$out/receipt.txt"
 for tick in $(seq 1 65); do
   kill -0 "$pid" 2>/dev/null || break
   frame="$(grep -E '^METRO_BOOT frames [1-9][0-9]*$' "$out/boot.log" | tail -n 1 | awk '{print $3}' || true)"
@@ -319,12 +319,35 @@ fi
 # pages on the original UI; record actual visual outcome, not an assumed state.
 for tab in 1 2 3 4 5; do
   before="$(read_frame)"
-  pulse_key e 0200 || true
-  if ! wait_frames "$before" 15 >/dev/null; then
-    printf 'tab_probe_incomplete=%s\n' "$tab" >> "$out/receipt.txt"
+  line_start="$(wc -l < "$out/boot.log")"
+  if ! pulse_key e 0200; then
+    printf 'tab_probe_incomplete=%s reason=pad_transition\n' "$tab" >> "$out/receipt.txt"
     break
   fi
-  import -window "$win" "$out/input-tab-$tab.png" || break
+  if ! after="$(wait_frames "$before" 15)"; then
+    printf 'tab_probe_incomplete=%s reason=frame_progress\n' "$tab" >> "$out/receipt.txt"
+    break
+  fi
+  prior="$out/next.png"
+  import -window "$win" "$prior" || break
+  streak=0
+  for sample in $(seq 1 8); do
+    if ! after="$(wait_frames "$after" 5)"; then break; fi
+    next="$out/tab-motion.png"
+    import -window "$win" "$next" || break
+    motion="$(difference "$prior" "$next")" || break
+    mv "$next" "$prior"
+    if ((motion<=64)); then streak=$((streak+1)); else streak=0; fi
+    if ((streak>=2)); then break; fi
+  done
+  if ((streak<2)); then
+    printf 'tab_probe_incomplete=%s reason=not_settled\n' "$tab" >> "$out/receipt.txt"
+    break
+  fi
+  mv "$prior" "$out/input-tab-$tab.png"
+  line_end="$(wc -l < "$out/boot.log")"
+  printf 'tab_sample=%s guest_frames_before=%s guest_frames_after=%s stable_intervals=%s log_line_start=%s log_line_end=%s\n' \
+    "$tab" "$before" "$after" "$streak" "$((line_start+1))" "$line_end" >> "$out/receipt.txt"
   (cd "$out" && sha256sum "input-tab-$tab.png") >> "$out/receipt.txt"
 done
 
