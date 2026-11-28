@@ -22,7 +22,7 @@ REX_TEST_CASE("metro_host_affinity: live map only contains distinct permitted CP
     const auto target=rex::platform::MapGuestProcessor(allowed,i);
     CHECK((target&~allowed)==0);
     CHECK((target&selected)==0);
-    CHECK(!target || (target&(target-1))==0);
+    CHECK((!target || (target&(target-1))==0));
     selected|=target;
   }
 }
