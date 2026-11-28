@@ -170,6 +170,8 @@ bool verify_header_extent(TitleRuntime& title) {
             -128.75f,-3.5f,-2.0f,-1.0001f,-1.0f,-0.9999f,-0.01f,-0.0f,
             0.0f,0.01f,0.9999f,1.0f,1.0001f,2.0f,15.75f,23.9999f,24.0f,127.5f};
         constexpr std::array<rex::i32,9> extents{-130,-24,-3,-1,0,1,3,24,128};
+        using FPSCR=rex::ppc::FPSCRRegister;
+        struct RestoreFP { rex::u32 csr=FPSCR::Platform::GetCSR(); ~RestoreFP(){FPSCR::Platform::SetCSR(csr);} } restore;
         unsigned total=0,failures=0;
         for(const auto& pair:pairs) {
             const auto fn=title.FindFunction(pair.entry);
@@ -186,6 +188,9 @@ bool verify_header_extent(TitleRuntime& title) {
                 std::array<std::byte,128> before{};
                 std::copy(object->begin(),object->end(),before.begin());
                 PPCContext ctx{};
+                ctx.fpscr.InitHost();
+                ctx.fpscr.StoreToHost(rex::ppc::kRoundNearest);
+                ctx.fpscr.SetFlushMode(false);
                 ctx.r1.u64=base+0xf000;ctx.r3.u64=base+512;
                 ctx.r4.s64=extent;
                 (*fn)(ctx,title.GetMembase().GetBase());

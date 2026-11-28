@@ -32,6 +32,8 @@ on:
       - 'tests/sdk/metro_stfs_mount.cpp'
       - 'tests/sdk/metro_io_runtime.cpp'
       - 'tools/patch_metro_gpu_ring.py'
+      - 'tools/patch_metro_scalar_codegen.py'
+      - 'tests/sdk/metro_scalar_codegen.cpp'
       - 'tests/sdk/metro_gpu_ring.cpp'
       - 'tools/instrument_metro_ui.py'
       - 'tools/metro_720p_text_probe.py'

@@ -9,6 +9,8 @@ on:
       - 'tools/instrument_metro_intro.py'
       - 'tools/patch_metro_audio_context.py'
       - 'tools/patch_metro_gpu_ring.py'
+      - 'tools/patch_metro_scalar_codegen.py'
+      - 'tests/sdk/metro_scalar_codegen.cpp'
       - 'tools/patch_metro_graphics_notifications.py'
       - 'tests/sdk/metro_graphics_notifications.cpp'
       - 'tests/sdk/metro_gpu_ring.cpp'
@@ -68,6 +70,7 @@ jobs:
           python tools/patch_metro_startup_status.py build/sdk-source --tests tests/sdk/metro_startup_status.cpp
           python tools/patch_metro_audio_context.py build/sdk-source --tests tests/sdk/metro_audio_context.cpp
           python tools/patch_metro_gpu_ring.py build/sdk-source --tests tests/sdk/metro_gpu_ring.cpp
+          python tools/patch_metro_scalar_codegen.py build/sdk-source --tests tests/sdk/metro_scalar_codegen.cpp
           python tools/patch_metro_graphics_notifications.py build/sdk-source --tests tests/sdk/metro_graphics_notifications.cpp
       - name: Set up pinned SDK's documented build toolchain
         uses: ./build/sdk-source/.github/actions/setup-toolchain
@@ -94,7 +97,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: build/sdk-source/out/install/linux-amd64
-          key: rexglue-linux-amd64-debug-release-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/stage_metro_profile_modules.py', 'tools/patch_metro_boot_contracts.py', 'tools/patch_metro_io_runtime.py', 'tools/patch_metro_public_verification.py', 'tools/verify_retail_firmware.py', 'tests/sdk/metro_io_runtime.cpp', 'tools/patch_metro_virtual_memory.py', 'tests/sdk/metro_virtual_memory.cpp', 'tools/patch_metro_system_attach.py', 'tests/sdk/metro_system_attach.cpp', 'tools/patch_metro_xex_views.py', 'tests/sdk/metro_xex_isolation.cpp', 'tools/patch_metro_input_runtime.py', 'tests/sdk/metro_input_bridge.cpp', 'tools/patch_metro_module_identity.py', 'tools/patch_metro_guest_pc.py', 'tools/patch_metro_console_config.py', 'tests/sdk/metro_xconfig.cpp', 'tools/patch_metro_startup_status.py', 'tests/sdk/metro_startup_status.cpp', 'tools/patch_metro_audio_context.py', 'tests/sdk/metro_audio_context.cpp', 'tools/patch_metro_gpu_ring.py', 'tests/sdk/metro_gpu_ring.cpp', 'tools/patch_metro_graphics_notifications.py', 'tests/sdk/metro_graphics_notifications.cpp') }}
+          key: rexglue-linux-amd64-debug-release-a3e1d826-${{ hashFiles('tools/patch_rexglue_imports.py', 'tools/stage_metro_xam_aot.py', 'tools/patch_rexglue_function_tables.py', 'tools/patch_metro_import_slots.py', 'tools/patch_metro_device_control.py', 'tools/patch_metro_retail_routing.py', 'tools/stage_metro_profile_modules.py', 'tools/patch_metro_boot_contracts.py', 'tools/patch_metro_io_runtime.py', 'tools/patch_metro_public_verification.py', 'tools/verify_retail_firmware.py', 'tests/sdk/metro_io_runtime.cpp', 'tools/patch_metro_virtual_memory.py', 'tests/sdk/metro_virtual_memory.cpp', 'tools/patch_metro_system_attach.py', 'tests/sdk/metro_system_attach.cpp', 'tools/patch_metro_xex_views.py', 'tests/sdk/metro_xex_isolation.cpp', 'tools/patch_metro_input_runtime.py', 'tests/sdk/metro_input_bridge.cpp', 'tools/patch_metro_module_identity.py', 'tools/patch_metro_guest_pc.py', 'tools/patch_metro_console_config.py', 'tests/sdk/metro_xconfig.cpp', 'tools/patch_metro_startup_status.py', 'tests/sdk/metro_startup_status.cpp', 'tools/patch_metro_audio_context.py', 'tests/sdk/metro_audio_context.cpp', 'tools/patch_metro_gpu_ring.py', 'tests/sdk/metro_gpu_ring.cpp', 'tools/patch_metro_scalar_codegen.py', 'tests/sdk/metro_scalar_codegen.cpp', 'tools/patch_metro_graphics_notifications.py', 'tests/sdk/metro_graphics_notifications.cpp') }}
       - name: Build corrected SDK
         if: steps.sdk_cache.outputs.cache-hit != 'true'
         working-directory: build/sdk-source
