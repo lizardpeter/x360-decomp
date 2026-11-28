@@ -143,6 +143,72 @@ def patch(sdk,tests):
   if (reader->GetReadCount()<2*sizeof(u32))
     REXGPU_FAIL(false,"Truncated PM4 type-1 packet");
   u32 reg_index_1""")
+    # Validate fixed-layout payloads before any handler reads from the next
+    # packet. These sizes are the pinned SDK's actual consumed word counts.
+    source=replace(source,"  bool result = false;\\n  switch (opcode) {",
+        """  u32 required_count=0;
+  switch (opcode) {
+    case PM4_INTERRUPT:
+    case PM4_INVALIDATE_STATE:
+    case PM4_VIZ_QUERY:
+    case PM4_SET_BIN_MASK_LO:
+    case PM4_SET_BIN_MASK_HI:
+    case PM4_SET_BIN_SELECT_LO:
+    case PM4_SET_BIN_SELECT_HI:
+    case PM4_CONTEXT_UPDATE:
+    case PM4_WAIT_FOR_IDLE: required_count=1; break;
+    case PM4_REG_TO_MEM:
+    case PM4_EVENT_WRITE_EXT:
+    case PM4_IM_LOAD:
+    case PM4_SET_BIN_MASK:
+    case PM4_SET_BIN_SELECT: required_count=2; break;
+    case PM4_REG_RMW:
+    case PM4_EVENT_WRITE_SHD:
+    case PM4_LOAD_ALU_CONSTANT: required_count=3; break;
+    case PM4_WAIT_REG_MEM: required_count=5; break;
+    case PM4_COND_WRITE: required_count=6; break;
+    default: break;
+  }
+  if (required_count && count!=required_count)
+    REXGPU_FAIL(false,"Invalid fixed PM4 payload opcode {:02X} words {} expected {}",opcode,count,required_count);
+  if ((opcode==PM4_XE_SWAP && count<4) ||
+      (opcode==PM4_IM_LOAD_IMMEDIATE && count<2))
+    REXGPU_FAIL(false,"Truncated PM4 payload opcode {:02X} words {}",opcode,count);
+
+  bool result = false;
+  switch (opcode) {""")
+    source=replace(source,"""  REX_ASSERT(reader->GetReadOffset() ==
+             (data_start_offset + (count * sizeof(u32))) % reader->GetCapacity());
+  return result;""",
+        """  if (result && reader->GetReadOffset()!=
+       (data_start_offset+(count*sizeof(u32)))%reader->GetCapacity())
+    REXGPU_FAIL(false,"PM4 handler consumed wrong payload size opcode {:02X} words {}",opcode,count);
+  return result;""")
+    # The loader copies raw big-endian ucode synchronously. If the inline
+    # payload wraps, collect both ring ranges before passing it to the loader.
+    source=replace(source,"""  REX_ASSERT(start == 0);
+  REX_ASSERT(reader->GetReadCount() >= size_dwords * 4);
+  REX_ASSERT(count - 2 >= size_dwords);
+  auto shader = LoadShader(shader_type, static_cast<u32>(reader->GetReadPtr()),
+                           reinterpret_cast<u32*>(reader->GetBuffer() + reader->GetReadOffset()),
+                           size_dwords);""",
+        """  if (start!=0 || size_dwords!=count-2 ||
+      reader->GetReadCount()<size_dwords*sizeof(u32) ||
+      (shader_type!=xenos::ShaderType::kVertex && shader_type!=xenos::ShaderType::kPixel))
+    REXGPU_FAIL(false,"Invalid immediate shader payload");
+  const auto shader_address=static_cast<u32>(reader->GetReadPtr());
+  const auto byte_count=size_dwords*sizeof(u32);
+  const u32* shader_words=reinterpret_cast<const u32*>(reader->GetBuffer()+reader->GetReadOffset());
+  std::vector<u32> wrapped;
+  if (byte_count>reader->GetCapacity()-reader->GetReadOffset()) {
+    wrapped.resize(size_dwords);
+    const auto range=reader->BeginRead(byte_count);
+    std::memcpy(wrapped.data(),range.first,range.first_length);
+    std::memcpy(reinterpret_cast<u8*>(wrapped.data())+range.first_length,
+                range.second,range.second_length);
+    shader_words=wrapped.data();
+  }
+  auto shader=LoadShader(shader_type,shader_address,shader_words,size_dwords);""")
     # The SDK's circular offsets represent full and empty as the same pair.
     # Linear PM4 submissions must explicitly mark a full read span, rather
     # than relying on a forced first read of an apparently empty ring.

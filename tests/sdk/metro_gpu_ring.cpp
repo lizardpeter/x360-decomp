@@ -1,4 +1,6 @@
 #include "gpu/xenos/geometry_cull.h"
+#include "gpu/xenos/command_processor.h"
+#include "gpu/xenos/pipeline/shader/shader.h"
 #include <rex/memory/stream.h>
 
 // Both rings execute actual guest PM4 on the SDK worker. No guest firmware.
@@ -213,4 +215,88 @@ REX_TEST_CASE("metro_gpu_ring: cull any wholly negative plane rather than all pl
         INFO("vertices "<<vertices<<" planes "<<planes<<" skip "<<first);
         CHECK(correct);
       }
+}
+
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: immediate shader upload crosses the ring boundary",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  rex::test::FakeDriverContext context;
+  rex::gpu::null::NullXenosGraphicsDriver driver;
+  REQUIRE(driver.Initialize(context));
+  REQUIRE(driver.AttachTitle(rex::TitleInfo{},title,title,title));
+  const auto allocation=memory.SystemHeapAlloc(0x6000,0x1000,rex::kernel::kSystemHeapPhysical);
+  REQUIRE(allocation);
+  const auto ring=memory.GetPhysicalAddress(allocation), wb=ring+0x2000;
+  auto wait_for=[&](rex::u32 value) {
+    const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+    while(GetBig(memory,wb)!=value && std::chrono::steady_clock::now()<end)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return GetBig(memory,wb)==value;
+  };
+  // 4 KiB ring. First move the reader near its end using a single NOP.
+  driver.InitializeRingBuffer(ring,9);
+  driver.EnableReadPointerWriteBack(wb,6);
+  Put(memory,ring,rex::xenos::BuildPacketType3(rex::xenos::PM4_NOP,1019));
+  driver.WriteRegister(kWritePointerRegister,1020);
+  REQUIRE(wait_for(1020));
+  Put(memory,ring+1020*4,rex::xenos::BuildPacketType3(rex::xenos::PM4_IM_LOAD_IMMEDIATE,5));
+  Put(memory,ring+1021*4,static_cast<rex::u32>(rex::xenos::ShaderType::kVertex));
+  Put(memory,ring+1022*4,3);
+  Put(memory,ring+1023*4,0x11223344u);
+  Put(memory,ring,0x55667788u);
+  Put(memory,ring+4,0x99aabbccu);
+  // Distinct bytes immediately after the ring must not be used as ucode.
+  Put(memory,ring+0x1000,0xdeadbeefu);
+  Put(memory,ring+0x1004,0xcafebabeu);
+  driver.WriteRegister(kWritePointerRegister,2);
+  REQUIRE(wait_for(2));
+  auto* processor=driver.GetCommandProcessor();
+  std::vector<rex::u32> words;
+  processor->CallInThreadAndWait([&]{
+    if(auto* shader=processor->GetActiveVertexShader()) words=shader->GetUcodeData();
+  });
+  CHECK((words==std::vector<rex::u32>{0x11223344u,0x55667788u,0x99aabbccu}));
+  driver.DetachTitle();
+  driver.Shutdown();
+}
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: short fixed packet cannot consume its successor",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  rex::test::FakeDriverContext context;
+  rex::gpu::null::NullXenosGraphicsDriver driver;
+  REQUIRE(driver.Initialize(context));
+  REQUIRE(driver.AttachTitle(rex::TitleInfo{},title,title,title));
+  const auto allocation=memory.SystemHeapAlloc(0x6000,0x1000,rex::kernel::kSystemHeapPhysical);
+  REQUIRE(allocation);
+  const auto ring=memory.GetPhysicalAddress(allocation), wb=ring+0x2000;
+  const auto marker=wb+4, forbidden=wb+8;
+  auto wait_for=[&](rex::u32 address,rex::u32 value) {
+    const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+    while(GetBig(memory,address)!=value && std::chrono::steady_clock::now()<end)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return GetBig(memory,address)==value;
+  };
+  for(auto opcode:{rex::xenos::PM4_REG_RMW,rex::xenos::PM4_WAIT_REG_MEM,
+                   rex::xenos::PM4_COND_WRITE,rex::xenos::PM4_IM_LOAD_IMMEDIATE}) {
+    Put(memory,marker,0);Put(memory,forbidden,0);
+    Put(memory,ring,rex::xenos::BuildPacketType3(rex::xenos::PM4_MEM_WRITE,2));
+    Put(memory,ring+4,marker|2u);Put(memory,ring+8,0x12345678u);
+    Put(memory,ring+12,rex::xenos::BuildPacketType3(opcode,1));
+    Put(memory,ring+16,0x7u);
+    Put(memory,ring+20,rex::xenos::BuildPacketType3(rex::xenos::PM4_MEM_WRITE,2));
+    Put(memory,ring+24,forbidden|2u);Put(memory,ring+28,0xdeadbeefu);
+    driver.InitializeRingBuffer(ring,9);
+    driver.EnableReadPointerWriteBack(wb,6);
+    driver.WriteRegister(kWritePointerRegister,8);
+    REQUIRE(wait_for(marker,0x12345678u));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK(GetBig(memory,forbidden)==0);
+    CHECK(GetBig(memory,wb)==0);
+  }
+  driver.DetachTitle();
+  driver.Shutdown();
 }
