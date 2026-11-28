@@ -145,7 +145,7 @@ def patch(sdk,tests):
   u32 reg_index_1""")
     # Validate fixed-layout payloads before any handler reads from the next
     # packet. These sizes are the pinned SDK's actual consumed word counts.
-    source=replace(source,"  bool result = false;\\n  switch (opcode) {",
+    source=replace(source,"  bool result = false;\n  switch (opcode) {",
         """  u32 required_count=0;
   switch (opcode) {
     case PM4_INTERRUPT:
