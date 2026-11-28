@@ -568,3 +568,45 @@ REX_TEST_CASE("metro_io_runtime: original counted ANSI path append preserves all
     CHECK(c.Kernel("RtlAppendStringToString",{dst,0xfffffffc})==X_STATUS_ACCESS_VIOLATION);
   });
 }
+
+REX_TEST_CASE("metro_io_runtime: utility device allocation matches original caller extent",
+              "[kernel][files][metro_io_runtime]") {
+  KernelFixture fixture;
+  fixture.RunOnGuestThread([](Caller& c) {
+    const u32 result = c.Alloc(8);
+    c.Store32(result, 0x12345678);
+    c.Store32(result+4, 0xabcdef01);
+    CHECK(c.Kernel("IoCreateDevice", {0,24,0,36,0,0xfffffffc}) ==
+          rex::kernel::X_STATUS_ACCESS_VIOLATION);
+    CHECK(c.Kernel("IoCreateDevice", {0,0xffffffff,0,36,0,result}) ==
+          rex::kernel::X_STATUS_INVALID_PARAMETER);
+    CHECK(c.Load32(result) == 0x12345678);
+    REQUIRE(c.Kernel("IoCreateDevice", {0,24,0,36,0,result}) == 0);
+    const u32 device=c.Load32(result);
+    REQUIRE(device != 0);
+    const u32 extension=c.Load32(device+24);
+    REQUIRE(extension != 0);
+    CHECK(c.Load32(device+36) == 0);
+    CHECK(c.Load32(extension+20) == 0);
+    c.Store32(device+32,512);
+    c.Store32(device+36,3);
+    c.Store32(extension+20,0xfeedface);
+    CHECK(c.Load32(device+36) == 3);
+    CHECK(c.Load32(extension+20) == 0xfeedface);
+    CHECK(c.Load32(result+4) == 0xabcdef01);
+    // A forged guest extension pointer must not redirect deletion.
+    c.Store32(device+24,result);
+    (void)c.Kernel("IoDeleteDevice",{device});
+    (void)c.Kernel("IoDeleteDevice",{device});
+    (void)c.Kernel("IoDeleteDevice",{result});
+    CHECK(c.Load32(result+4) == 0xabcdef01);
+    REQUIRE(c.Kernel("IoCreateDevice", {0,0x2000,0,36,0,result}) == 0);
+    const u32 next=c.Load32(result);
+    REQUIRE(next != 0);
+    const u32 larger=c.Load32(next+24);
+    REQUIRE(larger != 0);
+    CHECK(c.Load32(next+36) == 0);
+    CHECK(c.Load32(larger+0x1ffc) == 0);
+    (void)c.Kernel("IoDeleteDevice",{next});
+  });
+}

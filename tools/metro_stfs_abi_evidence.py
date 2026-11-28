@@ -331,7 +331,18 @@ def audit(image,meta,raw,catalog):
         control.append(prove_control(site,entry,command,*data[entry][:3]))
     verify_site(0x816B255C,0x816B2520,"IoCreateDevice")
     verify_site(0x816B26C8,0x816B2688,"IoDeleteDevice")
-    return {"create_sites":create,"control_sites":control,
+    body=data[0x816B2520][3]
+    ops={int(x["pc"],16):x for x in body["operands"]}
+    expected={0x816B2558:{"kind":"immediate","writes":4,"value":24},
+              0x816B2588:{"kind":"memory_store","base":11,"offset":36,"width":4},
+              0x816B2590:{"kind":"memory_load","base":11,"offset":24,"width":4},
+              0x816B25A4:{"kind":"memory_store","base":11,"offset":20,"width":4}}
+    for pc,fields in expected.items():
+        if any(ops.get(pc,{}).get(k)!=v for k,v in fields.items()):
+            raise ValueError(f"utility device layout changed at {pc:08X}")
+    return {"utility_device_layout":{"minimum_header_bytes":40,"requested_extension_bytes":24,
+                                     "extension_pointer_offset":24},
+            "create_sites":create,"control_sites":control,
             "bounded_owner_bodies":{hx(entry):item[3] for entry,item in data.items()},
             "scope":"Original static bounded CFG/provenance, exact instruction identities; no dynamic execution or assumed complete request field semantics."}
 

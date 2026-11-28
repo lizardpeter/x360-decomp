@@ -1167,6 +1167,27 @@ def patch_rtl_append(source):
     source=replace(source,"void RtlCopyString_entry(",RTL_APPEND_IMPL+"void RtlCopyString_entry(")
     return replace(source,RTL_APPEND_STUB,RTL_APPEND_EXPORT)
 
+DEVICE_CREATE_OLD = "u32 IoCreateDevice_entry([[maybe_unused]] u32 device_struct, [[maybe_unused]] u32 r4,\n                         [[maybe_unused]] u32 r5, [[maybe_unused]] u32 r6, [[maybe_unused]] u32 r7,\n                         MappedU32 out_struct) {\n  auto out_guest = kernel::GetCurrentState().GetAddressSpace()->SystemHeapAlloc(0x24);\n\n  auto out = kernel::GetCurrentState().GetAddressSpace()->TranslateVirtual<u8*>(out_guest);\n  memset(out, 0, 0x24);\n\n  auto out_guest2 = kernel::GetCurrentState().GetAddressSpace()->SystemHeapAlloc(0x1000);\n  memory::store<be_u32>(out + 0x18, out_guest2);\n\n  *out_struct = out_guest;\n  return X_STATUS_SUCCESS;\n}"
+DEVICE_CREATE_NEW = "// Compatibility allocation for the utility-drive caller. Original XAM\n// writes a DWORD at device+0x24 and reads the extension at +0x18.\n// This is storage only, not a registered STFS or hardware device.\nu32 IoCreateDevice_entry([[maybe_unused]] u32 driver, u32 extension_bytes,\n                         [[maybe_unused]] u32 name, [[maybe_unused]] u32 type,\n                         [[maybe_unused]] u32 exclusive, u32 out_struct) {\n  auto& state = kernel::GetCurrentState();\n  auto& guest = kernel::GetCurrent().GetGuestMemory();\n  if (!out_struct || !guest.GetWritableSpan(out_struct, sizeof(be_u32)))\n    return X_STATUS_ACCESS_VIOLATION;\n  constexpr u32 kDeviceBytes = 0x28;\n  constexpr u32 kLegacyExtensionBytes = 0x1000;\n  constexpr u32 kMaximumExtensionBytes = 0x100000;\n  if (extension_bytes > kMaximumExtensionBytes)\n    return X_STATUS_INVALID_PARAMETER;\n  const u32 bytes = extension_bytes > kLegacyExtensionBytes\n                        ? extension_bytes : kLegacyExtensionBytes;\n  std::lock_guard lock(state.metro_utility_device_mutex);\n  auto device = guest.Allocate(kDeviceBytes, 16, GuestProtect::kReadWrite, GuestHeap::kSystem);\n  if (!device) return X_STATUS_NO_MEMORY;\n  auto extension = guest.Allocate(bytes, 16, GuestProtect::kReadWrite, GuestHeap::kSystem);\n  if (!extension) {\n    (void)guest.Free(*device);\n    return X_STATUS_NO_MEMORY;\n  }\n  auto header = guest.GetWritableSpan(*device, kDeviceBytes);\n  auto payload = guest.GetWritableSpan(*extension, bytes);\n  if (!header || !payload) {\n    (void)guest.Free(*extension);\n    (void)guest.Free(*device);\n    return X_STATUS_ACCESS_VIOLATION;\n  }\n  std::memset(header->data(), 0, header->size());\n  std::memset(payload->data(), 0, payload->size());\n  const auto inserted = state.metro_utility_devices.emplace(*device, *extension).second;\n  if (!inserted || !guest.Store(*device + 0x18, be_u32{*extension}) ||\n      !guest.Store(out_struct, be_u32{*device})) {\n    if (inserted) state.metro_utility_devices.erase(*device);\n    (void)guest.Free(*extension);\n    (void)guest.Free(*device);\n    return X_STATUS_ACCESS_VIOLATION;\n  }\n  return X_STATUS_SUCCESS;\n}\n\nvoid IoDeleteDevice_entry(u32 device) {\n  auto& state = kernel::GetCurrentState();\n  std::lock_guard lock(state.metro_utility_device_mutex);\n  const auto it = state.metro_utility_devices.find(device);\n  if (it == state.metro_utility_devices.end()) return;\n  // Do not trust the guest-writable extension pointer when freeing.\n  auto& guest = kernel::GetCurrent().GetGuestMemory();\n  (void)guest.Free(it->second);\n  (void)guest.Free(it->first);\n  state.metro_utility_devices.erase(it);\n}"
+
+def patch_utility_device(source):
+    source=replace(source,DEVICE_CREATE_OLD,DEVICE_CREATE_NEW)
+    return replace(source,"REX_EXPORT_STUB(__imp__IoDeleteDevice);",
+        "REX_EXPORT(__imp__IoDeleteDevice, rex::kernel::xboxkrnl::IoDeleteDevice_entry)")
+
+def patch_utility_device_state(source):
+    return replace(source,"  GuestMemory& GetGuestMemory() const { return *guest_memory_; }",
+        "  GuestMemory& GetGuestMemory() const { return *guest_memory_; }\n\n"
+        "  // Only allocations owned by the compatibility IoCreateDevice export.\n"
+        "  std::mutex metro_utility_device_mutex;\n"
+        "  std::unordered_map<u32,u32> metro_utility_devices;")
+
+def patch_utility_device_shutdown(source):
+    return replace(source,"  delete guest_memory_;",
+        "  {\n    std::lock_guard lock(metro_utility_device_mutex);\n"
+        "    metro_utility_devices.clear(); // address space is destroyed below\n  }\n"
+        "  delete guest_memory_;")
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("sdk",type=Path)
@@ -1199,7 +1220,9 @@ def main():
              node_file:patch_node_file(node_file.read_text()),
              node_header:patch_node_file_header(node_header.read_text()),
              filesystem_test:filesystem_test.read_text()+"\n"+PROFILE_MOUNT_TEST,
-             io:patch_stfs_contract(patch_storage_queries(patch_io(io.read_text()))),
+             io:patch_utility_device(patch_stfs_contract(patch_storage_queries(patch_io(io.read_text())))),
+             a.sdk/"src/kernel/title_state.h":patch_utility_device_state((a.sdk/"src/kernel/title_state.h").read_text()),
+             a.sdk/"src/kernel/title_state.cpp":patch_utility_device_shutdown((a.sdk/"src/kernel/title_state.cpp").read_text()),
              file:patch_directory_object(patch_file(file.read_text())),
              info:patch_set_information(patch_volume_query(patch_file_information(info.read_text()))),
              hid:patch_storage_notifications(hid.read_text()),
