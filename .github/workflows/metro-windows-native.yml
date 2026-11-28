@@ -89,6 +89,7 @@ jobs:
           python tools/patch_metro_retail_routing.py build/sdk-source --receipt build/receipts/retail-routing.json
           python tools/patch_metro_boot_contracts.py build/sdk-source
           python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
+          python tools/patch_metro_stfs_mount.py build/sdk-source --tests tests/sdk/metro_stfs_mount.cpp
           python tools/patch_metro_virtual_memory.py build/sdk-source --tests tests/sdk/metro_virtual_memory.cpp
           python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
           python tools/patch_metro_input_runtime.py build/sdk-source --tests tests/sdk/metro_input_bridge.cpp

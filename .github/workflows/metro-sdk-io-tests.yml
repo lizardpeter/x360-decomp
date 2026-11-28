@@ -6,6 +6,8 @@ on:
       - 'tools/patch_metro_public_verification.py'
       - 'tools/verify_retail_firmware.py'
       - 'tools/patch_metro_io_runtime.py'
+      - 'tools/patch_metro_stfs_mount.py'
+      - 'tests/sdk/metro_stfs_mount.cpp'
       - 'tools/patch_metro_virtual_memory.py'
       - 'tools/patch_metro_system_attach.py'
       - 'tests/sdk/metro_system_attach.cpp'
@@ -56,6 +58,7 @@ jobs:
           python -m unittest discover -s tests -p test_metro_io_runtime.py
           python tools/patch_metro_device_control.py build/sdk-source
           python tools/patch_metro_io_runtime.py build/sdk-source --tests tests/sdk/metro_io_runtime.cpp
+          python tools/patch_metro_stfs_mount.py build/sdk-source --tests tests/sdk/metro_stfs_mount.cpp
           python tools/patch_metro_virtual_memory.py build/sdk-source --tests tests/sdk/metro_virtual_memory.cpp
           python tools/patch_rexglue_function_tables.py build/sdk-source
           python tools/patch_metro_xex_views.py build/sdk-source --tests tests/sdk/metro_xex_isolation.cpp
@@ -108,7 +111,7 @@ jobs:
           cd "$(dirname "$runner")"
           export METRO_ORIGINAL_FONT_FIXTURES="$GITHUB_WORKSPACE/build/font-native-fixtures"
           export METRO_ORIGINAL_HUD_SKIN_FIXTURES="$GITHUB_WORKSPACE/build/hud-skin-native-fixtures"
-          "$runner" '[metro_graphics_notification],[metro_original_fonts],[metro_profile_mount],[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context],[metro_gpu_ring]' --reporter compact
+          "$runner" '[metro_stfs_open_file],[metro_graphics_notification],[metro_original_fonts],[metro_profile_mount],[metro_io_runtime],[metro_xex_isolation],[metro_input_bridge],[metro_xconfig],[metro_startup_status],[metro_vm],[kernel][memory],[metro_system_attach],[metro_audio_context],[metro_gpu_ring]' --reporter compact
       - name: Retain reusable compiler cache
         if: always()
         uses: actions/cache/save@v4

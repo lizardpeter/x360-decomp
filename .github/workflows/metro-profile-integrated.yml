@@ -26,6 +26,8 @@ on:
       - 'tests/test_metro_intro.py'
       - 'tools/patch_metro_public_verification.py'
       - 'tools/patch_metro_io_runtime.py'
+      - 'tools/patch_metro_stfs_mount.py'
+      - 'tests/sdk/metro_stfs_mount.cpp'
       - 'tests/sdk/metro_io_runtime.cpp'
       - '.github/workflows/metro-profile-integrated.yml'
 permissions:

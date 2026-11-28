@@ -8,8 +8,6 @@ import argparse
 import hashlib
 import os
 import re
-import shutil
-import stat
 import struct
 import tempfile
 from pathlib import Path
@@ -70,19 +68,22 @@ def stage(source,root):
                     h.update(b);out.write(b);remaining-=len(b)
                 if f.read(1):raise ValueError("source changed during copy")
                 out.flush();os.fsync(out.fileno())
-            if target.exists() or target.is_symlink():raise FileExistsError("profile already staged; refusing overwrite")
-            # Exclusive destination creation. No replacement of an existing
-            # original or staged profile even if another process wins a race.
-            with target.open("xb") as dest:
-                try:
-                    with temp.open("rb") as verified:shutil.copyfileobj(verified,dest)
-                    dest.flush();os.fsync(dest.fileno())
-                except BaseException:
-                    dest.close();target.unlink(missing_ok=True);raise
-            with target.open("rb") as verify:
+            with temp.open("rb") as verify:
                 digest=hashlib.file_digest(verify,"sha256").digest()
-            if digest!=h.digest():
-                target.unlink();raise ValueError("copy verification failed")
+                verify.seek(0)
+                copied_profile=inspect_header(verify.read(MIN_HEADER),size)
+            if digest!=h.digest() or copied_profile!=profile:
+                raise ValueError("copy verification failed")
+            safe_root(target)
+            # Same-directory hard-link publication is atomic and exclusive.
+            # The original dashboard can enumerate while this import runs;
+            # it must never observe a partly copied package under its name.
+            # A filesystem without hard-link support fails without publishing
+            # anything, rather than falling back to a visible partial file.
+            try:
+                os.link(temp,target)
+            except FileExistsError:
+                raise FileExistsError("profile already staged; refusing overwrite") from None
         finally:
             if temp:temp.unlink(missing_ok=True)
     return size

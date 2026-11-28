@@ -425,7 +425,7 @@ def scan(label,raw,image,meta,catalog,stubs):
     trace={}
     def mark(a,name,phase):
         if executable(pe,base,a):trace.setdefault(hx(a),{"name":name,"phase":phase})
-    hardware_gate={};stalled_initializer={};offline_device={}
+    hardware_gate={};stalled_initializer={};offline_device={};waitable_storage_calls={}
     if label=="xam":
         # Live run 46082436669: first open succeeds, then the exact
         # unsupported device operation terminates the guest. Recover the
@@ -450,6 +450,22 @@ def scan(label,raw,image,meta,catalog,stubs):
                         "caller_bodies":{hx(a):bounded_entry(image,base,pe,a,thunks,funcs[a]) for a in sorted(caller_set)},
                         "response_semantics_verified":False}
         print("OFFLINE_DEVICE owner",hx(entry),"bytes",extent,"direct callers",len(caller_set))
+        # Integrated live run 46098090321 exposed these additional missing
+        # kernel contracts. Recover the original caller's complete extent
+        # and post-call result use, not an assumed handle/status signature.
+        for callsite,name in ((0x816B7970,"ObGetWaitableObject"),
+                              (0x8167EE34,"DrvSetContentStorageCallback"),
+                              (0x8167EB90,"DrvGetContentStorageNotification")):
+            target=branch(callsite,struct.unpack_from(">I",image,callsite-base)[0])
+            if not target or not target[1] or thunks.get(target[0],{}).get("name")!=name:
+                raise ValueError("observed kernel contract site differs: "+name)
+            owners=[(a,n) for a,n in funcs.items() if a<=callsite<a+n]
+            if len(owners)!=1:raise ValueError("ambiguous contract owner: "+name)
+            address,size=owners[0]
+            waitable_storage_calls[name]={"site":hx(callsite),"continuation":hx(callsite+4),
+                "owner":hx(address),"body":bounded_entry(image,base,pe,address,thunks,size),
+                "observed_run":46098090321,"abi_verified":False}
+            print("ORIGINAL_CONTRACT",name,hx(address),size)
         def check(pc,**want):
             actual=operand(pc,struct.unpack_from(">I",image,pc-base)[0])
             if any(actual.get(k)!=v for k,v in want.items()):
@@ -566,7 +582,7 @@ def scan(label,raw,image,meta,catalog,stubs):
       "export_address_references":pointer_refs,"lifecycle_refs":lifecycle_refs,"data_pointer_refs":data_refs,"computed_callback_refs":nonadjacent_refs,"startup_work_items":startup_arguments,"callback_candidates":[hx(a) for a in sorted(extra)],
       "reverse_graph":ancestors(roots,inbound,max_depth=3,max_nodes=1000),
       "forward_graph":{"nodes":{hx(a):n for a,n in chosen.items()},"truncated":truncated},
-      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate,"stalled_initializer":stalled_initializer,"offline_device":offline_device}
+      "bodies":bodies,"trace_points":trace,"hardware_gate":hardware_gate,"stalled_initializer":stalled_initializer,"offline_device":offline_device,"waitable_storage_calls":waitable_storage_calls}
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
