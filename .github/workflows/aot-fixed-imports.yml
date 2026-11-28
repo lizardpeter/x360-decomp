@@ -65,6 +65,9 @@ on:
       - 'tests/test_metro_retail_routing.py'
       - 'tests/test_metro_device_control.py'
       - 'tools/native/metro_aot_boot.hpp'
+      - 'tools/metro_720p_text_probe.py'
+      - 'tools/compare_metro_text_paths.py'
+      - 'tests/test_compare_metro_text_paths.py'
       - 'tools/capture_metro_boot.sh'
       - 'tools/symbolize_metro_crash.py'
       - 'tools/patch_metro_guest_pc.py'
@@ -352,6 +355,11 @@ jobs:
             grep 'METRO_TEXT_CLIP ' "$folder/native/metro-capture-quad/boot.log" > build/receipts/metro-text-clip-quad.log || true
           fi
           exit "$status"
+      - name: Compare actual settled Home pixels across the two paths
+        if: always() && steps.preflight.outcome == 'success'
+        run: |
+          folder="$PWD/build/fixed-imports/dash_17559/native"
+          python tools/compare_metro_text_paths.py "$folder/metro-capture" "$folder/metro-capture-quad" --output build/receipts/metro-text-path-comparison.json
       - name: Upload independent quad-conversion frame candidates
         if: always()
         uses: actions/upload-artifact@v4
