@@ -89,6 +89,10 @@ struct Parser {
                 // fields for this value. Keep the entire raw byte; the
                 // interpolation semantics are still unknown.
                 case 8:break;
+                // Subsequent original skin census observed 0x86. Like
+                // 0x88, its low six bits have no auxiliary fields in the
+                // pinned independent parser. Do not assign interpolation.
+                case 6:case 7:case 9:break;
                 case 2:rec.extra={c.byte(),c.byte(),c.byte()};break;
                 case 10:rec.extra={c.packed()};break;
                 case 11:rec.extra={c.byte()};break;
