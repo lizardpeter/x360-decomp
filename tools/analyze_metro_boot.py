@@ -44,8 +44,22 @@ def summarize(lines, inventories):
     ui={};baseline=None;counter_resets=[];intro_frames=[];handoff_frames=[]
     fonts=[];resource_reads=[];resource_opens=[];gpu_cancellations=0;text_traces={};profile_traces={}
     guide_counts=collections.Counter();graphics_counts=collections.Counter();skin_counts=collections.Counter()
-    startup_sequence=[]
+    startup_sequence=[];header_observations=[];header_metrics=[];offline_controls=[];exit_reasons=[]
     for line in lines:
+        if m:=re.search(r"METRO_BOOT exit_reason=(normal|hard_exit|title_data_error|bugcheck|unknown)$",line):exit_reasons.append(m[1])
+        if m:=re.search(r"METRO_OFFLINE_DEVICE unsupported_ioctl=([0-9A-Fa-f]{8}) input_bytes=(\d+) output_bytes=(\d+)",line):
+            if len(offline_controls)<128:offline_controls.append({"code":m[1].upper(),"input_bytes":int(m[2]),"output_bytes":int(m[3])})
+        if m:=re.search(r"METRO_HEADER pc=([0-9A-Fa-f]{8}) phase=(entry|return) label=(home|home_short|movies|movies_short|social|games|apps|settings) units=(\d+)(?: stored_length=(\d+)| status=([0-9A-Fa-f]{8}))?$",line):
+            if len(header_observations)<512:
+                record={"pc":m[1].upper(),"phase":m[2],"label":m[3],"units":int(m[4])}
+                if m[5] is not None:record["stored_length"]=int(m[5])
+                if m[6] is not None:record["status"]=m[6].upper()
+                header_observations.append(record)
+        if m:=re.search(r"METRO_HEADER_METRIC pc=([0-9A-Fa-f]{8}) kind=([12]) label=(home|home_short|movies|movies_short|social|games|apps|settings) units=(\d+)(?: requested=(-?\d+))? status=([0-9A-Fa-f]{8}) rectangle=(unavailable|[0-9A-Fa-f]{8}(?:,[0-9A-Fa-f]{8}){3})$",line):
+            if len(header_metrics)<512:
+                record={"pc":m[1].upper(),"kind":int(m[2]),"label":m[3],"units":int(m[4]),"status":m[6].upper(),"rectangle_raw":None if m[7]=="unavailable" else m[7].upper().split(",")}
+                if m[5] is not None:record["requested"]=int(m[5])
+                header_metrics.append(record)
         if m:=re.search(r"METRO_GUIDE_TRACE module=(\w+) pc=([0-9A-Fa-f]+) name=(\w+) phase=(\w+) count=(\d+) result=(\w+)(?: pcr=([0-9A-Fa-f]{8}) lr=([0-9A-Fa-f]{8}))?",line):
             key=":".join((m[1],m[2].upper(),m[3],m[4],m[6]))
             guide_counts[key]=max(guide_counts[key],int(m[5]))
@@ -132,6 +146,8 @@ def summarize(lines, inventories):
             "font_probes":fonts,"resource_reads":resource_reads,"resource_opens":resource_opens,
             "font_call_results":font_results,"gpu_shutdown_cancellations":gpu_cancellations,
             "text_trace_results":list(text_traces.values()),
+            "header_observations":header_observations,"header_measurements":header_metrics,
+            "offline_device_controls":offline_controls,"title_exit_reasons":exit_reasons,
             "profile_trace_results":list(profile_traces.values()),
             "guide_trace_count_lower_bounds":dict(guide_counts),"deferred_startup_sequence":startup_sequence,"graphics_notification_counts":dict(graphics_counts),"hud_skin_counts":dict(skin_counts),
             "heap_probes":heap,"ui_probes":list(ui.values()),"virtual_memory_calls":vm,

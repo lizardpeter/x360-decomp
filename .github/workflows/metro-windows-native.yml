@@ -234,6 +234,13 @@ jobs:
           [ordered]@{passed=$passed;exit_code=$status;timed_out=$timedOut;missing_gates=$missing;profile_modules_requested=($env:METRO_PROFILE_MODULES -eq "1");profile_mapping_verified=($env:METRO_PROFILE_MODULES -eq "1" -and $passed);interactive_dashboard_verified=$false;guide_verified=$false;sign_in_verified=$false} | ConvertTo-Json -Depth 4 | Set-Content "$package/windows-preflight.json"
           Get-Content "$package/windows-preflight.json"
           if (!$passed) { throw "Windows native mapping not verified; package is diagnostic only" }
+      - name: Verify nonempty synthetic profile storage and negative cases
+        if: steps.package.outcome == 'success'
+        run: |
+          $folder = (Resolve-Path build/fixed-imports/dash_17559).Path
+          python tools/verify_metro_profile_storage.py --host build/metro-win64/dash_17559.exe --inputs "$folder/inputs" --fixture build/sdk-source/tests/fixtures/filesystem/stfs_con.bin --output build/receipts/windows-synthetic-profile-storage.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload native Windows binaries (even if mapping preflight fails)
         if: always() && steps.package.outcome == 'success'
         uses: actions/upload-artifact@v4

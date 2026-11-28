@@ -560,7 +560,16 @@ protected:
             }
         }
     }
-    void OnTitleExit(rex::kernel::TitleExitReason) override {
+    void OnTitleExit(rex::kernel::TitleExitReason reason) override {
+        using Reason=rex::kernel::TitleExitReason;
+        const char* category="unknown";
+        switch(reason) {
+            case Reason::kNormalExit: category="normal"; break;
+            case Reason::kHardExit: category="hard_exit"; break;
+            case Reason::kTitleDataError: category="title_data_error"; break;
+            case Reason::kBugCheck: category="bugcheck"; break;
+        }
+        std::cout << "METRO_BOOT exit_reason=" << category << std::endl;
         std::cout << "METRO_BOOT guest_exit" << std::endl;
         rex::app::RequestShutdown(1);
     }

@@ -4,6 +4,24 @@ from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/"tools"))
 from analyze_metro_boot import summarize
 class BootEvidence(unittest.TestCase):
+    def test_header_metrics_and_exit_are_independent(self):
+        result=summarize([
+            "METRO_HEADER pc=921F2800 phase=return label=movies units=11 stored_length=11",
+            "METRO_HEADER_METRIC pc=92228EBC kind=1 label=movies units=11 requested=-1 status=00000000 rectangle=00000000,00000000,00000064,00000018",
+            "METRO_HEADER_METRIC pc=92229250 kind=2 label=movies units=11 status=80004005 rectangle=unavailable",
+            "METRO_HEADER pc=921F2800 phase=return label=private units=8 stored_length=8",
+            "METRO_OFFLINE_DEVICE unsupported_ioctl=00474000 input_bytes=0 output_bytes=4",
+            "METRO_BOOT exit_reason=bugcheck","METRO_BOOT guest_exit"],{"dash":[]})
+        self.assertEqual(len(result["header_observations"]),1)
+        self.assertEqual(result["header_observations"][0]["stored_length"],11)
+        self.assertEqual(result["header_measurements"][0]["requested"],-1)
+        self.assertEqual(result["header_measurements"][0]["rectangle_raw"][2],"00000064")
+        self.assertIsNone(result["header_measurements"][1]["rectangle_raw"])
+        self.assertEqual(result["offline_device_controls"],[{"code":"00474000","input_bytes":0,"output_bytes":4}])
+        self.assertEqual(result["title_exit_reasons"],["bugcheck"])
+        self.assertFalse(result["frame_counts"])
+        self.assertFalse(result["menu_visually_verified"])
+
     def test_boot_observation(self):
         result=summarize(["METRO_BOOT pass guest_thread",
           "warn METRO_STUB name=__imp__Example lr=0x00001008 r3=0x00000001 r4=0x00000002 r5=0x00000003 r6=0x00000004",

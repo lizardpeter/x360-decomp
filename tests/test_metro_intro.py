@@ -64,5 +64,8 @@ class TestMetroIntro(unittest.TestCase):
         self.assertIn('--ui.video_mode_width="$mode_width"',capture)
         self.assertIn('--ui.video_mode_height="$mode_height"',capture)
         self.assertIn('requested_guest_mode=',capture)
+        self.assertIn('--app.user_root="$user_root"',capture)
+        self.assertIn('--gpu.xenos.async_shader_compilation=false',capture)
+        self.assertIn('test "$placeholder_frames" -eq 0',capture)
         workflow=(root/".github/workflows/aot-fixed-imports.yml").read_text()
         self.assertIn("METRO_CAPTURE_WIDTH=640 METRO_CAPTURE_HEIGHT=480",workflow)
