@@ -540,6 +540,65 @@ bool SharedMemory::RequestRange(u32 start, u32 length) {""")
     vulkan_shared.write_text(vs)
     shared_h.write_text(shared)
     shared_cpp.write_text(sm)
+    # Validate the physical span independently of a provider's pointer
+    # implementation. The Xenos physical bus mirrors every 512 MiB.
+    source=replace(source,"""    if (size_log2>28) {
+      primary_buffer_size_=0;
+      primary_faulted_=true;
+      REXGPU_ERROR("METRO_GPU invalid ring size_log2={}",size_log2);
+      return;
+    }
+    primary_buffer_size_=static_cast<u32>(1) << (size_log2+3);""",
+        """    if (size_log2>26 || (ptr&3u) ||
+        (u64{1}<<(size_log2+3))>u64{kPhysicalAddressMask}+1-(ptr&kPhysicalAddressMask)) {
+      primary_buffer_size_=0;
+      primary_faulted_=true;
+      REXGPU_ERROR("METRO_GPU invalid ring extent base={:08X} size_log2={}",ptr,size_log2);
+      return;
+    }
+    primary_buffer_size_=static_cast<u32>(1) << (size_log2+3);""")
+    source=replace(source,"""    read_ptr_writeback_ptr_=ptr;
+    read_ptr_update_freq_=static_cast<u32>(1) << block_size_log2 >> 2;
+    if (ptr) StoreReleaseHost(physical_memory_,ptr,read_ptr_index_);""",
+        """    read_ptr_writeback_ptr_=0;
+    read_ptr_update_freq_=0;
+    if (ptr) {
+      if ((ptr&3u) || block_size_log2>31 ||
+          !GetPhysicalForWrite(physical_memory_,ptr,sizeof(u32))) {
+        REXGPU_ERROR("METRO_GPU invalid writeback address={:08X} size_log2={}",ptr,block_size_log2);
+        return;
+      }
+      read_ptr_writeback_ptr_=ptr;
+      read_ptr_update_freq_=static_cast<u32>(1)<<block_size_log2>>2;
+      StoreReleaseHost(physical_memory_,ptr,read_ptr_index_);
+    }""")
+    source=replace(source,"""  if (count>0xFFFFF) return false;
+  REX_PROFILE_SCOPE("gpu");""",
+        """  if (count>0xFFFFF || (ptr&3u) ||
+      u64{count}*sizeof(u32)>u64{kPhysicalAddressMask}+1-(ptr&kPhysicalAddressMask))
+    return false;
+  // This is a host recursion guard, not an asserted retail depth limit.
+  // Compare canonical addresses so mirrored aliases cannot hide cycles.
+  const u64 key=(u64{ptr&kPhysicalAddressMask}<<32)|count;
+  if (indirect_depth_>=indirect_stack_.size() ||
+      std::find(indirect_stack_.begin(),indirect_stack_.begin()+indirect_depth_,key)
+          !=indirect_stack_.begin()+indirect_depth_) {
+    REXGPU_ERROR("METRO_GPU recursive or excessively nested indirect buffer");
+    return false;
+  }
+  indirect_stack_[indirect_depth_++]=key;
+  rex::ScopeGuard pop_indirect([this]{ --indirect_depth_; });
+  REX_PROFILE_SCOPE("gpu");""")
+    header=replace(header,"#include <atomic>","#include <array>\n#include <atomic>")
+    header=replace(header,"  bool primary_faulted_ = false;",
+        """  bool primary_faulted_ = false;
+  // Worker-owned active indirect calls. Reusing a completed child is legal.
+  std::array<u64,64> indirect_stack_{};
+  size_t indirect_depth_=0;""")
+    source=replace(source,"  if (!count || count>0xFFFFF) return;\n  u8* packet_buffer",
+        """  if (!count || count>0xFFFFF || (ptr&3u) ||
+      u64{count}*sizeof(u32)>u64{kPhysicalAddressMask}+1-(ptr&kPhysicalAddressMask)) return;
+  u8* packet_buffer""")
     pipeline.write_text(ps)
     p.write_text(source);h.write_text(header);t.write_text(test+"\n"+tests.read_text())
     vk.write_text(v)

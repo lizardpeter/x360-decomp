@@ -408,3 +408,81 @@ REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: batched vertex page requests prese
   CHECK(shared.IsRangeValid(11*page,page));
   CHECK_FALSE(shared.IsRangeValid(12*page,1));
 }
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: recursive indirect streams fault without losing later valid reuse",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  rex::test::FakeDriverContext context;
+  rex::gpu::null::NullXenosGraphicsDriver driver;
+  REQUIRE(driver.Initialize(context));
+  REQUIRE(driver.AttachTitle(rex::TitleInfo{},title,title,title));
+  const auto allocation=memory.SystemHeapAlloc(0x6000,0x1000,rex::kernel::kSystemHeapPhysical);
+  REQUIRE(allocation);
+  const auto ring=memory.GetPhysicalAddress(allocation),child=ring+0x1000;
+  const auto wb=ring+0x2000, marker=wb+4, forbidden=wb+8;
+  auto indirect=[&](rex::u32 at,rex::u32 target,rex::u32 count) {
+    Put(memory,at,rex::xenos::BuildPacketType3(rex::xenos::PM4_INDIRECT_BUFFER,2));
+    Put(memory,at+4,target);Put(memory,at+8,count);
+  };
+  auto write=[&](rex::u32 at,rex::u32 dst,rex::u32 value) {
+    Put(memory,at,rex::xenos::BuildPacketType3(rex::xenos::PM4_MEM_WRITE,2));
+    Put(memory,at+4,dst|2u);Put(memory,at+8,value);
+  };
+  auto wait_for=[&](rex::u32 address,rex::u32 value) {
+    const auto end=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+    while(GetBig(memory,address)!=value && std::chrono::steady_clock::now()<end)
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return GetBig(memory,address)==value;
+  };
+  Put(memory,marker,0);Put(memory,forbidden,0);
+  write(child,marker,0x11111111);
+  indirect(child+12,child,6);
+  indirect(ring,child,6);
+  write(ring+12,forbidden,0x22222222);
+  driver.InitializeRingBuffer(ring,9);
+  driver.EnableReadPointerWriteBack(wb,6);
+  driver.WriteRegister(kWritePointerRegister,6);
+  REQUIRE(wait_for(marker,0x11111111));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  CHECK(GetBig(memory,wb)==0);
+  CHECK(GetBig(memory,forbidden)==0);
+  // A completed child can be called twice in a new valid primary stream.
+  write(child,marker,0x33333333);
+  driver.InitializeRingBuffer(ring,9);
+  indirect(ring,child,3);
+  indirect(ring+12,child,3);
+  write(ring+24,forbidden,0x44444444);
+  driver.EnableReadPointerWriteBack(wb,6);
+  driver.WriteRegister(kWritePointerRegister,9);
+  REQUIRE(wait_for(wb,9));
+  CHECK(GetBig(memory,marker)==0x33333333);
+  CHECK(GetBig(memory,forbidden)==0x44444444);
+  driver.DetachTitle();
+  driver.Shutdown();
+}
+
+REX_TEST_CASE_METHOD(Fixture,"metro_gpu_ring: invalid writeback configuration never writes guest memory",
+                     "[gpu][metro_gpu_ring]") {
+  auto& memory=rex::test::GetTestMemory();
+  rex::test::FakeTitleContext title(memory);
+  rex::test::FakeDriverContext context;
+  rex::gpu::null::NullXenosGraphicsDriver driver;
+  REQUIRE(driver.Initialize(context));
+  REQUIRE(driver.AttachTitle(rex::TitleInfo{},title,title,title));
+  const auto allocation=memory.SystemHeapAlloc(0x6000,0x1000,rex::kernel::kSystemHeapPhysical);
+  REQUIRE(allocation);
+  const auto ring=memory.GetPhysicalAddress(allocation),wb=ring+0x2000;
+  Put(memory,wb,0x12345678);Put(memory,wb+4,0x87654321);
+  driver.InitializeRingBuffer(ring,9);
+  driver.EnableReadPointerWriteBack(wb,32);
+  CHECK(GetBig(memory,wb)==0x12345678);
+  driver.EnableReadPointerWriteBack(wb+1,6);
+  CHECK(GetBig(memory,wb)==0x12345678);
+  CHECK(GetBig(memory,wb+4)==0x87654321);
+  driver.EnableReadPointerWriteBack(wb,6);
+  CHECK(GetBig(memory,wb)==0);
+  CHECK(GetBig(memory,wb+4)==0x87654321);
+  driver.DetachTitle();
+  driver.Shutdown();
+}
